@@ -27,11 +27,24 @@ sub guess_caller {
 
 sub _fun ($) { $_[0] }
 
+sub _croak {
+	require Carp;
+	{
+		no warnings qw(redefine);
+		*_croak = \&Carp::croak;
+	}
+	goto &Carp::croak;
+}
+
 sub import {
 	my $class = shift;
-	my $keyword = shift;
+	my $keyword = @_ ? shift : 'fun';
 	my $caller = guess_caller;
 	#warn "caller = $caller";
+	
+	_croak qq{"$_" is not exported by the $class module} for @_;
+
+	$keyword =~ /^[[:alpha:]_]\w*\z/ or _croak qq{"$keyword" does not look like a valid identifier};
 
 	Devel::Declare->setup_for(
 		$caller,
@@ -255,6 +268,9 @@ Function::Parameters - subroutine definitions with parameter lists
  
  print "$_\n" for mymap { $_ * 2 } 1 .. 4;
 
+ use Function::Parameters 'proc';
+ my $f = proc ($x) { $x * 2 };
+ 
 =head1 DESCRIPTION
 
 This module lets you use parameter lists in your subroutines. Thanks to
@@ -278,6 +294,10 @@ C<sub foo { my ($bar, $baz) = @_; >, i.e. the parameter list is simply
 copied into C<my> and initialized from L<@_|perlvar/"@_">.
 
 =head2 Advanced stuff
+
+You can change the name of the new keyword from C<fun> to anything you want by
+specifying it in the import list, i.e. C<use Function::Parameters 'spork'> lets
+you write C<spork> instead of C<fun>.
 
 If you need L<subroutine attributes|perlsub/"Subroutine Attributes">, you can
 put them after the parameter list with their usual syntax. There's one
