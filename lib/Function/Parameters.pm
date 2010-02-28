@@ -29,16 +29,17 @@ sub _fun ($) { $_[0] }
 
 sub import {
 	my $class = shift;
+	my $keyword = shift;
 	my $caller = guess_caller;
 	#warn "caller = $caller";
 
 	Devel::Declare->setup_for(
 		$caller,
-		{ fun => { const => \&parser } }
+		{ $keyword => { const => \&parser } }
 	);
 
 	no strict 'refs';
-	*{$caller . '::fun'} = \&_fun;
+	*{$caller . '::' . $keyword} = \&_fun;
 }
 
 sub report_pos {
