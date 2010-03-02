@@ -36,23 +36,30 @@ sub _croak {
 	goto &Carp::croak;
 }
 
-sub import {
-	my $class = shift;
+sub import_into {
+	my $victim = shift;
 	my $keyword = @_ ? shift : 'fun';
-	my $caller = guess_caller;
-	#warn "caller = $caller";
 	
-	_croak qq{"$_" is not exported by the $class module} for @_;
+	_croak qq["$_" is not exported by the ${\__PACKAGE__} module] for @_;
 
 	$keyword =~ /^[[:alpha:]_]\w*\z/ or _croak qq{"$keyword" does not look like a valid identifier};
 
 	Devel::Declare->setup_for(
-		$caller,
+		$victim,
 		{ $keyword => { const => \&parser } }
 	);
 
 	no strict 'refs';
-	*{$caller . '::' . $keyword} = \&_fun;
+	*{$victim . '::' . $keyword} = \&_fun;
+}
+
+sub import {
+	my $class = shift;
+	
+	my $caller = guess_caller;
+	#warn "caller = $caller";
+
+	import_into $caller, @_;
 }
 
 sub report_pos {
@@ -320,13 +327,27 @@ so the parser knows the name (and possibly prototype) while it processes the
 body. Thus C<fun foo($x) :($) { $x }> really turns into
 C<sub foo ($); sub foo ($) { my ($x) = @_; $x }>.
 
+If you want to wrap C<Function::Parameters>, you may find C<import_into>
+helpful. It lets you specify a target package for the syntax magic, as in:
+
+  package Some::Wrapper;
+  use Function::Parameters ();
+  sub import {
+    my $caller = caller;
+    Function::Parameters::import_into $caller;
+    # or Function::Parameters::import_into $caller, 'other_keyword';
+  }
+
+C<import_into> is not exported by this module, so you have to use a fully
+qualified name to call it.
+
 =head1 AUTHOR
 
 Lukas Mai, C<< <l.mai at web.de> >>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009 Lukas Mai.
+Copyright 2010 Lukas Mai.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published
