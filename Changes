@@ -1,5 +1,9 @@
 Revision history for Function-Parameters
 
+0.04    2010-03-03
+        - allow renaming the function keyword
+        - provide import_into so you can mess with other packages
+        
 0.03    2009-12-14
         First version, released on an unsuspecting world.
 
