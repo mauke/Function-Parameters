@@ -6,3 +6,5 @@ lib/Function/Parameters.pm
 t/pod.t
 t/00-load.t
 t/01-compiles.t
+t/elsewhere.t
+t/rename.t
