@@ -6,5 +6,9 @@ lib/Function/Parameters.pm
 t/pod.t
 t/00-load.t
 t/01-compiles.t
+t/02-compiles.t
 t/elsewhere.t
 t/rename.t
+t/eating_strict_error.t
+t/eating_strict_error.fail
+t/eating_strict_error_2.fail
