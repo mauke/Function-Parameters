@@ -3,12 +3,22 @@ package Function::Parameters;
 use strict;
 use warnings;
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
+use Carp qw(croak confess);
 use Devel::Declare;
 use B::Hooks::EndOfScope;
-use B::Compiling;
 
+our @CARP_NOT = qw(Devel::Declare);
+
+
+# Make our import chainable so a wrapper module that wants to turn on F:P
+# for its users can just say
+#    sub import { Function::Parameters->import; }
+#
+# To make that possible we skip all subs named 'import' in our search for the
+# target package.
+#
 sub guess_caller {
 	my ($start) = @_;
 	$start ||= 1;
@@ -18,238 +28,297 @@ sub guess_caller {
 
 	for (my $level = $start; ; ++$level) {
 		my ($pkg, $function) = (caller $level)[0, 3] or last;
-		#warn "? $pkg, $function";
 		$function =~ /::import\z/ or return $caller;
 		$caller = $pkg;
 	}
 	$defcaller
 }
 
-sub _fun ($) { $_[0] }
 
-sub _croak {
-	require Carp;
-	{
-		no warnings qw(redefine);
-		*_croak = \&Carp::croak;
-	}
-	goto &Carp::croak;
-}
+# Parse import spec and make shit happen.
+#
+my @bare_arms = qw(function method);
 
 sub import_into {
 	my $victim = shift;
-	my $keyword = @_ ? shift : 'fun';
+
+	@_ or @_ = ('fun', 'method');
+	if (@_ == 1 && ref($_[0]) eq 'HASH') {
+		@_ = map [$_, $_[0]{$_}], keys %{$_[0]}
+			or return;
+	}
+
+	my %spec;
+
+	my $bare = 0;
+	for my $proto (@_) {
+		my $item = ref $proto
+			? $proto
+			: [$proto, $bare_arms[$bare++] || confess(qq{Don't know what to do with "$proto"})]
+		;
+		my ($name, $type) = @$item;
+		$name =~ /^[^\W\d]\w*\z/
+			or confess qq{"$name" doesn't look like a valid identifier};
+		my ($index) = grep $bare_arms[$_] eq $type, 0 .. $#bare_arms
+			or confess qq{"$type" doesn't look like a valid type (one of ${\join ', ', @bare_arms})};
+		
+		$spec{$name} = {const => mk_parse($index)};
+	}
 	
-	_croak qq["$_" is not exported by the ${\__PACKAGE__} module] for @_;
-
-	$keyword =~ /^[[:alpha:]_]\w*\z/ or _croak qq{"$keyword" does not look like a valid identifier};
-
-	Devel::Declare->setup_for(
-		$victim,
-		{ $keyword => { const => \&parser } }
-	);
-
-	no strict 'refs';
-	*{$victim . '::' . $keyword} = \&_fun;
+	Devel::Declare->setup_for($victim, \%spec);
+	for my $name (keys %spec) {
+		no strict 'refs';
+		*{$victim . '::' . $name} = \&_declarator;
+	}
 }
 
 sub import {
 	my $class = shift;
-	
 	my $caller = guess_caller;
-	#warn "caller = $caller";
-
 	import_into $caller, @_;
 }
 
-sub report_pos {
-	my ($offset, $name) = @_;
-	$name ||= '';
-	my $line = Devel::Declare::get_linestr();
-	substr $line, $offset + 1, 0, "\x{20de}\e[m";
-	substr $line, $offset, 0, "\e[31;1m";
-	print STDERR "$name($offset)>> $line\n";
+sub _declarator {
+	$_[0]
 }
 
-sub parser {
-	my ($declarator, $start) = @_;
-	my $offset = $start;
-	my $line = Devel::Declare::get_linestr();
 
-	my $fail = do {
-		my $_file = PL_compiling->file;
-		my $_line = PL_compiling->line;
-		sub {
-			my $n = $_line + substr($line, $start, $offset - $start) =~ tr[\n][];
-			die join('', @_) . " at $_file line $n\n";
-		}
-	};
+# Wrapper around substr where param 3 is an end offset, not a length.
+#
+sub _substring {
+	@_ >= 4
+	? substr $_[0], $_[1], $_[2] - $_[1], $_[3]
+	: substr $_[0], $_[1], $_[2] - $_[1]
+}
 
-	my $atomically = sub {
-		my ($pars) = @_;
-		sub {
-			my $tmp = $offset;
-			my @ret = eval { $pars->(@_) };
-			if ($@) {
-				$offset = $tmp;
-				die $@;
+sub _skip_space {
+	my ($ctx, $key) = @_;
+	my $cur = my $start = $ctx->{offset};
+	while (my $d = Devel::Declare::toke_skipspace $cur) {
+		$cur += $d;
+	}
+	$ctx->{space}{$key} .= _substring Devel::Declare::get_linestr, $start, $cur if $key;
+	$ctx->{offset} = $cur;
+}
+
+sub _grab_name {
+	my ($ctx) = @_;
+	my $p = $ctx->{offset};
+	my $namlen = Devel::Declare::toke_scan_word $p, !!'handle_package'
+		or return;
+	my $str = Devel::Declare::get_linestr;
+	$ctx->{name} = substr $str, $p, $namlen;
+	$ctx->{offset} += $namlen;
+	_skip_space $ctx, 'name';
+}
+
+sub _grab_params {
+	my ($ctx) = @_;
+	substr(Devel::Declare::get_linestr, $ctx->{offset}, 1) eq '('
+		or return;
+	$ctx->{offset}++;
+	_skip_space $ctx, 'params';
+
+	my $pcount = 0;
+
+	LOOP: {
+		my $c = substr Devel::Declare::get_linestr, $ctx->{offset}, 1;
+
+		if ($c =~ /^[\$\@%]\z/) {
+			$ctx->{offset}++;
+			_skip_space $ctx, "params_$pcount";
+			my $namlen = Devel::Declare::toke_scan_word $ctx->{offset}, !'handle_package'
+				or croak "Missing identifier";
+			my $name = substr Devel::Declare::get_linestr, $ctx->{offset}, $namlen;
+			$ctx->{params} .= $c . $name . ',';
+			$ctx->{offset} += $namlen;
+			_skip_space $ctx, "params_$pcount";
+
+			$c = substr Devel::Declare::get_linestr, $ctx->{offset}, 1;
+			if ($c eq ',') {
+				$ctx->{offset}++;
+				_skip_space $ctx, "params_$pcount";
+				$pcount++;
+				redo LOOP;
 			}
-			wantarray ? @ret : $ret[0]
 		}
-	};
 
-	my $try = sub {
-		my ($pars) = @_;
-		my @ret = eval { $pars->() };
-		if ($@) {
+		if ($c eq ')') {
+			$ctx->{offset}++;
+			_skip_space $ctx, 'params';
 			return;
 		}
-		wantarray ? @ret : $ret[0]
-	};
 
-	my $skipws = sub {
-		#warn ">> $line";
-		my $skip = Devel::Declare::toke_skipspace($offset);
-		if ($skip < 0) {
-			$skip == -$offset or die "Internal error: offset=$offset, skip=$skip";
-			Devel::Declare::set_linestr($line);
-			return;
+		if ($c eq '') {
+			croak "Unexpected EOF in parameter list";
 		}
-		$line = Devel::Declare::get_linestr();
-		#warn "toke_skipspace($offset) = $skip\n== $line";
-		$offset += $skip;
-	};
 
-	$offset += Devel::Declare::toke_move_past_token($offset);
-	$skipws->();
-	my $manip_start = $offset;
-
-	my $name;
-	if (my $len = Devel::Declare::toke_scan_word($offset, 1)) {
-		$name = substr $line, $offset, $len;
-		$offset += $len;
-		$skipws->();
+		croak "Unexpected '$c' in parameter list";
 	}
-
-	my $scan_token = sub {
-		my ($str) = @_;
-		my $len = length $str;
-		substr($line, $offset, $len) eq $str or $fail->(qq{Missing "$str"});
-		$offset += $len;
-		$skipws->();
-	};
-
-	my $scan_id = sub {
-		my $len = Devel::Declare::toke_scan_word($offset, 0) or $fail->('Missing identifier');
-		my $name = substr $line, $offset, $len;
-		$offset += $len;
-		$skipws->();
-		$name
-	};
-
-	my $scan_var = $atomically->(sub {
-		(my $sigil = substr($line, $offset, 1)) =~ /^[\$\@%]\z/ or $fail->('Missing [$@%]');
-		$offset += 1;
-		$skipws->();
-		my $name = $scan_id->();
-		$sigil . $name
-	});
-
-	my $separated_by = $atomically->(sub {
-		my ($sep, $pars) = @_;
-		my $len = length $sep;
-		defined(my $x = $try->($pars)) or return;
-		my @res = $x;
-		while () {
-			substr($line, $offset, $len) eq $sep or return @res;
-			$offset += $len;
-			$skipws->();
-			push @res, $pars->();
-		}
-	});
-
-	my $many_till = $atomically->(sub {
-		my ($end, $pars) = @_;
-		my $len = length $end;
-		my @res;
-		until (substr($line, $offset, $len) eq $end) {
-			push @res, $pars->();
-		}
-		@res
-	});
-
-	my $scan_params = $atomically->(sub {
-		if ($try->(sub { $scan_token->('('); 1 })) {
-			my @param = $separated_by->(',', $scan_var);
-			$scan_token->(')');
-			return @param;
-		}
-		$try->($scan_var)
-	});
-
-	my @param = $scan_params->();
-
-	my $scan_pargroup_opt = sub {
-		substr($line, $offset, 1) eq '(' or return '';
-		my $len = Devel::Declare::toke_scan_str($offset);
-		my $res = Devel::Declare::get_lex_stuff();
-		Devel::Declare::clear_lex_stuff();
-		$res eq '' and $fail->(qq{Can't find ")" anywhere before EOF});
-		$offset += $len;
-		$skipws->();
-		"($res)"
-	};
-
-	my $scan_attr = sub {
-		my $name = $scan_id->();
-		my $param = $scan_pargroup_opt->() || '';
-		$name . $param
-	};
-
-	my $scan_attributes = $atomically->(sub {
-		$try->(sub { $scan_token->(':'); 1 }) or return '', [];
-		my $proto = $scan_pargroup_opt->();
-		my @attrs = $many_till->('{', $scan_attr);
-		' ' . $proto, \@attrs
-	});
-
-	my ($proto, $attributes) = $scan_attributes->();
-	my $attr = @$attributes ? ' : ' . join(' ', @$attributes) : '';
-
-	$scan_token->('{');
-
-	my $manip_end = $offset;
-	my $manip_len = $manip_end - $manip_start;
-	#print STDERR "($manip_start:$manip_len:$manip_end)\n";
-
-	my $params = @param ? 'my (' . join(', ', @param) . ') = @_;' : '';
-	#report_pos $offset;
-	$proto =~ tr[\n][ ];
-
-	if (defined $name) {
-		my $pkg = __PACKAGE__;
-		#print STDERR "($manip_start:$manip_len) [$line]\n";
-		substr $line, $manip_start, $manip_len, " do { sub $name$proto; sub $name$proto$attr { BEGIN { ${pkg}::terminate_me(q[$name]); } $params ";
-	} else {
-		substr $line, $manip_start, $manip_len, " sub$proto$attr { $params ";
-	}
-	#print STDERR ".> $line\n";
-	Devel::Declare::set_linestr($line);
 }
 
-sub terminate_me {
-	my ($name) = @_;
+sub _parse_parens {
+	my ($ctx) = @_;
+
+	my $strlen = Devel::Declare::toke_scan_str $ctx->{offset};
+	$strlen == 0 || $strlen == -1 and return;
+
+	$strlen < 0 and confess "Devel::Declare::toke_scan_str done fucked up ($strlen); see https://rt.cpan.org/Ticket/Display.html?id=51679";
+
+	my $str = Devel::Declare::get_lex_stuff;
+	Devel::Declare::clear_lex_stuff;
+
+	$ctx->{offset} += $strlen;
+
+	$str
+}
+
+sub _grab_proto {
+	my ($ctx) = @_;
+
+	my $savepos = $ctx->{offset};
+
+	substr(Devel::Declare::get_linestr, $ctx->{offset}, 1) eq ':'
+		or return;
+	$ctx->{offset}++;
+	_skip_space $ctx, 'proto_tmp';
+
+	unless (substr(Devel::Declare::get_linestr, $ctx->{offset}, 1) eq '(') {
+		$ctx->{offset} = $savepos;
+		delete $ctx->{space}{proto_tmp};
+		return;
+	}
+	$_->{proto} .= delete $_->{proto_tmp} for $ctx->{space};
+
+	defined(my $str = _parse_parens $ctx)
+		or croak "Malformed prototype";
+	$ctx->{proto} = $str;
+
+	_skip_space $ctx, 'proto';
+}
+
+sub _grab_attr {
+	my ($ctx) = @_;
+
+	my $pcount = 0;
+
+	if (substr(Devel::Declare::get_linestr, $ctx->{offset}, 1) eq ':') {
+		$ctx->{offset}++;
+		_skip_space $ctx, "attr_$pcount";
+	} elsif (!defined $ctx->{proto}) {
+		return;
+	}
+
+	while () {
+		my $namlen = Devel::Declare::toke_scan_word $ctx->{offset}, !'handle_package'
+			or return;
+		$ctx->{attr} .= substr Devel::Declare::get_linestr, $ctx->{offset}, $namlen;
+		$ctx->{offset} += $namlen;
+		_skip_space $ctx, "attr_$pcount";
+		if (substr(Devel::Declare::get_linestr, $ctx->{offset}, 1) eq '(') {
+			defined(my $str = _parse_parens $ctx)
+				or croak "Malformed attribute argument list";
+			$ctx->{attr} .= "($str)";
+			_skip_space $ctx, "attr_$pcount";
+		}
+		$pcount++;
+
+		if (substr(Devel::Declare::get_linestr, $ctx->{offset}, 1) eq ':') {
+			$ctx->{offset}++;
+			_skip_space $ctx, "attr_$pcount";
+		}
+	}
+}
+
+# IN:
+#  fun name (params) :(proto) :attr { ... }
+# OUT:
+#  fun (do { sub                        (proto) :attr { self? my (params) = @_; ... } })
+#  fun (do { sub name (proto); sub name (proto) :attr { self? my (params) = @_; ... } });
+#
+sub _generate {
+	my ($ctx, $declarator, $implicit_self) = @_;
+
+	my $gen = '(do{sub';
+
+	my $skipped = join '', values %{$ctx->{space}};
+	my $lines = $skipped =~ tr/\n//;
+	$gen .= "\n" x $lines;
+
+	my $proto = defined $ctx->{proto} ? "($ctx->{proto})" : '';
+
+	my $is_stmt = 0;
+	if (defined(my $name = $ctx->{name})) {
+		$is_stmt = 1;
+		$gen .= " $name$proto;";
+		$gen .= "sub $name";
+	}
+
+	$gen .= $proto;
+
+	if (defined $ctx->{attr}) {
+		$gen .= ":$ctx->{attr}";
+	}
+
+	$gen .= '{';
+	$gen .= "BEGIN{${\__PACKAGE__}::_fini($is_stmt)}";
+
+	if ($implicit_self) {
+		$gen .= 'my$self=shift;';
+	}
+	if (defined $ctx->{params}) {
+		$gen .= "my($ctx->{params})=\@_;";
+	}
+	$gen
+}
+
+sub mk_parse {
+	my ($implicit_self) = @_;
+
+	sub {
+		my ($declarator, $offset_orig) = @_;
+		my $ctx = {
+			offset => $offset_orig,
+			space => {},
+		};
+
+		$ctx->{offset} += Devel::Declare::toke_move_past_token($ctx->{offset});
+		_skip_space $ctx;
+
+		my $start = $ctx->{offset};
+
+		_grab_name $ctx;
+		_grab_params $ctx;
+		_grab_proto $ctx;
+		_grab_attr $ctx;
+
+		my $offset = $ctx->{offset};
+
+		my $linestr = Devel::Declare::get_linestr;
+		substr($linestr, $offset, 1) eq '{'
+			or croak qq[I was expecting a function body, not "${\substr $linestr, $offset}"];
+
+		my $gen = _generate $ctx, $declarator, $implicit_self;
+		my $oldlen = $offset + 1 - $start;
+		_substring $linestr, $start, $offset + 1, (' ' x $oldlen) . $gen;
+		Devel::Declare::set_linestr $linestr;
+	}
+}
+
+# Patch in the end of our synthetic 'do' block, close argument list, and
+# optionally terminate the statement.
+#
+sub _fini {
+	my ($stmt) = @_;
 	on_scope_end {
-		my $line = Devel::Declare::get_linestr();
-		#print STDERR "~~> $line\n";
-		my $offset = Devel::Declare::get_linestr_offset();
-		substr $line, $offset, 0, " \\&$name };";
-		Devel::Declare::set_linestr($line);
-		#print STDERR "??> $line\n";
+		my $off = Devel::Declare::get_linestr_offset;
+		my $str = Devel::Declare::get_linestr;
+		substr $str, $off, 0, '})' . ($stmt ? ';' : '');
+		Devel::Declare::set_linestr $str;
 	};
 }
 
-1
+'ok'
 
 __END__
 
@@ -274,10 +343,22 @@ Function::Parameters - subroutine definitions with parameter lists
  }
  
  print "$_\n" for mymap { $_ * 2 } 1 .. 4;
-
- use Function::Parameters 'proc';
- my $f = proc ($x) { $x * 2 };
  
+ method set_name($name) {
+   $self->{name} = $name;
+ }
+
+=cut
+
+=pod
+
+ use Function::Parameters 'proc', 'meth';
+ 
+ my $f = proc ($x) { $x * 2 };
+ meth get_age() {
+   return $self->{age};
+ }
+
 =head1 DESCRIPTION
 
 This module lets you use parameter lists in your subroutines. Thanks to
@@ -293,31 +374,60 @@ Consider this module alpha quality.
 To use this new functionality, you have to use C<fun> instead of C<sub> -
 C<sub> continues to work as before. The syntax is almost the same as for
 C<sub>, but after the subroutine name (or directly after C<fun> if you're
-writing an anonymous sub) you can write a parameter list in parens. This
+writing an anonymous sub) you can write a parameter list in parentheses. This
 list consists of comma-separated variables.
 
 The effect of C<fun foo($bar, $baz) {> is as if you'd written
 C<sub foo { my ($bar, $baz) = @_; >, i.e. the parameter list is simply
 copied into C<my> and initialized from L<@_|perlvar/"@_">.
 
-=head2 Advanced stuff
+In addition you can use C<method>, which understands the same syntax as C<fun>
+but automatically creates a C<$self> variable for you. So by writing
+C<method foo($bar, $baz) {> you get the same effect as
+C<sub foo { my $self = shift; my ($bar, $baz) = @_; >.
 
-You can change the name of the new keyword from C<fun> to anything you want by
-specifying it in the import list, i.e. C<use Function::Parameters 'spork'> lets
-you write C<spork> instead of C<fun>.
+=head2 Customizing the generated keywords
 
-If you need L<subroutine attributes|perlsub/"Subroutine Attributes">, you can
-put them after the parameter list with their usual syntax. There's one
-exception, though: you can only use one colon (to start the attribute list);
-multiple attributes have to be separated by spaces.
+You can customize the names of the keywords injected in your package. To do that
+you pass a hash reference in the import list:
 
-Syntactically, these new parameter lists live in the spot normally occupied
-by L<prototypes|perlsub/"Prototypes">. However, you can include a prototype by
-specifying it as the first attribute (this is syntactically unambiguous
-because normal attributes have to start with a letter).
+ use Function::Parameters { proc => 'function', meth => 'method' }; # -or-
+ use Function::Parameters { proc => 'function' }; # -or-
+ use Function::Parameters { meth => 'method' };
+
+The first line creates two keywords, C<proc> and C<meth> (for defining
+functions and methods, respectively). The last two lines only create one
+keyword. Generally the hash keys can be any identifiers you want while the
+values have to be either C<function> or C<method>. The difference between
+C<function> and C<method> is that C<method>s automatically
+L<shift|perlfunc/shift> their first argument into C<$self>.
+
+The following shortcuts are available:
+
+ use Function::Parameters;
+    # is equivalent to #
+ use Function::Parameters { fun => 'function', method => 'method' };
+
+=cut
+
+=pod
+
+ use Function::Parameters 'foo';
+   # is equivalent to #
+ use Function::Parameters { 'foo' => 'function' };
+
+=cut
+
+=pod
+
+ use Function::Parameters 'foo', 'bar';
+   # is equivalent to #
+ use Function::Parameters { 'foo' => 'function', 'bar' => 'method' };
+
+=head2 Other advanced stuff
 
 Normally, Perl subroutines are not in scope in their own body, meaning the
-parser doesn't know the name C<foo> or its prototype when processing
+parser doesn't know the name C<foo> or its prototype while processing
 C<sub foo ($) { foo $bar[1], $bar[0]; }>, parsing it as
 C<$bar-E<gt>foo([1], $bar[0])>. Yes. You can add parens to change the
 interpretation of this code, but C<foo($bar[1], $bar[0])> will only trigger
@@ -327,6 +437,14 @@ so the parser knows the name (and possibly prototype) while it processes the
 body. Thus C<fun foo($x) :($) { $x }> really turns into
 C<sub foo ($); sub foo ($) { my ($x) = @_; $x }>.
 
+If you need L<subroutine attributes|perlsub/"Subroutine Attributes">, you can
+put them after the parameter list with their usual syntax.
+
+Syntactically, these new parameter lists live in the spot normally occupied
+by L<prototypes|perlsub/"Prototypes">. However, you can include a prototype by
+specifying it as the first attribute (this is syntactically unambiguous
+because normal attributes have to start with a letter).
+
 If you want to wrap C<Function::Parameters>, you may find C<import_into>
 helpful. It lets you specify a target package for the syntax magic, as in:
 
@@ -335,7 +453,7 @@ helpful. It lets you specify a target package for the syntax magic, as in:
   sub import {
     my $caller = caller;
     Function::Parameters::import_into $caller;
-    # or Function::Parameters::import_into $caller, 'other_keyword';
+    # or Function::Parameters::import_into $caller, @other_import_args;
   }
 
 C<import_into> is not exported by this module, so you have to use a fully
@@ -347,7 +465,7 @@ Lukas Mai, C<< <l.mai at web.de> >>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2010 Lukas Mai.
+Copyright 2010, 2011 Lukas Mai.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published
