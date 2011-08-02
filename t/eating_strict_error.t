@@ -1,19 +1,20 @@
 #!perl
 
-use Test::More tests => 2;
+use Test::More tests => 4;
 
 use warnings FATAL => 'all';
 use strict;
 
 use Dir::Self;
 
-#use Test::Fatal;
+for my $thing (map [__DIR__ . "/eating_strict_error$_->[0].fail", @$_[1 .. $#$_]], ['', 5], ['_2', 8]) {
+	my ($file, $line) = @$thing;
+	my $done = do $file;
+	my $exc = $@;
+	my $err = $!;
 
-my $file = __DIR__ . "/eating_strict_error.fail";
-my $done = do $file;
-my $exc = $@;
-my $err = $!;
-
-is $done, undef, "faulty code doesn't load";
-is $exc, qq{Global symbol "\$records" requires explicit package name at $file line 5.\nBEGIN not safe after errors--compilation aborted at $file line 9.\n};
-$exc or die "$file: $err";
+	is $done, undef, "faulty code doesn't load";
+	my $msg = qq{Global symbol "\$records" requires explicit package name at $file line $line.\n};
+	like $exc, qr{^\Q$msg};
+	$exc or die "$file: $err";
+}
