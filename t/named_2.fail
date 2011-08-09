@@ -1,0 +1,21 @@
+#!perl
+use warnings;
+use strict;
+
+use Function::Parameters {
+	func => {
+		name => 'required',
+	},
+
+	f => {
+		name => 'prohibited',
+	},
+
+	method => {
+		name => 'required',
+		shift => '$this',
+	},
+};
+
+f bad() {
+}
