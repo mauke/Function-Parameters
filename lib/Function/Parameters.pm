@@ -35,9 +35,20 @@ sub guess_caller {
 }
 
 
+sub _assert_valid_identifier {
+	my ($name, $with_dollar) = @_;
+	my $bonus = $with_dollar ? '\$' : '';
+	$name =~ /^${bonus}[^\W\d]\w*\z/
+		or confess qq{"$name" doesn't look like a valid identifier};
+}
+
 # Parse import spec and make shit happen.
 #
 my @bare_arms = qw(function method);
+my %type_map = (
+	function => { name => 'optional' },
+	method   => { name => 'optional', shift => '$self' },
+);
 
 sub import_into {
 	my $victim = shift;
@@ -57,12 +68,18 @@ sub import_into {
 			: [$proto, $bare_arms[$bare++] || confess(qq{Don't know what to do with "$proto"})]
 		;
 		my ($name, $type) = @$item;
-		$name =~ /^[^\W\d]\w*\z/
-			or confess qq{"$name" doesn't look like a valid identifier};
-		my ($index) = grep $bare_arms[$_] eq $type, 0 .. $#bare_arms
-			or confess qq{"$type" doesn't look like a valid type (one of ${\join ', ', @bare_arms})};
+		_assert_valid_identifier $name;
+
+		unless (ref $type) {
+			# use '||' instead of 'or' to preserve $type in the error message
+			$type = $type_map{$type}
+				|| confess qq["$type" doesn't look like a valid type (one of ${\join ', ', sort keys %type_map})];
+		}
+		$type->{name} ||= 'optional';
+		$type->{name} =~ /^(?:optional|required|prohibited)\z/
+			or confess qq["$type->{name}" doesn't look like a valid name attribute (one of optional, required, prohibited)];
 		
-		$spec{$name} = {const => mk_parse($index)};
+		$spec{$name} = {const => mk_parse($type)};
 	}
 	
 	Devel::Declare->setup_for($victim, \%spec);
@@ -237,7 +254,7 @@ sub _grab_attr {
 #  fun (do { sub name (proto); sub name (proto) :attr { self? my (params) = @_; ... } });
 #
 sub _generate {
-	my ($ctx, $declarator, $implicit_self) = @_;
+	my ($ctx, $declarator, $shift) = @_;
 
 	my $gen = '(do{sub';
 
@@ -263,8 +280,9 @@ sub _generate {
 	$gen .= '{';
 	$gen .= "BEGIN{${\__PACKAGE__}::_fini($is_stmt)}";
 
-	if ($implicit_self) {
-		$gen .= 'my$self=shift;';
+	if ($shift) {
+		_assert_valid_identifier $shift, 1;
+		$gen .= "my$shift=shift;";
 	}
 	if (defined $ctx->{params}) {
 		$gen .= "my($ctx->{params})=\@_;";
@@ -273,7 +291,7 @@ sub _generate {
 }
 
 sub mk_parse {
-	my ($implicit_self) = @_;
+	my ($spec) = @_;
 
 	sub {
 		my ($declarator, $offset_orig) = @_;
@@ -287,7 +305,8 @@ sub mk_parse {
 
 		my $start = $ctx->{offset};
 
-		_grab_name $ctx;
+		_grab_name $ctx unless $spec->{name} eq 'prohibited';
+		$ctx->{name} or croak qq[I was expecting a function name, not "${\substr Devel::Declare::get_linestr, $ctx->{offset}}"] if $spec->{name} eq 'required';
 		_grab_params $ctx;
 		_grab_proto $ctx;
 		_grab_attr $ctx;
@@ -298,7 +317,7 @@ sub mk_parse {
 		substr($linestr, $offset, 1) eq '{'
 			or croak qq[I was expecting a function body, not "${\substr $linestr, $offset}"];
 
-		my $gen = _generate $ctx, $declarator, $implicit_self;
+		my $gen = _generate $ctx, $declarator, $spec->{shift};
 		my $oldlen = $offset + 1 - $start;
 		_substring $linestr, $start, $offset + 1, (' ' x $oldlen) . $gen;
 		Devel::Declare::set_linestr $linestr;
