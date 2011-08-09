@@ -1,7 +1,7 @@
 use warnings;
 use strict;
 
-use Test::More tests => 4;
+use Test::More tests => 12;
 
 use Dir::Self;
 
@@ -31,19 +31,25 @@ method bar($k, $d) {
 }
 
 is foo('a', 'b', 'c'), 'bacb';
-is bar({ab => 'cd'}, 'ab', 'e'), 'eabcdeab';
+is bar({ab => 'cd'}, 'ab', 'e'), 'abecdabe';
 
 my $baz = f ($x) { $x * 2 + 1 };
 is $baz->(11), 23;
 is $baz->(-0.5), 0;
 
-for my $fail (map [__DIR__ . "/named_$_.fail"], '1', '2', '3', '4') {
-	my ($file) = @$fail;
+for my $fail (
+	map [__DIR__ . "/named_$_->[0].fail", @$_[1 .. $#$_]],
+	['1', qr/expect.*function.*name/],
+	['2', qr/expect.*function.*body/],
+	['3', qr/expect.*function.*name/],
+	['4', qr/Global symbol "\$self" requires explicit package name/]
+) {
+	my ($file, $pat) = @$fail;
 	my $done = do $file;
 	my $exc = $@;
 	my $err = $!;
 
 	is $done, undef, "faulty code doesn't load";
 	$exc or die "$file: $err";
-	warn "$exc\n";
+	like $exc, $pat;
 }
