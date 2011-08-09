@@ -417,9 +417,9 @@ you pass a hash reference in the import list:
 The first line creates two keywords, C<proc> and C<meth> (for defining
 functions and methods, respectively). The last two lines only create one
 keyword. Generally the hash keys can be any identifiers you want while the
-values have to be either C<function> or C<method>. The difference between
-C<function> and C<method> is that C<method>s automatically
-L<shift|perlfunc/shift> their first argument into C<$self>.
+values have to be either C<function>, C<method>, or a hash reference (see
+below). The difference between C<function> and C<method> is that C<method>s
+automatically L<shift|perlfunc/shift> their first argument into C<$self>.
 
 The following shortcuts are available:
 
@@ -442,6 +442,29 @@ The following shortcuts are available:
  use Function::Parameters 'foo', 'bar';
    # is equivalent to #
  use Function::Parameters { 'foo' => 'function', 'bar' => 'method' };
+
+You can customize things even more by passing a hashref instead of C<function>
+or C<method>. This hash can have the following keys:
+
+=over
+
+=item C<name>
+
+Valid values: C<optional> (default), C<required> (all uses of this keyword must
+specify a function name), and C<prohibited> (all uses of this keyword must not
+specify a function name). This means a C<< name => 'prohibited' >> keyword can
+only be used for defining anonymous functions.
+
+=item C<shift>
+
+Valid values: strings that look like a scalar variable. Any function created by
+this keyword will automatically L<shift|perlfunc/shift> its first argument into
+a local variable with the name specified here.
+
+=back
+
+Plain C<function> is equivalent to C<< { name => 'optional' } >>, and plain
+C<method> is equivalent to C<< { name => 'optional', shift => '$self'} >>.
 
 =head2 Other advanced stuff
 
