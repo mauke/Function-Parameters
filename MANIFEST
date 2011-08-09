@@ -12,3 +12,10 @@ t/rename.t
 t/eating_strict_error.t
 t/eating_strict_error.fail
 t/eating_strict_error_2.fail
+t/lineno-torture.t
+t/lineno.t
+t/named.t
+t/named_1.fail
+t/named_2.fail
+t/named_3.fail
+t/named_4.fail
