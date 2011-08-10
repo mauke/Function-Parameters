@@ -78,6 +78,8 @@ sub import_into {
 		$type->{name} ||= 'optional';
 		$type->{name} =~ /^(?:optional|required|prohibited)\z/
 			or confess qq["$type->{name}" doesn't look like a valid name attribute (one of optional, required, prohibited)];
+		$type->{shift}
+			and _assert_valid_identifier $type->{shift}, 1;
 		
 		$spec{$name} = {const => mk_parse($type)};
 	}
@@ -307,7 +309,12 @@ sub mk_parse {
 
 		_grab_name $ctx unless $spec->{name} eq 'prohibited';
 		$ctx->{name} or croak qq[I was expecting a function name, not "${\substr Devel::Declare::get_linestr, $ctx->{offset}}"] if $spec->{name} eq 'required';
+		my $fname = $ctx->{name} || '(anon)';
 		_grab_params $ctx;
+		if ($ctx->{params} && $ctx->{params} =~ /([\@%]\w+),([\$\@%]\w+)/) {
+			my ($slurpy, $after) = ($1, $2);
+			croak qq[In $declarator $fname: I was expecting ")" after "$slurpy", not "$after"];
+		}
 		_grab_proto $ctx;
 		_grab_attr $ctx;
 
@@ -315,7 +322,7 @@ sub mk_parse {
 
 		my $linestr = Devel::Declare::get_linestr;
 		substr($linestr, $offset, 1) eq '{'
-			or croak qq[I was expecting a function body, not "${\substr $linestr, $offset}"];
+			or croak qq[In $declarator $fname: I was expecting a function body, not "${\substr $linestr, $offset}"];
 
 		my $gen = _generate $ctx, $declarator, $spec->{shift};
 		my $oldlen = $offset + 1 - $start;
