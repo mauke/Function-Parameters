@@ -1,0 +1,7 @@
+#!perl
+use warnings;
+use strict;
+
+use Function::Parameters;
+
+fun bad_2(@x, $y) {}
