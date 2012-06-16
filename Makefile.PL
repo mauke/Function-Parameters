@@ -7,21 +7,21 @@ WriteMakefile(
     AUTHOR              => q{Lukas Mai <l.mai@web.de>},
     VERSION_FROM        => 'lib/Function/Parameters.pm',
     ABSTRACT_FROM       => 'lib/Function/Parameters.pm',
-    ($ExtUtils::MakeMaker::VERSION >= 6.3002
-      ? ('LICENSE'=> 'perl')
-      : ()),
-    PL_FILES            => {},
+    CONFIGURE_REQUIRES => {
+        'ExtUtils::MakeMaker' => '6.56',
+    },
+    LICENSE => 'perl',
+    PL_FILES => {},
     BUILD_REQUIRES => {
-    	'Dir::Self' => 0,
+        'Dir::Self' => 0,
+        'Test::More' => 0,
     },
     PREREQ_PM => {
-        'Test::More' => 0,
+    	'XSLoader' => 0,
         'warnings' => 0,
         'strict' => 0,
-        'Devel::Declare' => 0,
-        'B::Hooks::EndOfScope' => 0,
-        'Carp' => 0,
     },
+    MIN_PERL_VERSION => '5.12.0',
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean               => { FILES => 'Function-Parameters-*' },
 );
