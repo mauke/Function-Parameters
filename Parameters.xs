@@ -38,7 +38,7 @@ See http://dev.perl.org/licenses/ for more information.
 
 #else
  #define WARNINGS_RESET
- #define WARNINGS_ENABLE(X)
+ #define WARNINGS_ENABLE
 #endif
 
 
