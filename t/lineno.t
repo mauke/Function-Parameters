@@ -1,7 +1,7 @@
 use warnings;
 use strict;
 
-use Test::More tests => 8;
+use Test::More tests => 10;
 
 use Function::Parameters;
 
@@ -58,6 +58,19 @@ TODO: {
 	;
 
 	test_loc 'LX -- 4';
+}
+
+TODO: {
+	local $TODO = 'newlines in prototype/attributes';
+
+	fun wtf :(
+
+	)
+	:
+	{ test_loc 'LX -- 5 (inner)' }
+
+	wtf;
+	test_loc 'LX -- 5 (outer)';
 }
 
 __DATA__

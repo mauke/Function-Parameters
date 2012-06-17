@@ -17,7 +17,10 @@ WriteMakefile(
         'Test::More' => 0,
     },
     PREREQ_PM => {
+    	'Carp' => 0,
+    	'B::Hooks::EndOfScope' => 0,
     	'XSLoader' => 0,
+    	'bytes' => 0,
         'warnings' => 0,
         'strict' => 0,
     },

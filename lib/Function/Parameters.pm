@@ -3,37 +3,15 @@ package Function::Parameters;
 use strict;
 use warnings;
 
-our $VERSION = '0.05';
-
-use Carp qw(croak confess);
-use Devel::Declare;
-use B::Hooks::EndOfScope;
-
-our @CARP_NOT = qw(Devel::Declare);
-
-
-# Make our import chainable so a wrapper module that wants to turn on F:P
-# for its users can just say
-#    sub import { Function::Parameters->import; }
-#
-# To make that possible we skip all subs named 'import' in our search for the
-# target package.
-#
-sub guess_caller {
-	my ($start) = @_;
-	$start ||= 1;
-
-	my $defcaller = (caller $start)[0];
-	my $caller = $defcaller;
-
-	for (my $level = $start; ; ++$level) {
-		my ($pkg, $function) = (caller $level)[0, 3] or last;
-		$function =~ /::import\z/ or return $caller;
-		$caller = $pkg;
-	}
-	$defcaller
+use XSLoader;
+BEGIN {
+	our $VERSION = '0.05_01';
+	XSLoader::load;
 }
 
+use B::Hooks::EndOfScope qw(on_scope_end);
+use Carp qw(confess);
+use bytes ();
 
 sub _assert_valid_identifier {
 	my ($name, $with_dollar) = @_;
@@ -42,16 +20,14 @@ sub _assert_valid_identifier {
 		or confess qq{"$name" doesn't look like a valid identifier};
 }
 
-# Parse import spec and make shit happen.
-#
 my @bare_arms = qw(function method);
 my %type_map = (
 	function => { name => 'optional' },
 	method   => { name => 'optional', shift => '$self' },
 );
 
-sub import_into {
-	my $victim = shift;
+sub import {
+	my $class = shift;
 
 	@_ or @_ = ('fun', 'method');
 	if (@_ == 1 && ref($_[0]) eq 'HASH') {
@@ -78,271 +54,47 @@ sub import_into {
 		$type->{name} ||= 'optional';
 		$type->{name} =~ /^(?:optional|required|prohibited)\z/
 			or confess qq["$type->{name}" doesn't look like a valid name attribute (one of optional, required, prohibited)];
-		$type->{shift}
-			and _assert_valid_identifier $type->{shift}, 1;
+		if ($type->{shift}) {
+			_assert_valid_identifier $type->{shift}, 1;
+			bytes::length($type->{shift}) < SHIFT_NAME_LIMIT
+				or confess qq["$type->{shift}" is longer than I can handle];
+		}
 		
-		$spec{$name} = {const => mk_parse($type)};
+		$spec{$name} = $type;
 	}
 	
-	Devel::Declare->setup_for($victim, \%spec);
-	for my $name (keys %spec) {
-		no strict 'refs';
-		*{$victim . '::' . $name} = \&_declarator;
+	for my $kw (keys %spec) {
+		my $type = $spec{$kw};
+
+		$^H{HINTK_SHIFT_ . $kw} = $type->{shift} || '';
+		$^H{HINTK_NAME_ . $kw} =
+			$type->{name} eq 'prohibited' ? FLAG_NAME_PROHIBITED :
+			$type->{name} eq 'required' ? FLAG_NAME_REQUIRED :
+			FLAG_NAME_OPTIONAL
+		;
+		$^H{+HINTK_KEYWORDS} .= "$kw ";
 	}
 }
 
-sub import {
+sub unimport {
 	my $class = shift;
-	my $caller = guess_caller;
-	import_into $caller, @_;
-}
 
-sub _declarator {
-	$_[0]
-}
-
-
-# Wrapper around substr where param 3 is an end offset, not a length.
-#
-sub _substring {
-	@_ >= 4
-	? substr $_[0], $_[1], $_[2] - $_[1], $_[3]
-	: substr $_[0], $_[1], $_[2] - $_[1]
-}
-
-sub _skip_space {
-	my ($ctx, $key) = @_;
-	my $cur = my $start = $ctx->{offset};
-	while (my $d = Devel::Declare::toke_skipspace $cur) {
-		$cur += $d;
-	}
-	$ctx->{space}{$key} .= _substring Devel::Declare::get_linestr, $start, $cur if $key;
-	$ctx->{offset} = $cur;
-}
-
-sub _grab_name {
-	my ($ctx) = @_;
-	my $p = $ctx->{offset};
-	my $namlen = Devel::Declare::toke_scan_word $p, !!'handle_package'
-		or return;
-	my $str = Devel::Declare::get_linestr;
-	$ctx->{name} = substr $str, $p, $namlen;
-	$ctx->{offset} += $namlen;
-	_skip_space $ctx, 'name';
-}
-
-sub _grab_params {
-	my ($ctx) = @_;
-	substr(Devel::Declare::get_linestr, $ctx->{offset}, 1) eq '('
-		or return;
-	$ctx->{offset}++;
-	_skip_space $ctx, 'params';
-
-	my $pcount = 0;
-
-	LOOP: {
-		my $c = substr Devel::Declare::get_linestr, $ctx->{offset}, 1;
-
-		if ($c =~ /^[\$\@%]\z/) {
-			$ctx->{offset}++;
-			_skip_space $ctx, "params_$pcount";
-			my $namlen = Devel::Declare::toke_scan_word $ctx->{offset}, !'handle_package'
-				or croak "Missing identifier";
-			my $name = substr Devel::Declare::get_linestr, $ctx->{offset}, $namlen;
-			$ctx->{params} .= $c . $name . ',';
-			$ctx->{offset} += $namlen;
-			_skip_space $ctx, "params_$pcount";
-
-			$c = substr Devel::Declare::get_linestr, $ctx->{offset}, 1;
-			if ($c eq ',') {
-				$ctx->{offset}++;
-				_skip_space $ctx, "params_$pcount";
-				$pcount++;
-				redo LOOP;
-			}
-		}
-
-		if ($c eq ')') {
-			$ctx->{offset}++;
-			_skip_space $ctx, 'params';
-			return;
-		}
-
-		if ($c eq '') {
-			croak "Unexpected EOF in parameter list";
-		}
-
-		croak "Unexpected '$c' in parameter list";
-	}
-}
-
-sub _parse_parens {
-	my ($ctx) = @_;
-
-	my $strlen = Devel::Declare::toke_scan_str $ctx->{offset};
-	$strlen == 0 || $strlen == -1 and return;
-
-	$strlen < 0 and confess "Devel::Declare::toke_scan_str done fucked up ($strlen); see https://rt.cpan.org/Ticket/Display.html?id=51679";
-
-	my $str = Devel::Declare::get_lex_stuff;
-	Devel::Declare::clear_lex_stuff;
-
-	$ctx->{offset} += $strlen;
-
-	$str
-}
-
-sub _grab_proto {
-	my ($ctx) = @_;
-
-	my $savepos = $ctx->{offset};
-
-	substr(Devel::Declare::get_linestr, $ctx->{offset}, 1) eq ':'
-		or return;
-	$ctx->{offset}++;
-	_skip_space $ctx, 'proto_tmp';
-
-	unless (substr(Devel::Declare::get_linestr, $ctx->{offset}, 1) eq '(') {
-		$ctx->{offset} = $savepos;
-		delete $ctx->{space}{proto_tmp};
-		return;
-	}
-	$_->{proto} .= delete $_->{proto_tmp} for $ctx->{space};
-
-	defined(my $str = _parse_parens $ctx)
-		or croak "Malformed prototype";
-	$ctx->{proto} = $str;
-
-	_skip_space $ctx, 'proto';
-}
-
-sub _grab_attr {
-	my ($ctx) = @_;
-
-	my $pcount = 0;
-
-	if (substr(Devel::Declare::get_linestr, $ctx->{offset}, 1) eq ':') {
-		$ctx->{offset}++;
-		_skip_space $ctx, "attr_$pcount";
-	} elsif (!defined $ctx->{proto}) {
+	if (!@_) {
+		delete $^H{+HINTK_KEYWORDS};
 		return;
 	}
 
-	while () {
-		my $namlen = Devel::Declare::toke_scan_word $ctx->{offset}, !'handle_package'
-			or return;
-		$ctx->{attr} .= substr Devel::Declare::get_linestr, $ctx->{offset}, $namlen;
-		$ctx->{offset} += $namlen;
-		_skip_space $ctx, "attr_$pcount";
-		if (substr(Devel::Declare::get_linestr, $ctx->{offset}, 1) eq '(') {
-			defined(my $str = _parse_parens $ctx)
-				or croak "Malformed attribute argument list";
-			$ctx->{attr} .= "($str)";
-			_skip_space $ctx, "attr_$pcount";
-		}
-		$pcount++;
-
-		if (substr(Devel::Declare::get_linestr, $ctx->{offset}, 1) eq ':') {
-			$ctx->{offset}++;
-			_skip_space $ctx, "attr_$pcount";
-		}
+	for my $kw (@_) {
+		$^H{+HINTK_KEYWORDS} =~ s/(?<![^ ])\Q$kw\E //g;
 	}
 }
 
-# IN:
-#  fun name (params) :(proto) :attr { ... }
-# OUT:
-#  fun (do { sub                        (proto) :attr { self? my (params) = @_; ... } })
-#  fun (do { sub name (proto); sub name (proto) :attr { self? my (params) = @_; ... } });
-#
-sub _generate {
-	my ($ctx, $declarator, $shift) = @_;
-
-	my $gen = '(do{sub';
-
-	my $skipped = join '', values %{$ctx->{space}};
-	my $lines = $skipped =~ tr/\n//;
-	$gen .= "\n" x $lines;
-
-	my $proto = defined $ctx->{proto} ? "($ctx->{proto})" : '';
-
-	my $is_stmt = 0;
-	if (defined(my $name = $ctx->{name})) {
-		$is_stmt = 1;
-		$gen .= " $name$proto;";
-		$gen .= "sub $name";
-	}
-
-	$gen .= $proto;
-
-	if (defined $ctx->{attr}) {
-		$gen .= ":$ctx->{attr}";
-	}
-
-	$gen .= '{';
-	$gen .= "BEGIN{${\__PACKAGE__}::_fini($is_stmt)}";
-
-	if ($shift) {
-		_assert_valid_identifier $shift, 1;
-		$gen .= "my$shift=shift;";
-	}
-	if (defined $ctx->{params}) {
-		$gen .= "my($ctx->{params})=\@_;";
-	}
-	$gen
-}
-
-sub mk_parse {
-	my ($spec) = @_;
-
-	sub {
-		my ($declarator, $offset_orig) = @_;
-		my $ctx = {
-			offset => $offset_orig,
-			space => {},
-		};
-
-		$ctx->{offset} += Devel::Declare::toke_move_past_token($ctx->{offset});
-		_skip_space $ctx;
-
-		my $start = $ctx->{offset};
-
-		_grab_name $ctx unless $spec->{name} eq 'prohibited';
-		$ctx->{name} or croak qq[I was expecting a function name, not "${\substr Devel::Declare::get_linestr, $ctx->{offset}}"] if $spec->{name} eq 'required';
-		my $fname = $ctx->{name} || '(anon)';
-		_grab_params $ctx;
-		if ($ctx->{params} && $ctx->{params} =~ /([\@%]\w+),([\$\@%]\w+)/) {
-			my ($slurpy, $after) = ($1, $2);
-			croak qq[In $declarator $fname: I was expecting ")" after "$slurpy", not "$after"];
-		}
-		_grab_proto $ctx;
-		_grab_attr $ctx;
-
-		my $offset = $ctx->{offset};
-
-		my $linestr = Devel::Declare::get_linestr;
-		substr($linestr, $offset, 1) eq '{'
-			or croak qq[In $declarator $fname: I was expecting a function body, not "${\substr $linestr, $offset}"];
-
-		my $gen = _generate $ctx, $declarator, $spec->{shift};
-		my $oldlen = $offset + 1 - $start;
-		_substring $linestr, $start, $offset + 1, (' ' x $oldlen) . $gen;
-		Devel::Declare::set_linestr $linestr;
-	}
-}
-
-# Patch in the end of our synthetic 'do' block, close argument list, and
-# optionally terminate the statement.
-#
 sub _fini {
-	my ($stmt) = @_;
 	on_scope_end {
-		my $off = Devel::Declare::get_linestr_offset;
-		my $str = Devel::Declare::get_linestr;
-		substr $str, $off, 0, '})' . ($stmt ? ';' : '');
-		Devel::Declare::set_linestr $str;
+		xs_fini;
 	};
 }
+
 
 'ok'
 
@@ -388,9 +140,9 @@ Function::Parameters - subroutine definitions with parameter lists
 =head1 DESCRIPTION
 
 This module lets you use parameter lists in your subroutines. Thanks to
-L<Devel::Declare> it works without source filters.
+L<perlapi/PL_keyword_plugin> it works without source filters.
 
-WARNING: This is my first attempt at using L<Devel::Declare> and I have
+WARNING: This is my first attempt at writing L<XS code|perlxs> and I have
 almost no experience with perl's internals. So while this module might
 appear to work, it could also conceivably make your programs segfault.
 Consider this module alpha quality.
@@ -494,19 +246,16 @@ by L<prototypes|perlsub/"Prototypes">. However, you can include a prototype by
 specifying it as the first attribute (this is syntactically unambiguous
 because normal attributes have to start with a letter).
 
-If you want to wrap C<Function::Parameters>, you may find C<import_into>
-helpful. It lets you specify a target package for the syntax magic, as in:
+If you want to wrap L<Function::Parameters>, you just have to call its
+C<import> method. It always applies to the file that is currently being parsed
+and its effects are lexical (i.e. it works like L<warnings> or L<strict>);
 
   package Some::Wrapper;
   use Function::Parameters ();
   sub import {
-    my $caller = caller;
-    Function::Parameters::import_into $caller;
-    # or Function::Parameters::import_into $caller, @other_import_args;
+    Function::Parameters->import;
+    # or Function::Parameters->import(@other_import_args);
   }
-
-C<import_into> is not exported by this module, so you have to use a fully
-qualified name to call it.
 
 =head1 AUTHOR
 
@@ -514,7 +263,7 @@ Lukas Mai, C<< <l.mai at web.de> >>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2010, 2011 Lukas Mai.
+Copyright 2010, 2011, 2012 Lukas Mai.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

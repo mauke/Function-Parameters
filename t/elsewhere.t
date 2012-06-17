@@ -2,16 +2,19 @@ use strict;
 use warnings;
 use Test::More;
 
-use Function::Parameters ();
+{
+	package Wrapper;
+	use Function::Parameters ();
+	sub shazam { Function::Parameters->import(@_); }
+}
 
-BEGIN { Function::Parameters::import_into __PACKAGE__; }
+BEGIN { Wrapper::shazam; }
 
 ok fun ($x) { $x }->(1);
 
-BEGIN { Function::Parameters::import_into 'Cu::Ba', 'gorn'; }
-
 {
 	package Cu::Ba;
+	BEGIN { Wrapper::shazam 'gorn'; }
 
 	gorn wooden ($gorn) { !$gorn }
 }
