@@ -1,5 +1,10 @@
 Revision history for Function-Parameters
 
+0.05_01 2012-06-17
+        - complete rewrite in XS
+        - hopefully fix bug where it would get the line numbers wrong
+        - lexical pragma, remove import_into
+
 0.05    2011-08-02
         - complete rewrite
         - hopefully fix bug where it would swallow compilation errors or get the line numbers wrong
