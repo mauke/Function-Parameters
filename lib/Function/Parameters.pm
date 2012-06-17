@@ -132,7 +132,10 @@ Function::Parameters - subroutine definitions with parameter lists
 
 =pod
 
- use Function::Parameters 'proc', 'meth';
+ use Function::Parameters {
+   proc => 'function',
+   meth => 'method',
+ };
  
  my $f = proc ($x) { $x * 2 };
  meth get_age() {
@@ -142,7 +145,7 @@ Function::Parameters - subroutine definitions with parameter lists
 =head1 DESCRIPTION
 
 This module lets you use parameter lists in your subroutines. Thanks to
-L<perlapi/PL_keyword_plugin> it works without source filters.
+L<PL_keyword_plugin|perlapi/PL_keyword_plugin> it works without source filters.
 
 WARNING: This is my first attempt at writing L<XS code|perlxs> and I have
 almost no experience with perl's internals. So while this module might
@@ -168,8 +171,8 @@ C<sub foo { my $self = shift; my ($bar, $baz) = @_; >.
 
 =head2 Customizing the generated keywords
 
-You can customize the names of the keywords injected in your package. To do that
-you pass a hash reference in the import list:
+You can customize the names of the keywords injected into your scope. To do
+that you pass a hash reference in the import list:
 
  use Function::Parameters { proc => 'function', meth => 'method' }; # -or-
  use Function::Parameters { proc => 'function' }; # -or-
@@ -192,6 +195,10 @@ The following shortcuts are available:
 
 =pod
 
+The following shortcuts are deprecated and may be removed from a future version
+of the module:
+
+ # DEPRECATED
  use Function::Parameters 'foo';
    # is equivalent to #
  use Function::Parameters { 'foo' => 'function' };
@@ -200,9 +207,13 @@ The following shortcuts are available:
 
 =pod
 
+ # DEPRECATED
  use Function::Parameters 'foo', 'bar';
    # is equivalent to #
  use Function::Parameters { 'foo' => 'function', 'bar' => 'method' };
+
+That is, if you want to pass arguments to L<Function::Parameters>, use a
+hashref, not a list of strings.
 
 You can customize things even more by passing a hashref instead of C<function>
 or C<method>. This hash can have the following keys:
@@ -220,18 +231,18 @@ only be used for defining anonymous functions.
 
 Valid values: strings that look like a scalar variable. Any function created by
 this keyword will automatically L<shift|perlfunc/shift> its first argument into
-a local variable with the name specified here.
+a local variable whose name is specified here.
 
 =back
 
-Plain C<function> is equivalent to C<< { name => 'optional' } >>, and plain
-C<method> is equivalent to C<< { name => 'optional', shift => '$self'} >>.
+Plain C<'function'> is equivalent to C<< { name => 'optional' } >>, and plain
+C<'method'> is equivalent to C<< { name => 'optional', shift => '$self' } >>.
 
-=head2 Other advanced stuff
+=head2 Syntax and generated code
 
 Normally, Perl subroutines are not in scope in their own body, meaning the
-parser doesn't know the name C<foo> or its prototype while processing
-C<sub foo ($) { foo $bar[1], $bar[0]; }>, parsing it as
+parser doesn't know the name C<foo> or its prototype while processing the body
+of C<sub foo ($) { foo $bar[1], $bar[0]; }>, parsing it as
 C<$bar-E<gt>foo([1], $bar[0])>. Yes. You can add parens to change the
 interpretation of this code, but C<foo($bar[1], $bar[0])> will only trigger
 a I<foo() called too early to check prototype> warning. This module attempts
@@ -246,18 +257,49 @@ put them after the parameter list with their usual syntax.
 Syntactically, these new parameter lists live in the spot normally occupied
 by L<prototypes|perlsub/"Prototypes">. However, you can include a prototype by
 specifying it as the first attribute (this is syntactically unambiguous
-because normal attributes have to start with a letter).
+because normal attributes have to start with a letter while a prototype starts
+with C<(>).
+
+As an example, the following declaration uses every feature available
+(subroutine name, parameter list, prototype, attributes, and implicit
+C<$self>):
+
+ method foo($x, $y, @z) :($;$@) :lvalue :Banana(2 + 2) {
+   ...
+ }
+
+And here's what it turns into:
+
+ sub foo ($;$@); sub foo ($;$@) :lvalue :Banana(2 + 2) { my $self = shift; my ($x, $y, @z) = @_;
+   ...
+ }
+
+Another example:
+
+ my $coderef = fun ($p, $q) :(;$$)
+   :lvalue
+   :Gazebo((>:O)) {
+   ...
+ };
+
+And the generated code:
+
+ my $coderef = sub (;$$) :lvalue :Gazebo((>:O)) { my ($p, $q) = @_;
+   ...
+ };
+
+=head2 Wrapping Function::Parameters
 
 If you want to wrap L<Function::Parameters>, you just have to call its
 C<import> method. It always applies to the file that is currently being parsed
-and its effects are lexical (i.e. it works like L<warnings> or L<strict>);
+and its effects are lexical (i.e. it works like L<warnings> or L<strict>):
 
-  package Some::Wrapper;
-  use Function::Parameters ();
-  sub import {
-    Function::Parameters->import;
-    # or Function::Parameters->import(@other_import_args);
-  }
+ package Some::Wrapper;
+ use Function::Parameters ();
+ sub import {
+   Function::Parameters->import;
+   # or Function::Parameters->import(@other_import_args);
+ }
 
 =head1 AUTHOR
 
