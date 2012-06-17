@@ -24,30 +24,30 @@ fun test_loc($marker) {
 }
 
 sub {
-	test_loc 'LT torture begin';
+	test_loc 'LT torture begin.';
 	use integer;
 	my $r = shift;
 
 	my $a = shift;
 	my $b = shift;
 
-	test_loc 'LT torture A';
+	test_loc 'LT torture A.';
 	@_ = (
 		sub {
 			my $f = shift;
-			test_loc 'LT torture B';
+			test_loc 'LT torture B.';
 			@_ = (
 				sub {
 					my $f = shift;
-					test_loc 'LT torture C';
+					test_loc 'LT torture C.';
 					@_ = (
 						sub {
 							my $f = shift;
-							test_loc 'LT torture D';
+							test_loc 'LT torture D.';
 							@_ = (
 								sub {
 									my $n = shift;
-									test_loc 'LT torture end';
+									test_loc 'LT torture end.';
 									@_ = $n;
 									goto &$r;
 								},
@@ -68,7 +68,7 @@ sub {
 						@_ = sub {
 							my $r = shift;
 							my $y = shift;
-							test_loc 'LT torture body';
+							test_loc 'LT torture body.';
 							if ($x && $y) {
 								@_ = (
 									sub {
@@ -138,7 +138,7 @@ sub {
 		sub {
 			my $r = shift;
 			my $f = shift;
-			test_loc 'LT torture boot';
+			test_loc 'LT torture boot.';
 			@_ = ($r, $f);
 			goto &$f;
 		}
@@ -150,21 +150,21 @@ sub {
 	#local $TODO = 'line numbers all fucked up';
 
 	fun ($r, $a, $b) {
-		test_loc 'LX torture begin';
+		test_loc 'LX torture begin.';
 		use integer;
-		test_loc 'LX torture A';
-		@_ = ( do { test_loc 'LX torture A-post'; () },
-			do { test_loc 'LX torture B-pre'; () }, fun ($f) { test_loc 'LX torture B-pre';
-				test_loc 'LX torture B';
+		test_loc 'LX torture A.';
+		@_ = ( do { test_loc 'LX torture A-post.'; () },
+			do { test_loc 'LX torture B-pre.'; () }, fun ($f) { test_loc 'LX torture B-pre.';
+				test_loc 'LX torture B.';
 				@_ = (
 					fun ($f) {
-						test_loc 'LX torture C';
+						test_loc 'LX torture C.';
 						@_ = (
 							fun ($f) {
-								test_loc 'LX torture D';
+								test_loc 'LX torture D.';
 								@_ = (
 									fun ($n) {
-										test_loc 'LX torture end';
+										test_loc 'LX torture end.';
 										@_ = $n;
 										goto &$r;
 									},
@@ -179,7 +179,7 @@ sub {
 					fun ($r, $f) {
 						@_ = fun ($r, $x) {
 							@_ = fun ($r, $y) {
-								test_loc 'LX torture body';
+								test_loc 'LX torture body.';
 								if ($x && $y) {
 									@_ = (
 										fun ($f) {
@@ -235,7 +235,7 @@ sub {
 
 		goto & {
 			fun ($r, $f) {
-				test_loc 'LX torture boot';
+				test_loc 'LX torture boot.';
 				@_ = ($r, $f);
 				goto &$f;
 			}
