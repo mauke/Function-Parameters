@@ -146,8 +146,8 @@ sub {
 
 }->(sub { my $n = shift; is $n, 2, '1 + 1 = 2' }, 1, 1);
 
-TODO: {
-	local $TODO = 'line numbers all fucked up';
+{
+	#local $TODO = 'line numbers all fucked up';
 
 	fun ($r, $a, $b) {
 		test_loc 'LX torture begin';

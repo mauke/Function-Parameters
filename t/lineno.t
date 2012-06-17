@@ -48,8 +48,8 @@ fun () {
 
 test_loc 'LX -- 3';
 
-TODO: {
-	local $TODO = 'expressions break line numbers???';
+{
+	#local $TODO = 'expressions break line numbers???';
 
 	0
 	, fun {
@@ -60,8 +60,8 @@ TODO: {
 	test_loc 'LX -- 4';
 }
 
-TODO: {
-	local $TODO = 'newlines in prototype/attributes';
+{
+	#local $TODO = 'newlines in prototype/attributes';
 
 	fun wtf :(
 
