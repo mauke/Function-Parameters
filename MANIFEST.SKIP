@@ -1,0 +1,13 @@
+^blib
+^Makefile$
+^Makefile\.old$
+^MANIFEST\.(?!SKIP$)
+^GNUmakefile$
+^Build$
+^_build
+^pm_to_blib
+\.tar\.gz$
+^Function-Parameters-
+^cover_db$
+^remote$
+^\.
