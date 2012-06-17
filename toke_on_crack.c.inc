@@ -2,6 +2,7 @@
  * This code was copied from perl/toke.c and subsequently butchered
  * by Lukas Mai (2012).
  */
+/* vi: set ft=c: */
 
 /* vvvvvvvvvvvvvvvvvvvvv I HAVE NO IDEA WHAT I'M DOING vvvvvvvvvvvvvvvvvvvv */
 #define PL_linestr              (PL_parser->linestr)
@@ -22,7 +23,7 @@
 #   define UTF ((PL_linestr && DO_UTF8(PL_linestr)) || (PL_hints & HINT_UTF8))
 #endif
 
-static STRLEN S_scan_word(const char *start, int allow_package) {
+static STRLEN S_scan_word(pTHX_ const char *start, int allow_package) {
 	const char *s = start;
 	for (;;) {
 		if (isALNUM(*s) || (!UTF && isALNUMC_L1(*s))) {  /* UTF handled below */
@@ -67,7 +68,11 @@ static char *S_scan_str(pTHX_ SV *sv, int keep_quoted, int keep_delims) {
 		termlen = 1;
 	}
 	else {
+#if HAVE_PERL_VERSION(5, 16, 0)
 		termcode = utf8_to_uvchr_buf((U8*)s, (U8*)PL_bufend, &termlen);
+#else
+		termcode = utf8_to_uvchr((U8*)s, &termlen);
+#endif
 		Copy(s, termstr, termlen, U8);
 		if (!UTF8_IS_INVARIANT(term))
 			has_utf8 = TRUE;
@@ -106,7 +111,11 @@ static char *S_scan_str(pTHX_ SV *sv, int keep_quoted, int keep_delims) {
 				char * const svlast = SvEND(sv) - 1;
 
 				for (; s < ns; s++) {
-					if (*s == '\n' && !PL_rsfp && !PL_parser->filtered)
+					if (*s == '\n' && !PL_rsfp
+#if HAVE_PERL_VERSION(5, 16, 0)
+						&& !PL_parser->filtered
+#endif
+					)
 						CopLINE_inc(PL_curcop);
 				}
 				if (!found)
@@ -173,7 +182,11 @@ static char *S_scan_str(pTHX_ SV *sv, int keep_quoted, int keep_delims) {
 		if (PL_multi_open == PL_multi_close) {
 			for (; s < PL_bufend; s++,to++) {
 				/* embedded newlines increment the current line number */
-				if (*s == '\n' && !PL_rsfp && !PL_parser->filtered)
+				if (*s == '\n' && !PL_rsfp
+#if HAVE_PERL_VERSION(5, 16, 0)
+					&& !PL_parser->filtered
+#endif
+				)
 					CopLINE_inc(PL_curcop);
 				/* handle quoted delimiters */
 				if (*s == '\\' && s+1 < PL_bufend && term != '\\') {
@@ -205,7 +218,11 @@ static char *S_scan_str(pTHX_ SV *sv, int keep_quoted, int keep_delims) {
 			/* read until we run out of string, or we find the terminator */
 			for (; s < PL_bufend; s++,to++) {
 				/* embedded newlines increment the line count */
-				if (*s == '\n' && !PL_rsfp && !PL_parser->filtered)
+				if (*s == '\n' && !PL_rsfp
+#if HAVE_PERL_VERSION(5, 16, 0)
+					&& !PL_parser->filtered
+#endif
+				)
 					CopLINE_inc(PL_curcop);
 				/* backslashes can escape the open or closing characters */
 				if (*s == '\\' && s+1 < PL_bufend) {

@@ -42,6 +42,7 @@ See http://dev.perl.org/licenses/ for more information.
 #endif
 
 
+#define PERL_NO_GET_CONTEXT
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
@@ -56,6 +57,9 @@ WARNINGS_ENABLE
 #define HINTK_NAME_    MY_PKG "/name:"
 #define HINTK_SHIFT_   MY_PKG "/shift:"
 
+#define HAVE_PERL_VERSION(R, V, S) \
+	(PERL_REVISION > (R) || (PERL_REVISION == (R) && (PERL_VERSION > (V) || (PERL_VERSION == (V) && (PERL_SUBVERSION >= (S))))))
+
 typedef struct {
 	enum {
 		FLAG_NAME_OPTIONAL = 1,
@@ -67,7 +71,7 @@ typedef struct {
 
 static int (*next_keyword_plugin)(pTHX_ char *, STRLEN, OP **);
 
-static int kw_flags(const char *kw_ptr, STRLEN kw_len, Spec *spec) {
+static int kw_flags(pTHX_ const char *kw_ptr, STRLEN kw_len, Spec *spec) {
 	HV *hints;
 	SV *sv, **psv;
 	const char *p, *kw_active;
@@ -123,7 +127,7 @@ static int kw_flags(const char *kw_ptr, STRLEN kw_len, Spec *spec) {
 #include "toke_on_crack.c.inc"
 
 
-static int parse_fun(OP **pop, const char *keyword_ptr, STRLEN keyword_len, const Spec *spec) {
+static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len, const Spec *spec) {
 	SV *gen, *declarator, *params, *sv;
 	line_t line_start;
 	int saw_name, saw_colon;
@@ -141,7 +145,7 @@ static int parse_fun(OP **pop, const char *keyword_ptr, STRLEN keyword_len, cons
 	/* function name */
 	saw_name = 0;
 	s = PL_parser->bufptr;
-	if (spec->name != FLAG_NAME_PROHIBITED && (len = S_scan_word(s, TRUE))) {
+	if (spec->name != FLAG_NAME_PROHIBITED && (len = S_scan_word(aTHX_ s, TRUE))) {
 		sv_catpvs(gen, " ");
 		sv_catpvn(gen, s, len);
 		sv_catpvs(declarator, " ");
@@ -171,7 +175,7 @@ static int parse_fun(OP **pop, const char *keyword_ptr, STRLEN keyword_len, cons
 				lex_read_space(0);
 
 				s = PL_parser->bufptr;
-				if (!(len = S_scan_word(s, FALSE))) {
+				if (!(len = S_scan_word(aTHX_ s, FALSE))) {
 					croak("In %.*s: missing identifier", (int)SvCUR(declarator), SvPV_nolen(declarator));
 				}
 				if (saw_slurpy) {
@@ -218,7 +222,7 @@ static int parse_fun(OP **pop, const char *keyword_ptr, STRLEN keyword_len, cons
 			saw_colon = 1;
 		} else {
 			sv = sv_2mortal(newSVpvs(""));
-			if (!S_scan_str(sv, TRUE, TRUE)) {
+			if (!S_scan_str(aTHX_ sv, TRUE, TRUE)) {
 				croak("In %.*s: malformed prototype", (int)SvCUR(declarator), SvPV_nolen(declarator));
 			}
 			sv_catsv(gen, sv);
@@ -245,7 +249,7 @@ static int parse_fun(OP **pop, const char *keyword_ptr, STRLEN keyword_len, cons
 	if (saw_colon) {
 		for (;;) {
 			s = PL_parser->bufptr;
-			if (!(len = S_scan_word(s, FALSE))) {
+			if (!(len = S_scan_word(aTHX_ s, FALSE))) {
 				break;
 			}
 			sv_catpvs(gen, ":");
@@ -255,7 +259,7 @@ static int parse_fun(OP **pop, const char *keyword_ptr, STRLEN keyword_len, cons
 			c = lex_peek_unichar(0);
 			if (c == '(') {
 				sv = sv_2mortal(newSVpvs(""));
-				if (!S_scan_str(sv, TRUE, TRUE)) {
+				if (!S_scan_str(aTHX_ sv, TRUE, TRUE)) {
 					croak("In %.*s: malformed attribute argument list", (int)SvCUR(declarator), SvPV_nolen(declarator));
 				}
 				sv_catsv(gen, sv);
@@ -312,10 +316,10 @@ static int my_keyword_plugin(pTHX_ char *keyword_ptr, STRLEN keyword_len, OP **o
 
 	SAVETMPS;
 
-	if (kw_flags(keyword_ptr, keyword_len, &spec)) {
-		ret = parse_fun(op_ptr, keyword_ptr, keyword_len, &spec);
+	if (kw_flags(aTHX_ keyword_ptr, keyword_len, &spec)) {
+		ret = parse_fun(aTHX_ op_ptr, keyword_ptr, keyword_len, &spec);
 	} else {
-		ret = next_keyword_plugin(keyword_ptr, keyword_len, op_ptr);
+		ret = next_keyword_plugin(aTHX_ keyword_ptr, keyword_len, op_ptr);
 	}
 
 	FREETMPS;

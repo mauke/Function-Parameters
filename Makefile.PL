@@ -24,7 +24,7 @@ WriteMakefile(
         'warnings' => 0,
         'strict' => 0,
     },
-    MIN_PERL_VERSION => '5.12.0',
+    MIN_PERL_VERSION => '5.14.0',
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean               => { FILES => 'Function-Parameters-*' },
 );
