@@ -11,7 +11,6 @@ BEGIN {
 	XSLoader::load;
 }
 
-use B::Hooks::EndOfScope qw(on_scope_end);
 use Carp qw(confess);
 use bytes ();
 
@@ -89,12 +88,6 @@ sub unimport {
 	for my $kw (@_) {
 		$^H{+HINTK_KEYWORDS} =~ s/(?<![^ ])\Q$kw\E //g;
 	}
-}
-
-sub _fini {
-	on_scope_end {
-		xs_fini;
-	};
 }
 
 

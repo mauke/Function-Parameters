@@ -327,6 +327,26 @@ static int my_keyword_plugin(pTHX_ char *keyword_ptr, STRLEN keyword_len, OP **o
 	return ret;
 }
 
+static int magic_free(pTHX_ SV *sv, MAGIC *mg) {
+	lex_stuff_pvn("}", 1, 0);
+	return 0;
+}
+
+static int magic_nop(pTHX_ SV *sv, MAGIC *mg) {
+	return 0;
+}
+
+static MGVTBL my_vtbl = {
+	0,           /* get   */
+	0,           /* set   */
+	0,           /* len   */
+	0,           /* clear */
+	magic_free,  /* free  */
+	0,           /* copy  */
+	0,           /* dup   */
+	magic_nop    /* local */
+};
+
 WARNINGS_RESET
 
 MODULE = Function::Parameters   PACKAGE = Function::Parameters
@@ -347,6 +367,6 @@ WARNINGS_ENABLE {
 } WARNINGS_RESET
 
 void
-xs_fini()
+_fini()
 	CODE:
-	lex_stuff_pvn("}", 1, 0);
+	sv_magicext((SV *)GvHV(PL_hintgv), NULL, PERL_MAGIC_ext, &my_vtbl, NULL, 0);
