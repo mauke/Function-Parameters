@@ -12,13 +12,18 @@ BEGIN {
 }
 
 use Carp qw(confess);
-use bytes ();
 
 sub _assert_valid_identifier {
 	my ($name, $with_dollar) = @_;
 	my $bonus = $with_dollar ? '\$' : '';
 	$name =~ /^${bonus}[^\W\d]\w*\z/
 		or confess qq{"$name" doesn't look like a valid identifier};
+}
+
+sub _assert_valid_attributes {
+	my ($attrs) = @_;
+	$attrs =~ /^\s*:\s*[^\W\d]\w*\s*(?:(?:\s|:\s*)[^\W\d]\w*\s*)*(?:\(|\z)/
+		or confess qq{"$attrs" doesn't look like valid attributes};
 }
 
 my @bare_arms = qw(function method);
@@ -30,7 +35,10 @@ my %type_map = (
 sub import {
 	my $class = shift;
 
-	@_ or @_ = ('fun', 'method');
+	@_ or @_ = {
+		fun => 'function',
+		method => 'method',
+	};
 	if (@_ == 1 && ref($_[0]) eq 'HASH') {
 		@_ = map [$_, $_[0]{$_}], keys %{$_[0]}
 			or return;
@@ -55,11 +63,9 @@ sub import {
 		$type->{name} ||= 'optional';
 		$type->{name} =~ /^(?:optional|required|prohibited)\z/
 			or confess qq["$type->{name}" doesn't look like a valid name attribute (one of optional, required, prohibited)];
-		if ($type->{shift}) {
-			_assert_valid_identifier $type->{shift}, 1;
-			bytes::length($type->{shift}) < SHIFT_NAME_LIMIT
-				or confess qq["$type->{shift}" is longer than I can handle];
-		}
+
+		$type->{shift} and _assert_valid_identifier $type->{shift}, 1;
+		$type->{attrs} and _assert_valid_attributes $type->{attrs};
 		
 		$spec{$name} = $type;
 	}
@@ -68,6 +74,7 @@ sub import {
 		my $type = $spec{$kw};
 
 		$^H{HINTK_SHIFT_ . $kw} = $type->{shift} || '';
+		$^H{HINTK_ATTRS_ . $kw} = $type->{attrs} || '';
 		$^H{HINTK_NAME_ . $kw} =
 			$type->{name} eq 'prohibited' ? FLAG_NAME_PROHIBITED :
 			$type->{name} eq 'required' ? FLAG_NAME_REQUIRED :

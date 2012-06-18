@@ -56,6 +56,7 @@ WARNINGS_ENABLE
 #define HINTK_KEYWORDS MY_PKG "/keywords"
 #define HINTK_NAME_    MY_PKG "/name:"
 #define HINTK_SHIFT_   MY_PKG "/shift:"
+#define HINTK_ATTRS_   MY_PKG "/attrs:"
 
 #define HAVE_PERL_VERSION(R, V, S) \
 	(PERL_REVISION > (R) || (PERL_REVISION == (R) && (PERL_VERSION > (V) || (PERL_VERSION == (V) && (PERL_SUBVERSION >= (S))))))
@@ -66,7 +67,8 @@ typedef struct {
 		FLAG_NAME_REQUIRED,
 		FLAG_NAME_PROHIBITED
 	} name;
-	char shift[256];
+	SV *shift;
+	SV *attrs;
 } Spec;
 
 static int (*next_keyword_plugin)(pTHX_ char *, STRLEN, OP **);
@@ -78,7 +80,8 @@ static int kw_flags(pTHX_ const char *kw_ptr, STRLEN kw_len, Spec *spec) {
 	STRLEN kw_active_len;
 
 	spec->name = 0;
-	spec->shift[0] = '\0';
+	spec->shift = sv_2mortal(newSVpvs(""));
+	spec->attrs = sv_2mortal(newSVpvs(""));
 
 	if (!(hints = GvHV(PL_hintgv))) {
 		return FALSE;
@@ -97,26 +100,29 @@ static int kw_flags(pTHX_ const char *kw_ptr, STRLEN kw_len, Spec *spec) {
 			p[kw_len] == ' ' &&
 			memcmp(kw_ptr, p, kw_len) == 0
 		) {
-			const char *kf_ptr;
-			STRLEN kf_len;
-			SV *kf_sv;
 
-			kf_sv = sv_2mortal(newSVpvs(HINTK_NAME_));
-			sv_catpvn(kf_sv, kw_ptr, kw_len);
-			kf_ptr = SvPV(kf_sv, kf_len);
-			if (!(psv = hv_fetch(hints, kf_ptr, kf_len, 0))) {
-				croak("%s: internal error: $^H{'%.*s'} not set", MY_PKG, (int)kf_len, kf_ptr);
-			}
+#define FETCH_HINTK_INTO(NAME, PTR, LEN, X) do { \
+	const char *fk_ptr_; \
+	STRLEN fk_len_; \
+	SV *fk_sv_; \
+	fk_sv_ = sv_2mortal(newSVpvs(HINTK_ ## NAME)); \
+	sv_catpvn(fk_sv_, PTR, LEN); \
+	fk_ptr_ = SvPV(fk_sv_, fk_len_); \
+	if (!((X) = hv_fetch(hints, fk_ptr_, fk_len_, 0))) { \
+		croak("%s: internal error: $^H{'%.*s'} not set", MY_PKG, (int)fk_len_, fk_ptr_); \
+	} \
+} while (0)
+
+			FETCH_HINTK_INTO(NAME_, kw_ptr, kw_len, psv);
 			spec->name = SvIV(*psv);
 
-			kf_sv = sv_2mortal(newSVpvs(HINTK_SHIFT_));
-			sv_catpvn(kf_sv, kw_ptr, kw_len);
-			kf_ptr = SvPV(kf_sv, kf_len);
-			if (!(psv = hv_fetch(hints, kf_ptr, kf_len, 0))) {
-				croak("%s: internal error: $^H{'%.*s'} not set", MY_PKG, (int)kf_len, kf_ptr);
-			}
-			my_sprintf(spec->shift, "%.*s", (int)(sizeof spec->shift - 1), SvPV_nolen(*psv));
+			FETCH_HINTK_INTO(SHIFT_, kw_ptr, kw_len, psv);
+			SvSetSV(spec->shift, *psv);
 
+			FETCH_HINTK_INTO(ATTRS_, kw_ptr, kw_len, psv);
+			SvSetSV(spec->attrs, *psv);
+
+#undef FETCH_HINTK_INTO
 			return TRUE;
 		}
 	}
@@ -238,6 +244,10 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 	}
 
 	/* attributes */
+	if (SvTRUE(spec->attrs)) {
+		sv_catsv(gen, spec->attrs);
+	}
+
 	if (!saw_colon) {
 		c = lex_peek_unichar(0);
 		if (c == ':') {
@@ -280,8 +290,10 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 	}
 	lex_read_unichar(0);
 	sv_catpvs(gen, "{");
-	if (spec->shift[0]) {
-		sv_catpvf(gen, "my%s=shift;", spec->shift);
+	if (SvTRUE(spec->shift)) {
+		sv_catpvs(gen, "my");
+		sv_catsv(gen, spec->shift);
+		sv_catpvs(gen, "=shift;");
 	}
 	if (SvCUR(params)) {
 		sv_catpvs(gen, "my(");
@@ -361,6 +373,7 @@ WARNINGS_ENABLE {
 	newCONSTSUB(stash, "HINTK_KEYWORDS", newSVpvs(HINTK_KEYWORDS));
 	newCONSTSUB(stash, "HINTK_NAME_", newSVpvs(HINTK_NAME_));
 	newCONSTSUB(stash, "HINTK_SHIFT_", newSVpvs(HINTK_SHIFT_));
+	newCONSTSUB(stash, "HINTK_ATTRS_", newSVpvs(HINTK_ATTRS_));
 	newCONSTSUB(stash, "SHIFT_NAME_LIMIT", newSViv(sizeof ((Spec *)NULL)->shift));
 	next_keyword_plugin = PL_keyword_plugin;
 	PL_keyword_plugin = my_keyword_plugin;
