@@ -7,8 +7,9 @@ use strict;
 
 use Dir::Self;
 
-for my $thing (map [__DIR__ . "/eating_strict_error$_->[0].fail", @$_[1 .. $#$_]], ['', 5], ['_2', 8]) {
+for my $thing (map [__DIR__ . "/eating_strict_error$_->[0].fail", @$_[1 .. $#$_]], ['', 6], ['_2', 9]) {
 	my ($file, $line) = @$thing;
+	$@ = undef;
 	my $done = do $file;
 	my $exc = $@;
 	my $err = $!;

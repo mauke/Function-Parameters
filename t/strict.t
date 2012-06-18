@@ -13,6 +13,7 @@ for my $fail (
 	['4', qr/expect.*\).*after.*"\@y".*"\@z"/],
 ) {
 	my ($file, $pat) = @$fail;
+	$@ = undef;
 	my $done = do $file;
 	my $exc = $@;
 	my $err = $!;
