@@ -7,7 +7,7 @@ use warnings;
 
 use XSLoader;
 BEGIN {
-	our $VERSION = '0.05_02';
+	our $VERSION = '0.05_03';
 	XSLoader::load;
 }
 
