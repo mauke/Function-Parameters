@@ -34,6 +34,11 @@ my %type_map = (
 		shift => '$self',
 		attrs => ':method',
 	},
+	classmethod   => {
+		name => 'optional',
+		shift => '$class',
+		attrs => ':method',
+	},
 );
 
 sub import {
@@ -180,14 +185,15 @@ that you pass a hash reference in the import list:
 
  use Function::Parameters { proc => 'function', meth => 'method' }; # -or-
  use Function::Parameters { proc => 'function' }; # -or-
- use Function::Parameters { meth => 'method' };
+ use Function::Parameters { meth => 'method' }; # etc.
 
 The first line creates two keywords, C<proc> and C<meth> (for defining
 functions and methods, respectively). The last two lines only create one
 keyword. Generally the hash keys can be any identifiers you want while the
-values have to be either C<function>, C<method>, or a hash reference (see
-below). The difference between C<function> and C<method> is that C<method>s
-automatically L<shift|perlfunc/shift> their first argument into C<$self>.
+values have to be either C<function>, C<method>, C<classmethod> or a hash
+reference (see below). The difference between C<function> and C<method> is that
+C<method>s automatically L<shift|perlfunc/shift> their first argument into
+C<$self> (C<classmethod>s are similar but shift into C<$class>).
 
 The following shortcuts are available:
 
@@ -256,9 +262,11 @@ turns into
 
 =back
 
-Plain C<'function'> is equivalent to C<< { name => 'optional' } >>, and plain
+Plain C<'function'> is equivalent to C<< { name => 'optional' } >>, plain
 C<'method'> is equivalent to
-C<< { name => 'optional', shift => '$self', attrs => ':method' } >>.
+C<< { name => 'optional', shift => '$self', attrs => ':method' } >>, and plain
+C<'classmethod'> is equivalent to
+C<< { name => 'optional', shift => '$class', attrs => ':method' } >>.
 
 =head2 Syntax and generated code
 
