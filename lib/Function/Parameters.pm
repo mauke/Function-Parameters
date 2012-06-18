@@ -226,10 +226,28 @@ Valid values: strings that look like a scalar variable. Any function created by
 this keyword will automatically L<shift|perlfunc/shift> its first argument into
 a local variable whose name is specified here.
 
+=item C<attrs>
+
+Valid values: strings that are valid source code for attributes. Any value
+specified here will be inserted as a subroutine attribute in the generated
+code. Thus:
+
+ use Function::Parameters { sub_l => { attrs => ':lvalue' } };
+ sub_l foo() {
+   ...
+ }
+
+turns into
+
+ sub foo :lvalue {
+   ...
+ }
+
 =back
 
 Plain C<'function'> is equivalent to C<< { name => 'optional' } >>, and plain
-C<'method'> is equivalent to C<< { name => 'optional', shift => '$self' } >>.
+C<'method'> is equivalent to
+C<< { name => 'optional', shift => '$self', attrs => ':method' } >>.
 
 =head2 Syntax and generated code
 
