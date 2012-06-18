@@ -29,7 +29,11 @@ sub _assert_valid_attributes {
 my @bare_arms = qw(function method);
 my %type_map = (
 	function => { name => 'optional' },
-	method   => { name => 'optional', shift => '$self' },
+	method   => {
+		name => 'optional',
+		shift => '$self',
+		attrs => ':method',
+	},
 );
 
 sub import {
