@@ -1,0 +1,11 @@
+#!perl
+use warnings;
+use strict;
+
+use Function::Parameters {
+	spike => {
+		rarity => 'best',
+	},
+};
+
+'ok'
