@@ -1,3 +1,4 @@
+#!perl
 use strict;
 use Function::Parameters;
 
@@ -9,3 +10,4 @@ fun get_record( $agent, $target_name ) {
 fun get_ip( $agent ) {
 }
 
+'ok'

@@ -1,0 +1,13 @@
+MANIFEST.bak
+MYMETA.*
+MYMETA.yml
+Makefile
+Makefile.old
+Parameters.bs
+Parameters.c
+Parameters.o
+Parameters.i
+blib/
+pm_to_blib
+*.tar.gz
+/Function-Parameters-*/
