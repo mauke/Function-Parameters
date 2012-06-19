@@ -44,30 +44,35 @@ sub import {
 			? $proto
 			: [$proto, $bare_arms[$bare++] || confess(qq{Don't know what to do with "$proto"})]
 		;
-		my ($name, $type) = @$item;
+		my ($name, $proto_type) = @$item;
 		_assert_valid_identifier $name;
 
-		unless (ref $type) {
-			# use '||' instead of 'or' to preserve $type in the error message
-			$type = $type_map{$type}
-				|| confess qq["$type" doesn't look like a valid type (one of ${\join ', ', sort keys %type_map})];
+		unless (ref $proto_type) {
+			# use '||' instead of 'or' to preserve $proto_type in the error message
+			$proto_type = $type_map{$proto_type}
+				|| confess qq["$proto_type" doesn't look like a valid type (one of ${\join ', ', sort keys %type_map})];
 		}
-		$type->{name} ||= 'optional';
-		$type->{name} =~ /^(?:optional|required|prohibited)\z/
-			or confess qq["$type->{name}" doesn't look like a valid name attribute (one of optional, required, prohibited)];
-		if ($type->{shift}) {
-			_assert_valid_identifier $type->{shift}, 1;
-			bytes::length($type->{shift}) < SHIFT_NAME_LIMIT
-				or confess qq["$type->{shift}" is longer than I can handle];
+		my %type = %$proto_type;
+		my %clean;
+		$clean{name} = delete $type{name} || 'optional';
+		$clean{name} =~ /^(?:optional|required|prohibited)\z/
+			or confess qq["$clean{name}" doesn't look like a valid name attribute (one of optional, required, prohibited)];
+		$clean{shift} = delete $type{shift} || '';
+		if ($clean{shift}) {
+			_assert_valid_identifier $clean{shift}, 1;
+			bytes::length($clean{shift}) < SHIFT_NAME_LIMIT
+				or confess qq["$clean{shift}" is longer than I can handle];
 		}
 		
-		$spec{$name} = $type;
+		%type and confess "Invalid keyword property: @{[keys %type]}";
+
+		$spec{$name} = \%clean;
 	}
 	
 	for my $kw (keys %spec) {
 		my $type = $spec{$kw};
 
-		$^H{HINTK_SHIFT_ . $kw} = $type->{shift} || '';
+		$^H{HINTK_SHIFT_ . $kw} = $type->{shift};
 		$^H{HINTK_NAME_ . $kw} =
 			$type->{name} eq 'prohibited' ? FLAG_NAME_PROHIBITED :
 			$type->{name} eq 'required' ? FLAG_NAME_REQUIRED :
