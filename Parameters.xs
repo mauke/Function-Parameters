@@ -289,10 +289,10 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 		sv_catpvs(gen, ")=@_;");
 	}
 
-	/* fprintf(stderr, "! [%.*s]\n", (int)(PL_bufend - PL_bufptr), PL_bufptr); */
 
 	/* named sub */
 	if (saw_name) {
+		/* fprintf(stderr, "! [%.*s]\n", (int)(PL_bufend - PL_bufptr), PL_bufptr); */
 		lex_stuff_sv(gen, SvUTF8(gen));
 		*pop = parse_barestmt(0);
 		return KEYWORD_PLUGIN_STMT;
@@ -300,6 +300,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 
 	/* anon sub */
 	sv_catpvs(gen, "BEGIN{" MY_PKG "::_fini}");
+	/* fprintf(stderr, "!> [%.*s]\n", (int)(PL_bufend - PL_bufptr), PL_bufptr); */
 	lex_stuff_sv(gen, SvUTF8(gen));
 	*pop = parse_arithexpr(0);
 	s = PL_parser->bufptr;
@@ -307,6 +308,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 		croak("%s: internal error: expected '}', found '%c'", MY_PKG, *s);
 	}
 	lex_unstuff(s + 1);
+	/* fprintf(stderr, "!< [%.*s]\n", (int)(PL_bufend - PL_bufptr), PL_bufptr); */
 	return KEYWORD_PLUGIN_EXPR;
 }
 
@@ -350,3 +352,4 @@ void
 xs_fini()
 	CODE:
 	lex_stuff_pvn("}", 1, 0);
+	/* fprintf(stderr, "!~ [%.*s]\n", (int)(PL_bufend - PL_bufptr), PL_bufptr); */
