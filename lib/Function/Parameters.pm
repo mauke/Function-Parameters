@@ -120,6 +120,8 @@ sub unimport {
 
 __END__
 
+=encoding UTF-8
+
 =head1 NAME
 
 Function::Parameters - subroutine definitions with parameter lists
