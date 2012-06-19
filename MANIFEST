@@ -10,10 +10,12 @@ README
 t/00-load.t
 t/01-compiles.t
 t/02-compiles.t
+t/attrs.t
 t/eating_strict_error.fail
 t/eating_strict_error.t
 t/eating_strict_error_2.fail
 t/elsewhere.t
+t/lexical.t
 t/lineno-torture.t
 t/lineno.t
 t/named.t
@@ -22,10 +24,12 @@ t/named_2.fail
 t/named_3.fail
 t/named_4.fail
 t/pod.t
+t/precedence.t
 t/rename.t
 t/strict.t
 t/strict_1.fail
 t/strict_2.fail
 t/strict_3.fail
 t/strict_4.fail
+t/strict_5.fail
 toke_on_crack.c.inc
