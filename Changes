@@ -1,10 +1,14 @@
 Revision history for Function-Parameters
 
-0.05_02 2012-06-17
+0.06    2012-06-19
         - complete rewrite in XS
+        - require perl 5.14+
         - hopefully fix bug where it would get the line numbers wrong
         - we're a lexical pragma now; remove import_into()
-        - require perl 5.14+
+        - more fine-grained control over behavior of generated keywords:
+           * function name can be optional/required/prohibited
+           * invocant name can be any variable, not just $self
+           * default attributes (and method now defaults to ':method')
 
 0.05    2011-08-02
         - complete rewrite
