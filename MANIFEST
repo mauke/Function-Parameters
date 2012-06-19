@@ -10,6 +10,7 @@ README
 t/00-load.t
 t/01-compiles.t
 t/02-compiles.t
+t/03-compiles.t
 t/attrs.t
 t/eating_strict_error.fail
 t/eating_strict_error.t
