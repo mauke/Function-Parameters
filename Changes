@@ -3,19 +3,19 @@ Revision history for Function-Parameters
 0.05_02 2012-06-17
         - complete rewrite in XS
         - hopefully fix bug where it would get the line numbers wrong
-        - lexical pragma, remove import_into
-        - requires perl 5.14+
+        - we're a lexical pragma now; remove import_into()
+        - require perl 5.14+
 
 0.05    2011-08-02
         - complete rewrite
         - hopefully fix bug where it would swallow compilation errors or get the line numbers wrong
         - method keyword!
         - more flexible keyword customization
-        
+
 0.04    2010-03-03
         - allow renaming the function keyword
         - provide import_into so you can mess with other packages
-        
+
 0.03    2009-12-14
         First version, released on an unsuspecting world.
 

@@ -1,7 +1,7 @@
 use warnings;
 use strict;
 
-use Test::More tests => 8;
+use Test::More tests => 10;
 
 use Dir::Self;
 
@@ -11,8 +11,10 @@ for my $fail (
 	['2', qr/expect.*\).*after.*"\@x".*"\$y"/],
 	['3', qr/expect.*\).*after.*"%y".*"\$z"/],
 	['4', qr/expect.*\).*after.*"\@y".*"\@z"/],
+	['5', qr/Invalid.*rarity/],
 ) {
 	my ($file, $pat) = @$fail;
+	$@ = undef;
 	my $done = do $file;
 	my $exc = $@;
 	my $err = $!;
