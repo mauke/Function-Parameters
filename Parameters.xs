@@ -94,7 +94,12 @@ static int kw_flags(pTHX_ const char *kw_ptr, STRLEN kw_len, Spec *spec) {
 	if (kw_active_len <= kw_len) {
 		return FALSE;
 	}
-	for (p = kw_active; p < kw_active + kw_active_len - kw_len; p++) {
+	for (
+		p = kw_active;
+		(p = strchr(p, *kw_ptr)) &&
+		p < kw_active + kw_active_len - kw_len;
+		p++
+	) {
 		if (
 			(p == kw_active || p[-1] == ' ') &&
 			p[kw_len] == ' ' &&
@@ -300,7 +305,6 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 		sv_catsv(gen, params);
 		sv_catpvs(gen, ")=@_;");
 	}
-
 
 	/* named sub */
 	if (saw_name) {
