@@ -370,6 +370,7 @@ PROTOTYPES: ENABLE
 BOOT:
 WARNINGS_ENABLE {
 	HV *const stash = gv_stashpvs(MY_PKG, GV_ADD);
+	/**/
 	newCONSTSUB(stash, "FLAG_NAME_OPTIONAL", newSViv(FLAG_NAME_OPTIONAL));
 	newCONSTSUB(stash, "FLAG_NAME_REQUIRED", newSViv(FLAG_NAME_REQUIRED));
 	newCONSTSUB(stash, "FLAG_NAME_PROHIBITED", newSViv(FLAG_NAME_PROHIBITED));
@@ -377,7 +378,7 @@ WARNINGS_ENABLE {
 	newCONSTSUB(stash, "HINTK_NAME_", newSVpvs(HINTK_NAME_));
 	newCONSTSUB(stash, "HINTK_SHIFT_", newSVpvs(HINTK_SHIFT_));
 	newCONSTSUB(stash, "HINTK_ATTRS_", newSVpvs(HINTK_ATTRS_));
-	newCONSTSUB(stash, "SHIFT_NAME_LIMIT", newSViv(sizeof ((Spec *)NULL)->shift));
+	/**/
 	next_keyword_plugin = PL_keyword_plugin;
 	PL_keyword_plugin = my_keyword_plugin;
 } WARNINGS_RESET
