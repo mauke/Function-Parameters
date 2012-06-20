@@ -175,7 +175,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 
 		for (;;) {
 			c = lex_peek_unichar(0);
-			if (c && strchr("$@%", c)) {
+			if (c == '$' || c == '@' || c == '%') {
 				sv_catpvf(params, "%c", (int)c);
 				lex_read_unichar(0);
 				lex_read_space(0);
