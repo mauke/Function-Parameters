@@ -19,10 +19,10 @@ is quantum / 2 #/
 , 0xf00d / 2, "basic sanity 4 - () proto";
 
 is eval('my $x = fun forbidden {}'), undef, "statements aren't expressions";
-like $@, qr/syntax error/;
+like $@, qr/expect.*function body/;
 
 is eval('my $x = { fun forbidden {} }'), undef, "statements aren't expressions 2 - electric boogaloo";
-like $@, qr/syntax error/;
+like $@, qr/expect.*function body/;
 
 is fun { join '.', five, four }->(), '5.4', "can immedicall anon subs";
 

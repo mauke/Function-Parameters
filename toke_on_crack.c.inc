@@ -18,21 +18,21 @@
 #define CLINE (PL_copline = (CopLINE(PL_curcop) < PL_copline ? CopLINE(PL_curcop) : PL_copline))
 
 #ifdef USE_UTF8_SCRIPTS
-#   define UTF (!IN_BYTES)
+#   define PARSING_UTF (!IN_BYTES)
 #else
-#   define UTF ((PL_linestr && DO_UTF8(PL_linestr)) || (PL_hints & HINT_UTF8))
+#   define PARSING_UTF ((PL_linestr && DO_UTF8(PL_linestr)) || (PL_hints & HINT_UTF8))
 #endif
 
 static STRLEN S_scan_word(pTHX_ const char *start, int allow_package) {
 	const char *s = start;
 	for (;;) {
-		if (isALNUM(*s) || (!UTF && isALNUMC_L1(*s))) {  /* UTF handled below */
+		if (isALNUM(*s) || (!PARSING_UTF && isALNUMC_L1(*s))) {  /* UTF handled below */
 			s++;
-		} else if (allow_package && s > start && *s == '\'' && isIDFIRST_lazy_if(s+1, UTF)) {
+		} else if (allow_package && s > start && *s == '\'' && isIDFIRST_lazy_if(s+1, PARSING_UTF)) {
 			s++;
-		} else if (allow_package && s[0] == ':' && s[1] == ':' && isIDFIRST_lazy_if(s+2, UTF)) {
+		} else if (allow_package && s[0] == ':' && s[1] == ':' && isIDFIRST_lazy_if(s+2, PARSING_UTF)) {
 			s += 2;
-		} else if (UTF && UTF8_IS_START(*s) && isALNUM_utf8((U8*)s)) {
+		} else if (PARSING_UTF && UTF8_IS_START(*s) && isALNUM_utf8((U8*)s)) {
 			do {
 				s += UTF8SKIP(s);
 			} while (UTF8_IS_CONTINUED(*s) && is_utf8_mark((U8*)s));
@@ -63,7 +63,7 @@ static char *S_scan_str(pTHX_ SV *sv, int keep_quoted, int keep_delims) {
 
 	/* after skipping whitespace, the next character is the terminator */
 	term = *s;
-	if (!UTF) {
+	if (!PARSING_UTF) {
 		termcode = termstr[0] = term;
 		termlen = 1;
 	}
@@ -99,7 +99,7 @@ static char *S_scan_str(pTHX_ SV *sv, int keep_quoted, int keep_delims) {
 		sv_catpvn(sv, s, termlen);
 	s += termlen;
 	for (;;) {
-		if (PL_encoding && !UTF) {
+		if (PL_encoding && !PARSING_UTF) {
 			bool cont = TRUE;
 
 			while (cont) {
@@ -205,7 +205,7 @@ static char *S_scan_str(pTHX_ SV *sv, int keep_quoted, int keep_delims) {
 					if (s+termlen <= PL_bufend && memEQ(s, (char*)termstr, termlen))
 						break;
 				}
-				else if (!has_utf8 && !UTF8_IS_INVARIANT((U8)*s) && UTF)
+				else if (!has_utf8 && !UTF8_IS_INVARIANT((U8)*s) && PARSING_UTF)
 					has_utf8 = TRUE;
 				*to = *s;
 			}
@@ -239,7 +239,7 @@ static char *S_scan_str(pTHX_ SV *sv, int keep_quoted, int keep_delims) {
 					break;
 				else if (*s == PL_multi_open)
 					brackets++;
-				else if (!has_utf8 && !UTF8_IS_INVARIANT((U8)*s) && UTF)
+				else if (!has_utf8 && !UTF8_IS_INVARIANT((U8)*s) && PARSING_UTF)
 					has_utf8 = TRUE;
 				*to = *s;
 			}
@@ -286,7 +286,7 @@ static char *S_scan_str(pTHX_ SV *sv, int keep_quoted, int keep_delims) {
 
 	/* at this point, we have successfully read the delimited string */
 
-	if (!PL_encoding || UTF) {
+	if (!PL_encoding || PARSING_UTF) {
 		if (keep_delims)
 			sv_catpvn(sv, s, termlen);
 		s += termlen;
@@ -305,4 +305,84 @@ static char *S_scan_str(pTHX_ SV *sv, int keep_quoted, int keep_delims) {
 	PL_bufptr = s;
 	return s;
 }
+
+static void S_check_prototype(const SV *declarator, SV *proto) {
+	bool bad_proto = FALSE;
+	bool in_brackets = FALSE;
+	char greedy_proto = ' ';
+	bool proto_after_greedy_proto = FALSE;
+	bool must_be_last = FALSE;
+	bool underscore = FALSE;
+	bool seen_underscore = FALSE;
+	const bool warnillegalproto = ckWARN(WARN_ILLEGALPROTO);
+	char *d, *p;
+	STRLEN tmp, tmplen;
+
+	/* strip spaces and check for bad characters */
+	d = SvPV(proto, tmplen);
+	tmp = 0;
+	for (p = d; tmplen; tmplen--, ++p) {
+		if (!isSPACE(*p)) {
+			d[tmp++] = *p;
+
+			if (warnillegalproto) {
+				if (must_be_last) {
+					proto_after_greedy_proto = TRUE;
+				}
+				if (!strchr("$@%*;[]&\\_+", *p) || *p == '\0') {
+					bad_proto = TRUE;
+				} else {
+					if (underscore) {
+						if (!strchr(";@%", *p)) {
+							bad_proto = TRUE;
+						}
+						underscore = FALSE;
+					}
+					if (*p == '[') {
+						in_brackets = TRUE;
+					} else if (*p == ']') {
+						in_brackets = FALSE;
+					} else if (
+						(*p == '@' || *p == '%') &&
+						(tmp < 2 || d[tmp - 2] != '\\') &&
+						!in_brackets
+					) {
+						must_be_last = TRUE;
+						greedy_proto = *p;
+					} else if (*p == '_') {
+						underscore = seen_underscore = TRUE;
+					}
+				}
+			}
+		}
+	}
+	d[tmp] = '\0';
+	SvCUR_set(proto, tmp);
+	if (proto_after_greedy_proto) {
+		Perl_warner(aTHX_ packWARN(WARN_ILLEGALPROTO),
+			"In %"SVf": prototype after '%c': %s",
+			 SVfARG(declarator), greedy_proto, d
+		);
+	}
+	if (bad_proto) {
+		SV *dsv = newSVpvs_flags("", SVs_TEMP);
+		Perl_warner(aTHX_ packWARN(WARN_ILLEGALPROTO),
+			"In %"SVf": illegal character %sin prototype: %s",
+			SVfARG(declarator),
+			seen_underscore ? "after '_' " : "",
+			SvUTF8(proto)
+				? sv_uni_display(dsv,
+					newSVpvn_flags(d, tmp, SVs_TEMP | SVf_UTF8),
+					tmp,
+					UNI_DISPLAY_ISPRINT
+				)
+				: pv_pretty(dsv, d, tmp, 60, NULL, NULL,
+					PERL_PV_ESCAPE_NONASCII
+				)
+		);
+	}
+	SvCUR_set(proto, tmp);
+}
+
+#undef CLINE
 /* ^^^^^^^^^^^^^^^^^^^^^ I HAVE NO IDEA WHAT I'M DOING ^^^^^^^^^^^^^^^^^^^^ */
