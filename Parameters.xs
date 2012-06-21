@@ -234,7 +234,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 		} else {
 			sv = sv_2mortal(newSVpvs(""));
 			if (!S_scan_str(aTHX_ sv, TRUE, TRUE)) {
-				croak("In %"SVf": malformed prototype", SVfARG(declarator));
+				croak("In %"SVf": prototype not terminated", SVfARG(declarator));
 			}
 			sv_catsv(gen, sv);
 			lex_read_space(0);
@@ -275,7 +275,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 			if (c == '(') {
 				sv = sv_2mortal(newSVpvs(""));
 				if (!S_scan_str(aTHX_ sv, TRUE, TRUE)) {
-					croak("In %"SVf": malformed attribute argument list", SVfARG(declarator));
+					croak("In %"SVf": unterminated attribute parameter in attribute list", SVfARG(declarator));
 				}
 				sv_catsv(gen, sv);
 				lex_read_space(0);
