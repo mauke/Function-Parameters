@@ -187,10 +187,10 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 
 				s = PL_parser->bufptr;
 				if (!(len = S_scan_word(aTHX_ s, FALSE))) {
-					croak("In %.*s: missing identifier", (int)SvCUR(declarator), SvPV_nolen(declarator));
+					croak("In %"SVf": missing identifier", SVfARG(declarator));
 				}
 				if (saw_slurpy) {
-					croak("In %.*s: I was expecting \")\" after \"%s\", not \"%c%.*s\"", (int)SvCUR(declarator), SvPV_nolen(declarator), SvPV_nolen(saw_slurpy), (int)c, (int)len, s);
+					croak("In %"SVf": I was expecting \")\" after \"%"SVf"\", not \"%c%.*s\"", SVfARG(declarator), SVfARG(saw_slurpy), (int)c, (int)len, s);
 				}
 				if (c != '$') {
 					saw_slurpy = sv_2mortal(newSVpvf("%c%.*s", (int)c, (int)len, s));
@@ -215,9 +215,9 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 			}
 
 			if (c == -1) {
-				croak("In %.*s: unexpected EOF in parameter list", (int)SvCUR(declarator), SvPV_nolen(declarator));
+				croak("In %"SVf": unexpected EOF in parameter list", SVfARG(declarator));
 			}
-			croak("In %.*s: unexpected '%c' in parameter list", (int)SvCUR(declarator), SvPV_nolen(declarator), (int)c);
+			croak("In %"SVf": unexpected '%c' in parameter list", SVfARG(declarator), (int)c);
 		}
 	}
 
@@ -234,7 +234,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 		} else {
 			sv = sv_2mortal(newSVpvs(""));
 			if (!S_scan_str(aTHX_ sv, TRUE, TRUE)) {
-				croak("In %.*s: malformed prototype", (int)SvCUR(declarator), SvPV_nolen(declarator));
+				croak("In %"SVf": malformed prototype", SVfARG(declarator));
 			}
 			sv_catsv(gen, sv);
 			lex_read_space(0);
@@ -275,7 +275,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 			if (c == '(') {
 				sv = sv_2mortal(newSVpvs(""));
 				if (!S_scan_str(aTHX_ sv, TRUE, TRUE)) {
-					croak("In %.*s: malformed attribute argument list", (int)SvCUR(declarator), SvPV_nolen(declarator));
+					croak("In %"SVf": malformed attribute argument list", SVfARG(declarator));
 				}
 				sv_catsv(gen, sv);
 				lex_read_space(0);
@@ -291,7 +291,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 	/* body */
 	c = lex_peek_unichar(0);
 	if (c != '{') {
-		croak("In %.*s: I was expecting a function body, not \"%c\"", (int)SvCUR(declarator), SvPV_nolen(declarator), (int)c);
+		croak("In %"SVf": I was expecting a function body, not \"%c\"", SVfARG(declarator), (int)c);
 	}
 	lex_read_unichar(0);
 	sv_catpvs(gen, "{");
