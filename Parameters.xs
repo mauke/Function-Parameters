@@ -140,7 +140,6 @@ static int kw_flags(pTHX_ const char *kw_ptr, STRLEN kw_len, Spec *spec) {
 
 static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len, const Spec *spec) {
 	SV *gen, *declarator, *params, *sv;
-	line_t line_start;
 	int saw_name, saw_colon;
 	STRLEN len;
 	char *s;
@@ -150,7 +149,6 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 	declarator = sv_2mortal(newSVpvn(keyword_ptr, keyword_len));
 	params = sv_2mortal(newSVpvs(""));
 
-	line_start = CopLINE(PL_curcop);
 	lex_read_space(0);
 
 	/* function name */
