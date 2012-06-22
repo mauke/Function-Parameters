@@ -61,6 +61,12 @@ WARNINGS_ENABLE
 #define HAVE_PERL_VERSION(R, V, S) \
 	(PERL_REVISION > (R) || (PERL_REVISION == (R) && (PERL_VERSION > (V) || (PERL_VERSION == (V) && (PERL_SUBVERSION >= (S))))))
 
+#if HAVE_PERL_VERSION(5, 16, 0)
+ #define IF_HAVE_PERL_5_16(YES, NO) YES
+#else
+ #define IF_HAVE_PERL_5_16(YES, NO) NO
+#endif
+
 typedef struct {
 	enum {
 		FLAG_NAME_OPTIONAL = 1,
