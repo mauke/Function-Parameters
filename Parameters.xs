@@ -206,7 +206,6 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 	SV *proto;
 	OP **attrs_sentinel, *body;
 	unsigned builtin_attrs;
-	int saw_colon;
 	STRLEN len;
 	char *s;
 	I32 c;
@@ -310,7 +309,6 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 
 	/* prototype */
 	proto = NULL;
-	saw_colon = 0;
 	c = lex_peek_unichar(0);
 	if (c == ':') {
 		lex_read_unichar(0);
