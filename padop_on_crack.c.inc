@@ -275,7 +275,7 @@ static OP *S_scalarvoid(pTHX_ OP *o) {
 		case OP_SPRINTF:
 		case OP_AELEM:
 		case OP_AELEMFAST:
-		case OP_AELEMFAST_LEX:
+		IF_HAVE_PERL_5_16(case OP_AELEMFAST_LEX:, )
 		case OP_ASLICE:
 		case OP_HELEM:
 		case OP_HSLICE:
@@ -323,7 +323,7 @@ static OP *S_scalarvoid(pTHX_ OP *o) {
 		case OP_GGRGID:
 		case OP_GETLOGIN:
 		case OP_PROTOTYPE:
-		case OP_RUNCV:
+		IF_HAVE_PERL_5_16(case OP_RUNCV:, )
 func_ops:
 			if (!(o->op_private & (OPpLVAL_INTRO|OPpOUR_INTRO)))
 				/* Otherwise it's "Useless use of grep iterator" */
@@ -625,3 +625,94 @@ static OP *S_block_end(pTHX_ I32 floor, OP *seq) {
 
 	return retval;
 }
+
+
+#ifndef pad_alloc
+
+#define pad_alloc(OPTYPE, TMPTYPE) \
+	S_pad_alloc(aTHX_ OPTYPE, TMPTYPE)
+
+static PADOFFSET S_pad_alloc(pTHX_ I32 optype, U32 tmptype) {
+	dVAR;
+	SV *sv;
+	I32 retval;
+
+	PERL_UNUSED_ARG(optype);
+	ASSERT_CURPAD_ACTIVE("pad_alloc");
+
+	if (AvARRAY(PL_comppad) != PL_curpad)
+		Perl_croak(aTHX_ "panic: pad_alloc");
+	PL_pad_reset_pending = FALSE;
+	if (tmptype & SVs_PADMY) {
+		sv = *av_fetch(PL_comppad, AvFILLp(PL_comppad) + 1, TRUE);
+		retval = AvFILLp(PL_comppad);
+	}
+	else {
+		SV * const * const names = AvARRAY(PL_comppad_name);
+		const SSize_t names_fill = AvFILLp(PL_comppad_name);
+		for (;;) {
+			/*
+			 * "foreach" index vars temporarily become aliases to non-"my"
+			 * values.  Thus we must skip, not just pad values that are
+			 * marked as current pad values, but also those with names.
+			 */
+			/* HVDS why copy to sv here? we don't seem to use it */
+			if (++PL_padix <= names_fill &&
+				(sv = names[PL_padix]) && sv != &PL_sv_undef)
+				continue;
+			sv = *av_fetch(PL_comppad, PL_padix, TRUE);
+			if (!(SvFLAGS(sv) & (SVs_PADTMP | SVs_PADMY)) &&
+				!IS_PADGV(sv) && !IS_PADCONST(sv))
+				break;
+		}
+		retval = PL_padix;
+	}
+	SvFLAGS(sv) |= tmptype;
+	PL_curpad = AvARRAY(PL_comppad);
+
+	DEBUG_X(PerlIO_printf(Perl_debug_log,
+						  "Pad 0x%"UVxf"[0x%"UVxf"] alloc:   %ld for %s\n",
+						  PTR2UV(PL_comppad), PTR2UV(PL_curpad), (long) retval,
+						  PL_op_name[optype]));
+#ifdef DEBUG_LEAKING_SCALARS
+	sv->sv_debug_optype = optype;
+	sv->sv_debug_inpad = 1;
+#endif
+	return (PADOFFSET)retval;
+}
+
+#endif
+
+
+#ifndef pad_add_name_sv
+
+#define pad_add_name_sv(NAMESV, FLAGS, TYPESTASH, OURSTASH) \
+	S_pad_add_name_sv(aTHX_ NAMESV, FLAGS, TYPESTASH, OURSTASH)
+
+static PADOFFSET S_pad_add_name_sv(pTHX_ SV *namesv, const U32 flags, HV *typestash, HV *ourstash) {
+	dVAR;
+	const PADOFFSET offset = pad_alloc(OP_PADSV, SVs_PADMY);
+
+	ASSERT_CURPAD_ACTIVE("pad_add_name");
+
+	if (typestash) {
+		assert(SvTYPE(namesv) == SVt_PVMG);
+		SvPAD_TYPED_on(namesv);
+		SvSTASH_set(namesv, MUTABLE_HV(SvREFCNT_inc_simple_NN(MUTABLE_SV(typestash))));
+	}
+	if (ourstash) {
+		SvPAD_OUR_on(namesv);
+		SvOURSTASH_set(namesv, ourstash);
+		SvREFCNT_inc_simple_void_NN(ourstash);
+	}
+	#if 0
+	else if (flags & padadd_STATE) {
+		SvPAD_STATE_on(namesv);
+	}
+	#endif
+
+	av_store(PL_comppad_name, offset, namesv);
+	return offset;
+}
+
+#endif

@@ -26,7 +26,7 @@ See http://dev.perl.org/licenses/ for more information.
  	WARNINGS_ENABLEW(-Wall) \
  	WARNINGS_ENABLEW(-Wextra) \
  	WARNINGS_ENABLEW(-Wundef) \
- 	WARNINGS_ENABLEW(-Wshadow) \
+ 	/* WARNINGS_ENABLEW(-Wshadow) :-( */ \
  	WARNINGS_ENABLEW(-Wbad-function-cast) \
  	WARNINGS_ENABLEW(-Wcast-align) \
  	WARNINGS_ENABLEW(-Wwrite-strings) \
