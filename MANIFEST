@@ -5,6 +5,7 @@ MANIFEST
 MANIFEST.SKIP
 MYMETA.json
 MYMETA.yml
+padop_on_crack.c.inc
 Parameters.xs
 README
 t/00-load.t
@@ -12,6 +13,11 @@ t/01-compiles.t
 t/02-compiles.t
 t/03-compiles.t
 t/attrs.t
+t/bonus.t
+t/checkered.t
+t/checkered_2.t
+t/defaults.t
+t/defaults_regress.t
 t/eating_strict_error.fail
 t/eating_strict_error.t
 t/eating_strict_error_2.fail
@@ -26,6 +32,7 @@ t/named_3.fail
 t/named_4.fail
 t/pod.t
 t/precedence.t
+t/regress.t
 t/rename.t
 t/strict.t
 t/strict_1.fail
