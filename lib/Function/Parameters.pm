@@ -5,13 +5,13 @@ use v5.14.0;
 use strict;
 use warnings;
 
+use Carp qw(confess);
+
 use XSLoader;
 BEGIN {
 	our $VERSION = '0.06';
 	XSLoader::load;
 }
-
-use Carp qw(confess);
 
 sub _assert_valid_identifier {
 	my ($name, $with_dollar) = @_;
@@ -28,16 +28,24 @@ sub _assert_valid_attributes {
 
 my @bare_arms = qw(function method);
 my %type_map = (
-	function => { name => 'optional' },
+	function => {
+		name => 'optional',
+		default_arguments => 1,
+		check_argument_count => 0,
+	},
 	method   => {
 		name => 'optional',
-		shift => '$self',
+		default_arguments => 1,
+		check_argument_count => 0,
 		attrs => ':method',
+		shift => '$self',
 	},
 	classmethod   => {
 		name => 'optional',
-		shift => '$class',
+		default_arguments => 1,
+		check_argument_count => 0,
 		attrs => ':method',
+		shift => '$class',
 	},
 );
 
@@ -83,6 +91,9 @@ sub import {
 		$clean{attrs} = delete $type{attrs} || '';
 		_assert_valid_attributes $clean{attrs} if $clean{attrs};
 		
+		$clean{default_arguments} = !!delete $type{default_arguments};
+		$clean{check_argument_count} = !!delete $type{check_argument_count};
+
 		%type and confess "Invalid keyword property: @{[keys %type]}";
 
 		$spec{$name} = \%clean;
@@ -91,13 +102,16 @@ sub import {
 	for my $kw (keys %spec) {
 		my $type = $spec{$kw};
 
+		my $flags =
+			$type->{name} eq 'prohibited' ? FLAG_ANON_OK :
+			$type->{name} eq 'required' ? FLAG_NAME_OK :
+			FLAG_ANON_OK | FLAG_NAME_OK
+		;
+		$flags |= FLAG_DEFAULT_ARGS if $type->{default_arguments};
+		$flags |= FLAG_CHECK_NARGS if $type->{check_argument_count};
+		$^H{HINTK_FLAGS_ . $kw} = $flags;
 		$^H{HINTK_SHIFT_ . $kw} = $type->{shift};
 		$^H{HINTK_ATTRS_ . $kw} = $type->{attrs};
-		$^H{HINTK_NAME_ . $kw} =
-			$type->{name} eq 'prohibited' ? FLAG_NAME_PROHIBITED :
-			$type->{name} eq 'required' ? FLAG_NAME_REQUIRED :
-			FLAG_NAME_OPTIONAL
-		;
 		$^H{+HINTK_KEYWORDS} .= "$kw ";
 	}
 }
