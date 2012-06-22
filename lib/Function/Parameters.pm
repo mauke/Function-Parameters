@@ -91,7 +91,11 @@ sub import {
 		$clean{attrs} = delete $type{attrs} || '';
 		_assert_valid_attributes $clean{attrs} if $clean{attrs};
 		
-		$clean{default_arguments} = !!delete $type{default_arguments};
+		$clean{default_arguments} =
+			exists $type{default_arguments}
+			? !!delete $type{default_arguments}
+			: 1
+		;
 		$clean{check_argument_count} = !!delete $type{check_argument_count};
 
 		%type and confess "Invalid keyword property: @{[keys %type]}";
