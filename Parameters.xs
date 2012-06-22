@@ -150,15 +150,12 @@ static void free_ptr_op(pTHX_ void *vp) {
 	Safefree(pp);
 }
 
-#define sv_eq_pvs(SV, S) sv_eq_pvn(aTHX_ SV, "" S "", sizeof (S) - 1)
+#define sv_eq_pvs(SV, S) my_sv_eq_pvn(aTHX_ SV, "" S "", sizeof (S) - 1)
 
-static int sv_eq_pvn(pTHX_ SV *sv, const char *p, STRLEN n) {
+static int my_sv_eq_pvn(pTHX_ SV *sv, const char *p, STRLEN n) {
 	STRLEN sv_len;
 	const char *sv_p = SvPV(sv, sv_len);
-	return
-		sv_len == n &&
-		memcmp(sv_p, p, n) == 0
-	;
+	return memcmp(sv_p, p, n) == 0;
 }
 
 
