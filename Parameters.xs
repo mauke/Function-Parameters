@@ -500,17 +500,15 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 	{
 		OP *prelude = NULL;
 
-		/* my $self = shift; */
-		if (SvTRUE(spec->shift)) {
-			OP *const var = newOP(OP_PADSV, OPf_WANT_SCALAR | (OPpLVAL_INTRO << 8));
-			var->op_targ = pad_add_name_sv(spec->shift, 0, NULL, NULL);
-
-			prelude = newASSIGNOP(OPf_STACKED, var, 0, newOP(OP_SHIFT, 0));
-			prelude = newSTATEOP(0, NULL, prelude);
-		}
-
 		/* min/max argument count checks */
 		if (spec->flags & FLAG_CHECK_NARGS) {
+			if (SvTRUE(spec->shift)) {
+				args_min++;
+				if (args_max != -1) {
+					args_max++;
+				}
+			}
+
 			if (args_min > 0) {
 				OP *chk, *cond, *err, *croak;
 
@@ -547,6 +545,17 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 
 				prelude = op_append_list(OP_LINESEQ, prelude, newSTATEOP(0, NULL, chk));
 			}
+		}
+
+		/* my $self = shift; */
+		if (SvTRUE(spec->shift)) {
+			OP *var, *shift;
+
+			var = newOP(OP_PADSV, OPf_WANT_SCALAR | (OPpLVAL_INTRO << 8));
+			var->op_targ = pad_add_name_sv(spec->shift, 0, NULL, NULL);
+
+			shift = newASSIGNOP(OPf_STACKED, var, 0, newOP(OP_SHIFT, 0));
+			prelude = op_append_list(OP_LINESEQ, prelude, newSTATEOP(0, NULL, shift));
 		}
 
 		/* my (PARAMS) = @_; */
