@@ -5,9 +5,9 @@
 /* vi: set ft=c inde=: */
 
 #define COP_SEQ_RANGE_LOW_set(SV, VAL) \
-	do { ((XPVNV*)SvANY(SV))->xnv_u.xpad_cop_seq.xlow = (VAL); } while (0)
+	STMT_START { ((XPVNV*)SvANY(SV))->xnv_u.xpad_cop_seq.xlow = (VAL); } STMT_END
 #define COP_SEQ_RANGE_HIGH_set(SV, VAL) \
-	do { ((XPVNV*)SvANY(SV))->xnv_u.xpad_cop_seq.xhigh = (VAL); } while (0)
+	STMT_START { ((XPVNV*)SvANY(SV))->xnv_u.xpad_cop_seq.xhigh = (VAL); } STMT_END
 
 static void S_pad_block_start(pTHX_ int full) {
 	dVAR;
