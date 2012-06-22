@@ -31,7 +31,7 @@ static int S_block_start(pTHX_ int full) {
 	dVAR;
 	const int retval = PL_savestack_ix;
 
-	S_pad_block_start(full);
+	S_pad_block_start(aTHX_ full);
 	SAVEHINTS();
 	PL_hints &= ~HINT_BLOCK_SCOPE;
 	SAVECOMPILEWARNINGS();
@@ -139,13 +139,13 @@ static OP *S_scalar(pTHX_ OP *o) {
 
 	switch (o->op_type) {
 		case OP_REPEAT:
-			S_scalar(cBINOPo->op_first);
+			S_scalar(aTHX_ cBINOPo->op_first);
 			break;
 		case OP_OR:
 		case OP_AND:
 		case OP_COND_EXPR:
 			for (kid = cUNOPo->op_first->op_sibling; kid; kid = kid->op_sibling)
-				S_scalar(kid);
+				S_scalar(aTHX_ kid);
 			break;
 			/* FALL THROUGH */
 		case OP_SPLIT:
@@ -156,21 +156,21 @@ static OP *S_scalar(pTHX_ OP *o) {
 		default:
 			if (o->op_flags & OPf_KIDS) {
 				for (kid = cUNOPo->op_first; kid; kid = kid->op_sibling)
-					S_scalar(kid);
+					S_scalar(aTHX_ kid);
 			}
 			break;
 		case OP_LEAVE:
 		case OP_LEAVETRY:
 			kid = cLISTOPo->op_first;
-			S_scalar(kid);
+			S_scalar(aTHX_ kid);
 			kid = kid->op_sibling;
 do_kids:
 			while (kid) {
 				OP *sib = kid->op_sibling;
 				if (sib && kid->op_type != OP_LEAVEWHEN)
-					S_scalarvoid(kid);
+					S_scalarvoid(aTHX_ kid);
 				else
-					S_scalar(kid);
+					S_scalar(aTHX_ kid);
 				kid = sib;
 			}
 			PL_curcop = &PL_compiling;
@@ -191,7 +191,7 @@ static OP *S_scalarkids(pTHX_ OP *o) {
     if (o && o->op_flags & OPf_KIDS) {
         OP *kid;
 	for (kid = cLISTOPo->op_first; kid; kid = kid->op_sibling)
-	    S_scalar(kid);
+	    S_scalar(aTHX_ kid);
     }
     return o;
 }
@@ -235,7 +235,7 @@ static OP *S_scalarvoid(pTHX_ OP *o) {
 		(PL_opargs[o->op_type] & OA_TARGLEX)
 		/* OPp share the meaning */
 	) {
-		return S_scalar(o);			/* As if inside SASSIGN */
+		return S_scalar(aTHX_ o);			/* As if inside SASSIGN */
 	}
 
 	o->op_flags = (o->op_flags & ~OPf_WANT) | OPf_WANT_VOID;
@@ -481,7 +481,7 @@ func_ops:
 		}
 
 		case OP_AASSIGN: {
-			S_inplace_aassign(o);
+			S_inplace_aassign(aTHX_ o);
 			break;
 		}
 
@@ -506,7 +506,7 @@ func_ops:
 		case OP_ENTERGIVEN:
 		case OP_ENTERWHEN:
 			for (kid = cUNOPo->op_first->op_sibling; kid; kid = kid->op_sibling)
-				S_scalarvoid(kid);
+				S_scalarvoid(aTHX_ kid);
 			break;
 
 		case OP_NULL:
@@ -529,13 +529,13 @@ func_ops:
 		case OP_LEAVEGIVEN:
 		case OP_LEAVEWHEN:
 			for (kid = cLISTOPo->op_first; kid; kid = kid->op_sibling)
-				S_scalarvoid(kid);
+				S_scalarvoid(aTHX_ kid);
 			break;
 		case OP_ENTEREVAL:
-			S_scalarkids(o);
+			S_scalarkids(aTHX_ o);
 			break;
 		case OP_SCALAR:
-			return S_scalar(o);
+			return S_scalar(aTHX_ o);
 	}
 	if (useless)
 		Perl_ck_warner(aTHX_ packWARN(WARN_VOID), "Useless use of %"SVf" in void context",
@@ -555,7 +555,7 @@ static OP *S_scalarseq(pTHX_ OP *o) {
 			OP *kid;
 			for (kid = cLISTOPo->op_first; kid; kid = kid->op_sibling) {
 				if (kid->op_sibling) {
-					S_scalarvoid(kid);
+					S_scalarvoid(aTHX_ kid);
 				}
 			}
 			PL_curcop = &PL_compiling;
@@ -611,7 +611,7 @@ static void S_pad_leavemy(pTHX) {
 static OP *S_block_end(pTHX_ I32 floor, OP *seq) {
 	dVAR;
 	const int needblockscope = PL_hints & HINT_BLOCK_SCOPE;
-	OP *retval = S_scalarseq(seq);
+	OP *retval = S_scalarseq(aTHX_ seq);
 
 	CALL_BLOCK_HOOKS(bhk_pre_end, &retval);
 
@@ -619,7 +619,7 @@ static OP *S_block_end(pTHX_ I32 floor, OP *seq) {
 	CopHINTS_set(&PL_compiling, PL_hints);
 	if (needblockscope)
 		PL_hints |= HINT_BLOCK_SCOPE; /* propagate out */
-	S_pad_leavemy();
+	S_pad_leavemy(aTHX);
 
 	CALL_BLOCK_HOOKS(bhk_post_end, &retval);
 

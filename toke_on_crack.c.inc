@@ -306,7 +306,7 @@ static char *S_scan_str(pTHX_ SV *sv, int keep_quoted, int keep_delims) {
 	return s;
 }
 
-static void S_check_prototype(const SV *declarator, SV *proto) {
+static void S_check_prototype(pTHX_ const SV *declarator, SV *proto) {
 	bool bad_proto = FALSE;
 	bool in_brackets = FALSE;
 	char greedy_proto = ' ';

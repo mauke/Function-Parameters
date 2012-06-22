@@ -144,15 +144,15 @@ static int kw_flags(pTHX_ const char *kw_ptr, STRLEN kw_len, Spec *spec) {
 #include "toke_on_crack.c.inc"
 
 
-static void free_ptr_op(void *vp) {
+static void free_ptr_op(pTHX_ void *vp) {
 	OP **pp = vp;
 	op_free(*pp);
 	Safefree(pp);
 }
 
-#define sv_eq_pvs(SV, S) sv_eq_pvn(SV, "" S "", sizeof (S) - 1)
+#define sv_eq_pvs(SV, S) sv_eq_pvn(aTHX_ SV, "" S "", sizeof (S) - 1)
 
-static int sv_eq_pvn(SV *sv, const char *p, STRLEN n) {
+static int sv_eq_pvn(pTHX_ SV *sv, const char *p, STRLEN n) {
 	STRLEN sv_len;
 	const char *sv_p = SvPV(sv, sv_len);
 	return
@@ -325,7 +325,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 			if (!S_scan_str(aTHX_ proto, FALSE, FALSE)) {
 				croak("In %"SVf": prototype not terminated", SVfARG(declarator));
 			}
-			S_check_prototype(declarator, proto);
+			S_check_prototype(aTHX_ declarator, proto);
 			lex_read_space(0);
 			c = lex_peek_unichar(0);
 		}
@@ -353,7 +353,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 	/* attributes */
 	Newx(attrs_sentinel, 1, OP *);
 	*attrs_sentinel = NULL;
-	SAVEDESTRUCTOR(free_ptr_op, attrs_sentinel);
+	SAVEDESTRUCTOR_X(free_ptr_op, attrs_sentinel);
 
 	if (c == ':' || c == '{') {
 
@@ -432,7 +432,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 	/* munge */
 	{
 		/* create outer block: '{' */
-		const int save_ix = S_block_start(TRUE);
+		const int save_ix = S_block_start(aTHX_ TRUE);
 		OP *init = NULL;
 
 		/* my $self = shift; */
@@ -478,7 +478,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 		body = op_append_list(OP_LINESEQ, init, body);
 
 		/* close outer block: '}' */
-		S_block_end(save_ix, body);
+		S_block_end(aTHX_ save_ix, body);
 	}
 
 	/* it's go time. */
