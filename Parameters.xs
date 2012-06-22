@@ -112,7 +112,7 @@ static int kw_flags(pTHX_ const char *kw_ptr, STRLEN kw_len, Spec *spec) {
 			memcmp(kw_ptr, p, kw_len) == 0
 		) {
 
-#define FETCH_HINTK_INTO(NAME, PTR, LEN, X) do { \
+#define FETCH_HINTK_INTO(NAME, PTR, LEN, X) STMT_START { \
 	const char *fk_ptr_; \
 	STRLEN fk_len_; \
 	SV *fk_sv_; \
@@ -122,7 +122,7 @@ static int kw_flags(pTHX_ const char *kw_ptr, STRLEN kw_len, Spec *spec) {
 	if (!((X) = hv_fetch(hints, fk_ptr_, fk_len_, 0))) { \
 		croak("%s: internal error: $^H{'%.*s'} not set", MY_PKG, (int)fk_len_, fk_ptr_); \
 	} \
-} while (0)
+} STMT_END
 
 			FETCH_HINTK_INTO(NAME_, kw_ptr, kw_len, psv);
 			spec->name = SvIV(*psv);
