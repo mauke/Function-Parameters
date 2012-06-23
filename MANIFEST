@@ -22,6 +22,7 @@ t/eating_strict_error.fail
 t/eating_strict_error.t
 t/eating_strict_error_2.fail
 t/elsewhere.t
+t/imports.t
 t/lexical.t
 t/lineno-torture.t
 t/lineno.t

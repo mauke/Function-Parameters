@@ -9,7 +9,7 @@ use Function::Parameters {
 	method => {
 		check_argument_count => 1,
 		shift => '$self',
-		attrs => ':method',
+		attributes => ':method',
 	},
 
 	cathod => {
