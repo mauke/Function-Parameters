@@ -48,6 +48,12 @@ my %type_map = (
 		shift => '$class',
 	},
 );
+for my $k (keys %type_map) {
+	$type_map{$k . '_strict'} = {
+		%{$type_map{$k}},
+		check_argument_count => 1,
+	};
+}
 
 sub import {
 	my $class = shift;
@@ -242,8 +248,9 @@ Or more concretely:
 The first line creates two keywords, C<proc> and C<meth> (for defining
 functions and methods, respectively). The last two lines only create one
 keyword. Generally the hash keys (keywords) can be any identifiers you want
-while the values (types) have to be either C<'function'>, C<'method'>,
-C<'classmethod'>, or a hash reference (see below). The main difference between
+while the values (types) have to be either a hash reference (see below) or
+C<'function'>, C<'method'>, C<'classmethod'>, C<'function_strict'>,
+C<'method_strict'>, or C<'classmethod_strict'>. The main difference between
 C<'function'> and C<'method'> is that C<'method'>s automatically
 L<shift|perlfunc/shift> their first argument into C<$self> (C<'classmethod'>s
 are similar but shift into C<$class>).
@@ -382,6 +389,9 @@ Plain C<'function'> is equivalent to:
 
 (These are all default values so C<'function'> is also equivalent to C<{}>.)
 
+C<'function_strict'> is like C<'function'> but with
+C<< check_argument_count => 1 >>.
+
 C<'method'> is equivalent to:
 
  {
@@ -392,6 +402,9 @@ C<'method'> is equivalent to:
    shift => '$self',
  }
 
+C<'method_strict'> is like C<'method'> but with
+C<< check_argument_count => 1 >>.
+
 C<'classmethod'> is equivalent to:
 
  {
@@ -401,6 +414,9 @@ C<'classmethod'> is equivalent to:
    attributes => ':method',
    shift => '$class',
  }
+
+C<'classmethod_strict'> is like C<'classmethod'> but with
+C<< check_argument_count => 1 >>.
 
 =head2 Syntax and generated code
 
@@ -458,6 +474,7 @@ And the generated code:
    # vvv   only if check_argument_count is enabled    vvv
    Carp::croak "Not enough arguments for fun (anon)" if @_ < 2;
    Carp::croak "Too many arguments for fun (anon)" if @_ > 2;
+   # ^^^                                              ^^^
    my ($p, $q) = @_;
    ...
  };
