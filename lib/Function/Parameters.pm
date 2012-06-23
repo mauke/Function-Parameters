@@ -214,7 +214,7 @@ list consists of comma-separated variables.
 
 The effect of C<fun foo($bar, $baz) {> is as if you'd written
 C<sub foo { my ($bar, $baz) = @_; >, i.e. the parameter list is simply
-copied into L<my|perlfunc/my> and initialized from L<@_|perlvar/"@_">.
+copied into L<my|perlfunc/my-EXPR> and initialized from L<@_|perlvar/"@_">.
 
 In addition you can use C<method>, which understands the same syntax as C<fun>
 but automatically creates a C<$self> variable for you. So by writing
@@ -415,7 +415,7 @@ so the parser knows the name (and possibly prototype) while it processes the
 body. Thus C<fun foo($x) :($) { $x }> really turns into
 C<sub foo ($) { sub foo ($); my ($x) = @_; $x }>.
 
-If you need L<subroutine attributes|perlsub/"Subroutine Attributes">, you can
+If you need L<subroutine attributes|perlsub/Subroutine-Attributes>, you can
 put them after the parameter list with their usual syntax.
 
 Syntactically, these new parameter lists live in the spot normally occupied
@@ -466,7 +466,8 @@ And the generated code:
 
 If you want to wrap L<Function::Parameters>, you just have to call its
 C<import> method. It always applies to the file that is currently being parsed
-and its effects are lexical (i.e. it works like L<warnings> or L<strict>):
+and its effects are L<lexical|perlpragma> (i.e. it works like L<warnings> or
+L<strict>).
 
  package Some::Wrapper;
  use Function::Parameters ();
