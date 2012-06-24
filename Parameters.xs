@@ -498,7 +498,11 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 
 	/* munge */
 	{
-		OP *prelude = NULL;
+		OP **prelude_sentinel = NULL;
+
+		Newx(prelude_sentinel, 1, OP *);
+		*prelude_sentinel = NULL;
+		SAVEDESTRUCTOR_X(free_ptr_op, prelude_sentinel);
 
 		/* min/max argument count checks */
 		if (spec->flags & FLAG_CHECK_NARGS) {
@@ -525,7 +529,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 				                newSVOP(OP_CONST, 0, newSViv(args_min)));
 				chk = newLOGOP(OP_AND, 0, cond, err);
 
-				prelude = op_append_list(OP_LINESEQ, prelude, newSTATEOP(0, NULL, chk));
+				*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, chk));
 			}
 			if (args_max != -1) {
 				OP *chk, *cond, *err, *croak;
@@ -543,7 +547,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 				                newSVOP(OP_CONST, 0, newSViv(args_max)));
 				chk = newLOGOP(OP_AND, 0, cond, err);
 
-				prelude = op_append_list(OP_LINESEQ, prelude, newSTATEOP(0, NULL, chk));
+				*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, chk));
 			}
 		}
 
@@ -555,7 +559,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 			var->op_targ = pad_add_name_sv(spec->shift, 0, NULL, NULL);
 
 			shift = newASSIGNOP(OPf_STACKED, var, 0, newOP(OP_SHIFT, 0));
-			prelude = op_append_list(OP_LINESEQ, prelude, newSTATEOP(0, NULL, shift));
+			*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, shift));
 		}
 
 		/* my (PARAMS) = @_; */
@@ -576,7 +580,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 			init_param = newASSIGNOP(OPf_STACKED, left, 0, right);
 			init_param = newSTATEOP(0, NULL, init_param);
 
-			prelude = op_append_list(OP_LINESEQ, prelude, init_param);
+			*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, init_param);
 		}
 
 		/* defaults */
@@ -610,7 +614,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 				dp->init = NULL;
 			}
 
-			prelude = op_append_list(OP_LINESEQ, prelude, gen);
+			*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, gen);
 		}
 
 		/* finally let perl parse the actual subroutine body */
@@ -619,11 +623,12 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 		/* add '();' to make function return nothing by default */
 		/* (otherwise the invisible parameter initialization can "leak" into
 		   the return value: fun ($x) {}->("asdf", 0) == 2) */
-		if (prelude) {
+		if (*prelude_sentinel) {
 			body = newSTATEOP(0, NULL, body);
 		}
 
-		body = op_append_list(OP_LINESEQ, prelude, body);
+		body = op_append_list(OP_LINESEQ, *prelude_sentinel, body);
+		*prelude_sentinel = NULL;
 	}
 
 	/* it's go time. */
