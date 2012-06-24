@@ -5,7 +5,7 @@
 ^MANIFEST\.(?!SKIP$)
 ^Makefile$
 ^Makefile\.old$
-^Parameters\.(?:[ioc]|bs)$
+^Parameters\.(?:[iocs]|bs)$
 ^\.
 ^_build
 ^blib
