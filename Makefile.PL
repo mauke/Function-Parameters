@@ -24,6 +24,16 @@ WriteMakefile(
         'strict' => 0,
     },
     MIN_PERL_VERSION => '5.14.0',
+    META_MERGE => {
+    	'meta-spec' => { version => 2 },
+    	resources => {
+    		repository => {
+    			url => 'git://git.shadowcat.co.uk/p5sagit/Function-Parameters',
+    			web => 'http://git.shadowcat.co.uk/gitweb/gitweb.cgi?p=p5sagit/Function-Parameters.git',
+    			type => 'git',
+    		},
+    	},
+    },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean               => { FILES => 'Function-Parameters-*' },
 );
