@@ -160,7 +160,9 @@ Function::Parameters - subroutine definitions with parameter lists
  }
  
  # function with prototype
- fun mymap($fun, @args) :(&@) {
+ fun mymap($fun, @args)
+   :(&@)
+ {
    my @res;
    for (@args) {
      push @res, $fun->($_);
@@ -441,7 +443,11 @@ As an example, the following declaration uses every available feature
 (subroutine name, parameter list, default arguments, prototype, default
 attributes, attributes, argument count checks, and implicit C<$self>):
 
- method foo($x, $y, $z = sqrt 5) :($$$;$) :lvalue :Banana(2 + 2) {
+ method foo($x, $y, $z = sqrt 5)
+   :($$$;$)
+   :lvalue
+   :Banana(2 + 2)
+ {
    ...
  }
 
@@ -459,7 +465,8 @@ And here's what it turns into:
 
 Another example:
 
- my $coderef = fun ($p, $q) :(;$$)
+ my $coderef = fun ($p, $q)
+   :(;$$)
    :lvalue
    :Gazebo((>:O)) {
    ...
