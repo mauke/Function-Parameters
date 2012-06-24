@@ -343,18 +343,15 @@ turns into
    ...
  }
 
-except that none of the parameters are in scope in the expressions that specify
-default values. Thus:
+You can even refer to previous parameters in the same parameter list:
 
-  my $var = "outer";
+ print fun ($x, $y = $x + 1) { "$x and $y" }->(9);  # "9 and 10"
 
-  fun foo($var, $wat = $var) {
-    # $wat will default to "outer", not to what was passed
-    # as the first argument!
-    ...
-  }
+This also works with the implicit first parameter of methods:
 
-This may change in a future version of this module.
+ method scale($factor = $self->default_factor) {
+   $self->{amount} *= $factor;
+ }
 
 =item C<check_argument_count>
 

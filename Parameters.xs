@@ -221,6 +221,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 	I32 floor_ix;
 	int save_ix;
 	SV *saw_name;
+	OP **prelude_sentinel;
 	AV *params;
 	DefaultParamSpec *defaults;
 	int args_min, args_max;
@@ -276,11 +277,26 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 	/* create outer block: '{' */
 	save_ix = S_block_start(aTHX_ TRUE);
 
+	/* initialize synthetic optree */
+	Newx(prelude_sentinel, 1, OP *);
+	*prelude_sentinel = NULL;
+	SAVEDESTRUCTOR_X(free_ptr_op, prelude_sentinel);
+
 	/* parameters */
 	params = NULL;
 	defaults = NULL;
 	args_min = 0;
 	args_max = -1;
+
+	/* my $self; */
+	if (SvTRUE(spec->shift)) {
+		OP *var;
+
+		var = newOP(OP_PADSV, OPf_MOD | (OPpLVAL_INTRO << 8));
+		var->op_targ = pad_add_name_sv(spec->shift, 0, NULL, NULL);
+
+		*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, var));
+	}
 
 	c = lex_peek_unichar(0);
 	if (c == '(') {
@@ -354,6 +370,16 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 
 					lex_read_space(0);
 					c = lex_peek_unichar(0);
+				}
+
+				/* my $param; */
+				{
+					OP *var;
+
+					var = newOP(OP_PADSV, OPf_MOD | (OPpLVAL_INTRO << 8));
+					var->op_targ = pad_add_name_sv(param, 0, NULL, NULL);
+
+					*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, var));
 				}
 
 				if (c == ',') {
@@ -485,7 +511,6 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 		);
 	}
 
-
 	if (builtin_attrs & MY_ATTR_LVALUE) {
 		CvLVALUE_on(PL_compcv);
 	}
@@ -496,140 +521,131 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 		CvSPECIAL_on(PL_compcv);
 	}
 
-	/* munge */
-	{
-		OP **prelude_sentinel = NULL;
-
-		Newx(prelude_sentinel, 1, OP *);
-		*prelude_sentinel = NULL;
-		SAVEDESTRUCTOR_X(free_ptr_op, prelude_sentinel);
-
-		/* min/max argument count checks */
-		if (spec->flags & FLAG_CHECK_NARGS) {
-			if (SvTRUE(spec->shift)) {
-				args_min++;
-				if (args_max != -1) {
-					args_max++;
-				}
-			}
-
-			if (args_min > 0) {
-				OP *chk, *cond, *err, *croak;
-
-				err = newSVOP(OP_CONST, 0,
-				              newSVpvf("Not enough arguments for %"SVf, SVfARG(declarator)));
-
-				croak = newCVREF(OPf_WANT_SCALAR,
-				                 newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV)));
-				err = newUNOP(OP_ENTERSUB, OPf_STACKED,
-				              op_append_elem(OP_LIST, err, croak));
-
-				cond = newBINOP(OP_LT, 0,
-				                newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
-				                newSVOP(OP_CONST, 0, newSViv(args_min)));
-				chk = newLOGOP(OP_AND, 0, cond, err);
-
-				*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, chk));
-			}
-			if (args_max != -1) {
-				OP *chk, *cond, *err, *croak;
-
-				err = newSVOP(OP_CONST, 0,
-				              newSVpvf("Too many arguments for %"SVf, SVfARG(declarator)));
-
-				croak = newCVREF(OPf_WANT_SCALAR,
-				                 newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV)));
-				err = newUNOP(OP_ENTERSUB, OPf_STACKED,
-				              op_append_elem(OP_LIST, err, croak));
-
-				cond = newBINOP(OP_GT, 0,
-				                newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
-				                newSVOP(OP_CONST, 0, newSViv(args_max)));
-				chk = newLOGOP(OP_AND, 0, cond, err);
-
-				*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, chk));
-			}
-		}
-
-		/* my $self = shift; */
+	/* min/max argument count checks */
+	if (spec->flags & FLAG_CHECK_NARGS) {
 		if (SvTRUE(spec->shift)) {
-			OP *var, *shift;
-
-			var = newOP(OP_PADSV, OPf_WANT_SCALAR | (OPpLVAL_INTRO << 8));
-			var->op_targ = pad_add_name_sv(spec->shift, 0, NULL, NULL);
-
-			shift = newASSIGNOP(OPf_STACKED, var, 0, newOP(OP_SHIFT, 0));
-			*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, shift));
-		}
-
-		/* my (PARAMS) = @_; */
-		if (params && av_len(params) > -1) {
-			SV *param;
-			OP *init_param, *left, *right;
-
-			left = NULL;
-			while ((param = av_shift(params)) != &PL_sv_undef) {
-				OP *const var = newOP(OP_PADSV, OPf_WANT_LIST | (OPpLVAL_INTRO << 8));
-				var->op_targ = pad_add_name_sv(param, 0, NULL, NULL);
-				SvREFCNT_dec(param);
-				left = op_append_elem(OP_LIST, left, var);
+			args_min++;
+			if (args_max != -1) {
+				args_max++;
 			}
-
-			left->op_flags |= OPf_PARENS;
-			right = newAVREF(newGVOP(OP_GV, 0, PL_defgv));
-			init_param = newASSIGNOP(OPf_STACKED, left, 0, right);
-			init_param = newSTATEOP(0, NULL, init_param);
-
-			*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, init_param);
 		}
 
-		/* defaults */
-		{
-			OP *gen = NULL;
-			DefaultParamSpec *dp;
+		if (args_min > 0) {
+			OP *chk, *cond, *err, *croak;
 
-			for (dp = defaults; dp; dp = dp->next) {
-				OP *init = dp->init;
-				OP *var, *args, *cond;
+			err = newSVOP(OP_CONST, 0,
+				          newSVpvf("Not enough arguments for %"SVf, SVfARG(declarator)));
 
-				/* var = `$,name */
-				var = newOP(OP_PADSV, 0);
-				var->op_targ = pad_findmy_sv(dp->name, 0);
+			croak = newCVREF(OPf_WANT_SCALAR,
+				             newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV)));
+			err = newUNOP(OP_ENTERSUB, OPf_STACKED,
+				          op_append_elem(OP_LIST, err, croak));
 
-				/* init = `,var = ,init */
-				init = newASSIGNOP(OPf_STACKED, var, 0, init);
+			cond = newBINOP(OP_LT, 0,
+				            newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
+				            newSVOP(OP_CONST, 0, newSViv(args_min)));
+			chk = newLOGOP(OP_AND, 0, cond, err);
 
-				/* args = `@_ */
-				args = newAVREF(newGVOP(OP_GV, 0, PL_defgv));
-
-				/* cond = `,args < ,index */
-				cond = newBINOP(OP_LT, 0, args, newSVOP(OP_CONST, 0, newSViv(dp->limit)));
-
-				/* init = `,init if ,cond */
-				init = newLOGOP(OP_AND, 0, cond, init);
-
-				/* gen = `,gen ; ,init */
-				gen = op_append_list(OP_LINESEQ, gen, newSTATEOP(0, NULL, init));
-
-				dp->init = NULL;
-			}
-
-			*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, gen);
+			*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, chk));
 		}
+		if (args_max != -1) {
+			OP *chk, *cond, *err, *croak;
 
-		/* finally let perl parse the actual subroutine body */
-		body = parse_block(0);
+			err = newSVOP(OP_CONST, 0,
+				          newSVpvf("Too many arguments for %"SVf, SVfARG(declarator)));
 
-		/* add '();' to make function return nothing by default */
-		/* (otherwise the invisible parameter initialization can "leak" into
-		   the return value: fun ($x) {}->("asdf", 0) == 2) */
-		if (*prelude_sentinel) {
-			body = newSTATEOP(0, NULL, body);
+			croak = newCVREF(OPf_WANT_SCALAR,
+				             newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV)));
+			err = newUNOP(OP_ENTERSUB, OPf_STACKED,
+				          op_append_elem(OP_LIST, err, croak));
+
+			cond = newBINOP(OP_GT, 0,
+				            newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
+				            newSVOP(OP_CONST, 0, newSViv(args_max)));
+			chk = newLOGOP(OP_AND, 0, cond, err);
+
+			*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, chk));
 		}
-
-		body = op_append_list(OP_LINESEQ, *prelude_sentinel, body);
-		*prelude_sentinel = NULL;
 	}
+
+	/* $self = shift; */
+	if (SvTRUE(spec->shift)) {
+		OP *var, *shift;
+
+		var = newOP(OP_PADSV, OPf_WANT_SCALAR);
+		var->op_targ = pad_findmy_sv(spec->shift, 0);
+
+		shift = newASSIGNOP(OPf_STACKED, var, 0, newOP(OP_SHIFT, 0));
+		*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, shift));
+	}
+
+	/* (PARAMS) = @_; */
+	if (params && av_len(params) > -1) {
+		SV *param;
+		OP *init_param, *left, *right;
+
+		left = NULL;
+		while ((param = av_shift(params)) != &PL_sv_undef) {
+			OP *const var = newOP(OP_PADSV, OPf_WANT_LIST);
+			var->op_targ = pad_findmy_sv(param, 0);
+			SvREFCNT_dec(param);
+			left = op_append_elem(OP_LIST, left, var);
+		}
+
+		left->op_flags |= OPf_PARENS;
+		right = newAVREF(newGVOP(OP_GV, 0, PL_defgv));
+		init_param = newASSIGNOP(OPf_STACKED, left, 0, right);
+		init_param = newSTATEOP(0, NULL, init_param);
+
+		*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, init_param);
+	}
+
+	/* defaults */
+	{
+		OP *gen = NULL;
+		DefaultParamSpec *dp;
+
+		for (dp = defaults; dp; dp = dp->next) {
+			OP *init = dp->init;
+			OP *var, *args, *cond;
+
+			/* var = `$,name */
+			var = newOP(OP_PADSV, 0);
+			var->op_targ = pad_findmy_sv(dp->name, 0);
+
+			/* init = `,var = ,init */
+			init = newASSIGNOP(OPf_STACKED, var, 0, init);
+
+			/* args = `@_ */
+			args = newAVREF(newGVOP(OP_GV, 0, PL_defgv));
+
+			/* cond = `,args < ,index */
+			cond = newBINOP(OP_LT, 0, args, newSVOP(OP_CONST, 0, newSViv(dp->limit)));
+
+			/* init = `,init if ,cond */
+			init = newLOGOP(OP_AND, 0, cond, init);
+
+			/* gen = `,gen ; ,init */
+			gen = op_append_list(OP_LINESEQ, gen, newSTATEOP(0, NULL, init));
+
+			dp->init = NULL;
+		}
+
+		*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, gen);
+	}
+
+	/* finally let perl parse the actual subroutine body */
+	body = parse_block(0);
+
+	/* add '();' to make function return nothing by default */
+	/* (otherwise the invisible parameter initialization can "leak" into
+	   the return value: fun ($x) {}->("asdf", 0) == 2) */
+	if (*prelude_sentinel) {
+		body = newSTATEOP(0, NULL, body);
+	}
+
+	body = op_append_list(OP_LINESEQ, *prelude_sentinel, body);
+	*prelude_sentinel = NULL;
 
 	/* it's go time. */
 	{

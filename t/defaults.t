@@ -1,6 +1,6 @@
 #!perl
 
-use Test::More tests => 38;
+use Test::More tests => 46;
 
 use warnings FATAL => 'all';
 use strict;
@@ -39,7 +39,7 @@ fun sharingan($input, $x = [], $y = {}) {
 	is_deeply [sharingan $sneaky], [[['thants']], {0 => ['thants']}];
 }
 
-is eval('fun ($x, $y = $x) {}'), undef;
+is eval('fun ($x, $y = $powersauce) {}'), undef;
 like $@, qr/^Global symbol.*explicit package name/;
 
 {
@@ -52,12 +52,12 @@ like $@, qr/^Global symbol.*explicit package name/;
 		}
 
 		is_deeply guy('a', 'b'), ['a', 'b'];
-		is_deeply guy('c'), ['c', 'herp2'];
+		is_deeply guy('c'), ['c', 'c2'];
 		is_deeply guy, ['herp', 'herp2'];
 
 		$d = 'ort';
 		is_deeply guy('a', 'b'), ['a', 'b'];
-		is_deeply guy('c'), ['c', 'ort2'];
+		is_deeply guy('c'), ['c', 'c2'];
 		is_deeply guy, ['ort', 'ort2'];
 
 		my $g = fun ($alarum = $d) { "[$alarum]" };
@@ -65,7 +65,7 @@ like $@, qr/^Global symbol.*explicit package name/;
 		is $g->(), "[ort]";
 
 		$d = 'flowerpot';
-		is_deeply guy('bloodstain'), ['bloodstain', 'flowerpot2'];
+		is_deeply guy('bloodstain'), ['bloodstain', 'bloodstain2'];
 		is $g->(), "[flowerpot]";
 
 		$f = $g;
@@ -102,3 +102,38 @@ like $@, qr/default value/;
 
 is eval('nofun ($x = 42) {}'), undef;
 like $@, qr/nofun.*unexpected.*=.*parameter/;
+
+
+{
+	my $var = "outer";
+
+	fun scope_check(
+		$var,  # inner
+		$snd = "${var}2",  # initialized from $var)
+		$both = "$var and $snd",
+	) {
+		return $var, $snd, $both;
+	}
+
+	is_deeply [scope_check 'A'],      ['A', 'A2', 'A and A2'];
+	is_deeply [scope_check 'B', 'C'], ['B', 'C', 'B and C'];
+	is_deeply [scope_check 4, 5, 6],  [4, 5, 6];
+
+	is eval('fun ($QQQ = $QQQ) {}; 1'), undef;
+	like $@, qr/Global symbol.*\$QQQ.*explicit package name/;
+
+
+	use Function::Parameters { method => 'method' };
+
+	method mscope_check(
+		$var,  # inner
+		$snd = "${var}2",  # initialized from $var
+		$both = "($self) $var and $snd",  # and $self!
+	) {
+		return $self, $var, $snd, $both;
+	}
+
+	is_deeply [mscope_check '$x', 'A'],      ['$x', 'A', 'A2', '($x) A and A2'];
+	is_deeply [mscope_check '$x', 'B', 'C'], ['$x', 'B', 'C', '($x) B and C'];
+	is_deeply [mscope_check '$x', 4, 5, 6],  ['$x', 4, 5, 6];
+}
