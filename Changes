@@ -1,5 +1,13 @@
 Revision history for Function-Parameters
 
+0.06_01 2012-06-24
+        - completely rework internals to generate optrees directly
+        - no more reparsing source
+        - simplify / fewer dependencies
+        - new feature: default arguments (on by default)
+        - new feature: strict argument count checks (off by default)
+                       enabled by "*_strict" variants of symbolic types
+
 0.06    2012-06-19
         - complete rewrite in XS
         - require perl 5.14+
