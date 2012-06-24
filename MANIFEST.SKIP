@@ -3,6 +3,7 @@
 ^Function-Parameters-
 ^GNUmakefile$
 ^MANIFEST\.(?!SKIP$)
+^MYMETA\.
 ^Makefile$
 ^Makefile\.old$
 ^Parameters\.(?:[iocs]|bs)$
