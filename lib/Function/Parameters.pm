@@ -9,7 +9,7 @@ use Carp qw(confess);
 
 use XSLoader;
 BEGIN {
-	our $VERSION = '0.06_01';
+	our $VERSION = '0.07';
 	XSLoader::load;
 }
 
