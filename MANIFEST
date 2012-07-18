@@ -31,6 +31,7 @@ t/named_3.fail
 t/named_4.fail
 t/pod.t
 t/precedence.t
+t/prototype.t
 t/regress.t
 t/rename.t
 t/strict.t
