@@ -1,13 +1,10 @@
 #!perl
-use Test::More tests => 27;
+use Test::More tests => 24;
 
 use warnings FATAL => 'all';
 use strict;
 
 use Function::Parameters;
-
-is eval 'fun :([) {}', undef;
-like $@, qr/Illegal character in prototype/;
 
 is eval 'fun :([) {}', undef;
 like $@, qr/Illegal character in prototype/;
@@ -36,7 +33,6 @@ like $@, qr/Illegal character after '\\' in prototype/;
 {
 	no warnings qw(illegalproto);
 
-	ok eval 'fun :([) {}';
 	ok eval 'fun :([) {}';
 	ok eval 'fun :(][[[[[[) {}';
 	ok eval 'fun :(\;) {}';
