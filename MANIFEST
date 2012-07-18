@@ -39,4 +39,4 @@ t/strict_2.fail
 t/strict_3.fail
 t/strict_4.fail
 t/strict_5.fail
-toke_on_crack.c.inc
+t/unicode.t

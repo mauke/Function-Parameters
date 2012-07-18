@@ -156,9 +156,6 @@ static int kw_flags(pTHX_ const char *kw_ptr, STRLEN kw_len, KWSpec *spec) {
 }
 
 
-#include "toke_on_crack.c.inc"
-
-
 static void free_defspec(pTHX_ void *vp) {
 	DefaultParamSpec *dp = vp;
 	op_free(dp->init);
@@ -216,6 +213,229 @@ enum {
 	MY_ATTR_SPECIAL = 0x04
 };
 
+static void my_sv_cat_c(pTHX_ SV *sv, U32 c) {
+	char ds[UTF8_MAXBYTES + 1], *d;
+	d = uvchr_to_utf8(ds, c);
+	if (d - ds > 1) {
+		sv_utf8_upgrade(sv);
+	}
+	sv_catpvn(sv, ds, d - ds);
+}
+
+static bool my_is_uni_xidfirst(pTHX_ UV c) {
+	U8 tmpbuf[UTF8_MAXBYTES + 1];
+	uvchr_to_utf8(tmpbuf, c);
+	return is_utf8_xidfirst(tmpbuf);
+}
+
+static bool my_is_uni_xidcont(pTHX_ UV c) {
+	U8 tmpbuf[UTF8_MAXBYTES + 1];
+	uvchr_to_utf8(tmpbuf, c);
+	return is_utf8_xidcont(tmpbuf);
+}
+
+static SV *my_scan_word(pTHX_ bool allow_package) {
+	bool at_start, at_substart;
+	I32 c;
+	SV *sv = sv_2mortal(newSVpvs(""));
+	if (lex_bufutf8()) {
+		SvUTF8_on(sv);
+	}
+
+	at_start = at_substart = TRUE;
+	c = lex_peek_unichar(0);
+
+	while (c != -1) {
+		if (at_substart ? my_is_uni_xidfirst(aTHX_ c) : my_is_uni_xidcont(aTHX_ c)) {
+			lex_read_unichar(0);
+			my_sv_cat_c(aTHX_ sv, c);
+			at_substart = FALSE;
+			c = lex_peek_unichar(0);
+		} else if (allow_package && !at_substart && c == '\'') {
+			lex_read_unichar(0);
+			c = lex_peek_unichar(0);
+			if (!my_is_uni_xidfirst(aTHX_ c)) {
+				lex_stuff_pvs("'", 0);
+				break;
+			}
+			sv_catpvs(sv, "'");
+			at_substart = TRUE;
+		} else if (allow_package && (at_start || !at_substart) && c == ':') {
+			lex_read_unichar(0);
+			if (lex_peek_unichar(0) != ':') {
+				lex_stuff_pvs(":", 0);
+				break;
+			}
+			lex_read_unichar(0);
+			c = lex_peek_unichar(0);
+			if (!my_is_uni_xidfirst(aTHX_ c)) {
+				lex_stuff_pvs("::", 0);
+				break;
+			}
+			sv_catpvs(sv, "::");
+			at_substart = TRUE;
+		} else {
+			break;
+		}
+		at_start = FALSE;
+	}
+
+	return SvCUR(sv) ? sv : NULL;
+}
+
+static SV *my_scan_parens_tail(pTHX_ bool keep_backslash) {
+	I32 c, nesting;
+	SV *sv;
+	line_t start;
+
+	start = CopLINE(PL_curcop);
+
+	sv = sv_2mortal(newSVpvs(""));
+	if (lex_bufutf8()) {
+		SvUTF8_on(sv);
+	}
+
+	nesting = 0;
+	for (;;) {
+		c = lex_read_unichar(0);
+		if (c == EOF) {
+			CopLINE_set(PL_curcop, start);
+			return NULL;
+		}
+
+		if (c == '\\') {
+			c = lex_read_unichar(0);
+			if (c == EOF) {
+				CopLINE_set(PL_curcop, start);
+				return NULL;
+			}
+			if (keep_backslash || (c != '(' && c != ')')) {
+				sv_catpvs(sv, "\\");
+			}
+		} else if (c == '(') {
+			nesting++;
+		} else if (c == ')') {
+			if (!nesting) {
+				break;
+			}
+			nesting--;
+		}
+
+		my_sv_cat_c(aTHX_ sv, c);
+	}
+
+	return sv;
+}
+
+static void my_check_prototype(pTHX_ const SV *declarator, SV *proto) {
+	char *start, *r, *w, *end;
+	STRLEN len;
+
+	/* strip spaces */
+	start = SvPV(proto, len);
+	end = start + len;
+
+	for (w = r = start; r < end; r++) {
+		if (!isSPACE(*r)) {
+			*w++ = *r;
+		}
+	}
+	*w = '\0';
+	SvCUR_set(proto, w - start);
+	end = w;
+	len = end - start;
+
+	if (!ckWARN(WARN_ILLEGALPROTO)) {
+		return;
+	}
+
+	/* check for bad characters */
+	if (strspn(start, "$@%*;[]&\\_+") != len) {
+		SV *dsv = newSVpvs_flags("", SVs_TEMP);
+		warner(
+			packWARN(WARN_ILLEGALPROTO),
+			"Illegal character in prototype for %"SVf" : %s",
+			SVfARG(declarator),
+			SvUTF8(proto)
+				? sv_uni_display(
+					dsv,
+					proto,
+					len,
+					UNI_DISPLAY_ISPRINT
+				)
+				: pv_pretty(dsv, start, len, 60, NULL, NULL,
+					PERL_PV_ESCAPE_NONASCII
+				)
+		);
+		return;
+	}
+
+	for (r = start; r < end; r++) {
+		switch (*r) {
+			default:
+				warner(
+					packWARN(WARN_ILLEGALPROTO),
+					"Illegal character in prototype for %"SVf" : %s",
+					SVfARG(declarator), r
+				);
+				return;
+
+			case '_':
+				if (r[1] && !strchr(";@%", *r)) {
+					warner(
+						packWARN(WARN_ILLEGALPROTO),
+						"Illegal character after '_' in prototype for %"SVf" : %s",
+						SVfARG(declarator), r
+					);
+					return;
+				}
+				break;
+
+			case '@':
+			case '%':
+				if (r[1]) {
+					warner(
+						packWARN(WARN_ILLEGALPROTO),
+						"prototype after '%c' for %"SVf": %s",
+						*r, SVfARG(declarator), r + 1
+					);
+					return;
+				}
+				break;
+
+			case '\\':
+				r++;
+				if (strchr("$@%&*", *r)) {
+					break;
+				}
+				if (*r == '[') {
+					r++;
+					for (; r < end && *r != ']'; r++) {
+						if (!strchr("$@%&*", *r)) {
+							break;
+						}
+					}
+					if (*r == ']' && r[-1] != '[') {
+						break;
+					}
+				}
+				warner(
+					packWARN(WARN_ILLEGALPROTO),
+					"Illegal character after '\\' in prototype for %"SVf" : %s",
+					SVfARG(declarator), r
+				);
+				return;
+
+			case '$':
+			case '*':
+			case '&':
+			case ';':
+			case '+':
+				break;
+		}
+	}
+}
+
 static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len, const KWSpec *spec) {
 	SV *declarator;
 	I32 floor_ix;
@@ -229,7 +449,6 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 	OP **attrs_sentinel, *body;
 	unsigned builtin_attrs;
 	STRLEN len;
-	char *s;
 	I32 c;
 
 	declarator = sv_2mortal(newSVpvn(keyword_ptr, keyword_len));
@@ -240,9 +459,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 
 	/* function name */
 	saw_name = NULL;
-	s = PL_parser->bufptr;
-	if ((spec->flags & FLAG_NAME_OK) && (len = S_scan_word(aTHX_ s, TRUE))) {
-		saw_name = sv_2mortal(newSVpvn_flags(s, len, PARSING_UTF ? SVf_UTF8 : 0));
+	if ((spec->flags & FLAG_NAME_OK) && (saw_name = my_scan_word(aTHX_ TRUE))) {
 
 		if (PL_parser->expect != XSTATE) {
 			/* bail out early so we don't predeclare $saw_name */
@@ -262,10 +479,9 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 			builtin_attrs |= MY_ATTR_SPECIAL;
 		}
 
-		lex_read_to(s + len);
 		lex_read_space(0);
 	} else if (!(spec->flags & FLAG_ANON_OK)) {
-		croak("I was expecting a function name, not \"%.*s\"", (int)(PL_parser->bufend - s), s);
+		croak("I was expecting a function name, not \"%.*s\"", (int)(PL_parser->bufend - PL_parser->bufptr), PL_parser->bufptr);
 	} else {
 		sv_catpvs(declarator, " (anon)");
 	}
@@ -322,11 +538,10 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 				lex_read_unichar(0);
 				lex_read_space(0);
 
-				s = PL_parser->bufptr;
-				if (!(len = S_scan_word(aTHX_ s, FALSE))) {
+				if (!(param = my_scan_word(aTHX_ FALSE))) {
 					croak("In %"SVf": missing identifier", SVfARG(declarator));
 				}
-				param = sv_2mortal(newSVpvf("%c%.*s", sigil, (int)len, s));
+				sv_insert(param, 0, 0, &sigil, 1);
 				if (saw_slurpy) {
 					croak("In %"SVf": I was expecting \")\" after \"%"SVf"\", not \"%"SVf"\"", SVfARG(declarator), SVfARG(saw_slurpy), SVfARG(param));
 				}
@@ -337,7 +552,6 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 					saw_slurpy = param;
 				}
 				av_push(params, SvREFCNT_inc_simple_NN(param));
-				lex_read_to(s + len);
 				lex_read_space(0);
 
 				c = lex_peek_unichar(0);
@@ -414,11 +628,11 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 			lex_stuff_pvs(":", 0);
 			c = ':';
 		} else {
-			proto = sv_2mortal(newSVpvs(""));
-			if (!S_scan_str(aTHX_ proto, FALSE, FALSE)) {
+			lex_read_unichar(0);
+			if (!(proto = my_scan_parens_tail(aTHX_ FALSE))) {
 				croak("In %"SVf": prototype not terminated", SVfARG(declarator));
 			}
-			S_check_prototype(aTHX_ declarator, proto);
+			my_check_prototype(aTHX_ declarator, proto);
 			lex_read_space(0);
 			c = lex_peek_unichar(0);
 		}
@@ -445,14 +659,10 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 			for (;;) {
 				SV *attr;
 
-				s = PL_parser->bufptr;
-				if (!(len = S_scan_word(aTHX_ s, FALSE))) {
+				if (!(attr = my_scan_word(aTHX_ FALSE))) {
 					break;
 				}
 
-				attr = sv_2mortal(newSVpvn_flags(s, len, PARSING_UTF ? SVf_UTF8 : 0));
-
-				lex_read_to(s + len);
 				lex_read_space(0);
 				c = lex_peek_unichar(0);
 
@@ -465,11 +675,14 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 						attr = NULL;
 					}
 				} else {
-					SV *sv = sv_2mortal(newSVpvs(""));
-					if (!S_scan_str(aTHX_ sv, TRUE, TRUE)) {
+					SV *sv;
+					lex_read_unichar(0);
+					if (!(sv = my_scan_parens_tail(aTHX_ TRUE))) {
 						croak("In %"SVf": unterminated attribute parameter in attribute list", SVfARG(declarator));
 					}
+					sv_catpvs(attr, "(");
 					sv_catsv(attr, sv);
+					sv_catpvs(attr, ")");
 
 					lex_read_space(0);
 					c = lex_peek_unichar(0);
