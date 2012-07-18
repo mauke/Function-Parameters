@@ -1,5 +1,9 @@
 Revision history for Function-Parameters
 
+0.08    2012-07-19
+        - support UTF-8 in function/parameter names
+        - better detection of invalid prototypes
+
 0.07    2012-06-25
         - completely rework internals to generate optrees directly
           (no more generating/reparsing source)
