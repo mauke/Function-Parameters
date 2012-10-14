@@ -1,7 +1,7 @@
 use warnings;
 use strict;
 
-use Test::More tests => 10;
+use Test::More tests => 11;
 
 use Function::Parameters;
 
@@ -69,6 +69,7 @@ test_loc 'LX -- 3';
 	:
 	{ test_loc 'LX -- 5 (inner)' }
 
+	test_loc 'LX -- 5 (bonus)';
 	wtf;
 	test_loc 'LX -- 5 (outer)';
 }

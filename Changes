@@ -1,5 +1,8 @@
 Revision history for Function-Parameters
 
+0.09    2012-10-14
+        - fix wrong line number for statement immediately following a function
+
 0.08    2012-07-19
         - support UTF-8 in function/parameter names
         - better detection of invalid prototypes

@@ -886,7 +886,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 			attrs,
 			body
 		);
-		*pop = NULL;
+		*pop = newOP(OP_NULL, 0);
 		return KEYWORD_PLUGIN_STMT;
 	}
 }
