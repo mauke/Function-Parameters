@@ -455,7 +455,7 @@ And here's what it turns into:
 
  sub foo ($$$;$) :method :lvalue :Banana(2 + 2) {
    sub foo ($$$;$);
-   Carp::croak "Not enough arguments for method foo" if @_ < 2;
+   Carp::croak "Not enough arguments for method foo" if @_ < 3;
    Carp::croak "Too many arguments for method foo" if @_ > 4;
    my $self = shift;
    my ($x, $y, $z) = @_;
