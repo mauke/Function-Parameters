@@ -747,16 +747,16 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 			OP *chk, *cond, *err, *croak;
 
 			err = newSVOP(OP_CONST, 0,
-				          newSVpvf("Not enough arguments for %"SVf, SVfARG(declarator)));
+			              newSVpvf("Not enough arguments for %"SVf, SVfARG(declarator)));
 
 			croak = newCVREF(OPf_WANT_SCALAR,
-				             newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV)));
+			                 newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV)));
 			err = newUNOP(OP_ENTERSUB, OPf_STACKED,
-				          op_append_elem(OP_LIST, err, croak));
+			              op_append_elem(OP_LIST, err, croak));
 
 			cond = newBINOP(OP_LT, 0,
-				            newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
-				            newSVOP(OP_CONST, 0, newSViv(args_min)));
+			                newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
+			                newSVOP(OP_CONST, 0, newSViv(args_min)));
 			chk = newLOGOP(OP_AND, 0, cond, err);
 
 			*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, chk));
@@ -765,16 +765,16 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 			OP *chk, *cond, *err, *croak;
 
 			err = newSVOP(OP_CONST, 0,
-				          newSVpvf("Too many arguments for %"SVf, SVfARG(declarator)));
+			              newSVpvf("Too many arguments for %"SVf, SVfARG(declarator)));
 
 			croak = newCVREF(OPf_WANT_SCALAR,
-				             newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV)));
+			                 newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV)));
 			err = newUNOP(OP_ENTERSUB, OPf_STACKED,
-				          op_append_elem(OP_LIST, err, croak));
+			              op_append_elem(OP_LIST, err, croak));
 
 			cond = newBINOP(OP_GT, 0,
-				            newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
-				            newSVOP(OP_CONST, 0, newSViv(args_max)));
+			                newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
+			                newSVOP(OP_CONST, 0, newSViv(args_max)));
 			chk = newLOGOP(OP_AND, 0, cond, err);
 
 			*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, chk));
