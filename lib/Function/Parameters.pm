@@ -39,6 +39,7 @@ my %type_map = (
 		check_argument_count => 0,
 		attrs => ':method',
 		shift => '$self',
+		invocant => 1,
 	},
 	classmethod   => {
 		name => 'optional',
@@ -46,6 +47,7 @@ my %type_map = (
 		check_argument_count => 0,
 		attributes => ':method',
 		shift => '$class',
+		invocant => 1,
 	},
 );
 for my $k (keys %type_map) {
@@ -110,6 +112,7 @@ sub import {
 			: 1
 		;
 		$clean{check_argument_count} = !!delete $type{check_argument_count};
+		$clean{invocant} = !!delete $type{invocant};
 
 		%type and confess "Invalid keyword property: @{[keys %type]}";
 
@@ -126,6 +129,7 @@ sub import {
 		;
 		$flags |= FLAG_DEFAULT_ARGS if $type->{default_arguments};
 		$flags |= FLAG_CHECK_NARGS if $type->{check_argument_count};
+		$flags |= FLAG_INVOCANT if $type->{invocant};
 		$^H{HINTK_FLAGS_ . $kw} = $flags;
 		$^H{HINTK_SHIFT_ . $kw} = $type->{shift};
 		$^H{HINTK_ATTRS_ . $kw} = $type->{attrs};
@@ -183,12 +187,17 @@ Function::Parameters - subroutine definitions with parameter lists
  method set_name($name) {
    $self->{name} = $name;
  }
-
+ 
+ # method with explicit invocant
+ method new($class: %init) {
+   return bless { %init }, $class;
+ }
+ 
  # function with default arguments
  fun search($haystack, $needle = qr/^(?!)/, $offset = 0) {
    ...
  }
-
+ 
  # method with default arguments
  method skip($amount = 1) {
    $self->{position} += $amount;
@@ -318,6 +327,17 @@ Valid values: strings that look like a scalar variable. Any function created by
 this keyword will automatically L<shift|perlfunc/shift> its first argument into
 a local variable whose name is specified here.
 
+=item C<invocant>
+
+Valid values: booleans. This lets users of this keyword specify an explicit
+invocant, that is, the first parameter may be followed by a C<:> (colon)
+instead of a comma and will by initialized by shifting the first element off
+C<@_>.
+
+You can combine C<shift> and C<invocant>, in which case the variable named in
+C<shift> serves as a default shift target for functions that don't use an
+explicit invocant.
+
 =item C<attributes>, C<attrs>
 
 Valid values: strings that are valid source code for attributes. Any value
@@ -412,6 +432,7 @@ C<'method'> is equivalent to:
    check_argument_count => 0,
    attributes => ':method',
    shift => '$self',
+   invocant => 1,
  }
 
 C<'method_strict'> is like C<'method'> but with
@@ -425,6 +446,7 @@ C<'classmethod'> is equivalent to:
    check_argument_count => 0,
    attributes => ':method',
    shift => '$class',
+   invocant => 1,
  }
 
 C<'classmethod_strict'> is like C<'classmethod'> but with
@@ -454,9 +476,10 @@ with C<(>).
 
 As an example, the following declaration uses every available feature
 (subroutine name, parameter list, default arguments, prototype, default
-attributes, attributes, argument count checks, and implicit C<$self>):
+attributes, attributes, argument count checks, and implicit C<$self> overriden
+by an explicit invocant declaration):
 
- method foo($x, $y, $z = sqrt 5)
+ method foo($this: $x, $y, $z = sqrt 5)
    :($$$;$)
    :lvalue
    :Banana(2 + 2)
@@ -470,7 +493,7 @@ And here's what it turns into:
    sub foo ($$$;$);
    Carp::croak "Not enough arguments for method foo" if @_ < 3;
    Carp::croak "Too many arguments for method foo" if @_ > 4;
-   my $self = shift;
+   my $this = shift;
    my ($x, $y, $z) = @_;
    $z = sqrt 5 if @_ < 3;
    ...

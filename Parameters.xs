@@ -83,7 +83,8 @@ enum {
 	FLAG_NAME_OK      = 0x01,
 	FLAG_ANON_OK      = 0x02,
 	FLAG_DEFAULT_ARGS = 0x04,
-	FLAG_CHECK_NARGS  = 0x08
+	FLAG_CHECK_NARGS  = 0x08,
+	FLAG_INVOCANT     = 0x10
 };
 
 DEFSTRUCT(KWSpec) {
@@ -442,6 +443,8 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 	int save_ix;
 	SV *saw_name;
 	OP **prelude_sentinel;
+	int did_invocant_decl;
+	SV *invocant;
 	AV *params;
 	DefaultParamSpec *defaults;
 	int args_min, args_max;
@@ -499,20 +502,12 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 	SAVEDESTRUCTOR_X(free_ptr_op, prelude_sentinel);
 
 	/* parameters */
+	did_invocant_decl = 0;
+	invocant = NULL;
 	params = NULL;
 	defaults = NULL;
 	args_min = 0;
 	args_max = -1;
-
-	/* my $self; */
-	if (SvTRUE(spec->shift)) {
-		OP *var;
-
-		var = newOP(OP_PADSV, OPf_MOD | (OPpLVAL_INTRO << 8));
-		var->op_targ = pad_add_name_sv(spec->shift, 0, NULL, NULL);
-
-		*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, var));
-	}
 
 	c = lex_peek_unichar(0);
 	if (c == '(') {
@@ -551,39 +546,78 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 					args_max = -1;
 					saw_slurpy = param;
 				}
-				av_push(params, SvREFCNT_inc_simple_NN(param));
-				lex_read_space(0);
 
+				lex_read_space(0);
 				c = lex_peek_unichar(0);
 
-				if (!(c == '=' && (spec->flags & FLAG_DEFAULT_ARGS))) {
-					if (sigil == '$' && !defaults) {
-						args_min++;
+				assert(param_count >= 1);
+
+				if (c == ':') {
+					if (invocant) {
+						croak("In %"SVf": invalid double invocants %"SVf", %"SVf"", SVfARG(declarator), SVfARG(invocant), SVfARG(param));
 					}
-				} else if (sigil != '$') {
-					croak("In %"SVf": %s %"SVf" can't have a default value", SVfARG(declarator), sigil == '@' ? "array" : "hash", SVfARG(saw_slurpy));
-				} else {
-					DefaultParamSpec *curdef;
+					if (param_count != 1) {
+						croak("In %"SVf": invocant %"SVf" must be first in parameter list", SVfARG(declarator), SVfARG(param));
+					}
+					if (!(spec->flags & FLAG_INVOCANT)) {
+						croak("In %"SVf": invocant %"SVf" not allowed here", SVfARG(declarator), SVfARG(param));
+					}
+					if (sigil != '$') {
+						croak("In %"SVf": invocant %"SVf" can't be a %s", SVfARG(declarator), SVfARG(param), sigil == '@' ? "array" : "hash");
+					}
 
 					lex_read_unichar(0);
 					lex_read_space(0);
 
-					Newx(curdef, 1, DefaultParamSpec);
-					curdef->next = NULL;
-					curdef->limit = param_count;
-					curdef->name = param;
-					curdef->init = NULL;
-					SAVEDESTRUCTOR_X(free_defspec, curdef);
+					args_max--;
+					param_count--;
+					invocant = param;
+				} else {
+					av_push(params, SvREFCNT_inc_simple_NN(param));
 
-					curdef->next = *pdefaults_tail;
-					*pdefaults_tail = curdef;
-					pdefaults_tail = &curdef->next;
+					if (c == '=' && (spec->flags & FLAG_DEFAULT_ARGS)) {
+						DefaultParamSpec *curdef;
 
-					/* let perl parse the default parameter value */
-					curdef->init = parse_termexpr(0);
+						if (sigil != '$') {
+							croak("In %"SVf": %s %"SVf" can't have a default value", SVfARG(declarator), sigil == '@' ? "array" : "hash", SVfARG(saw_slurpy));
+						}
 
-					lex_read_space(0);
-					c = lex_peek_unichar(0);
+						lex_read_unichar(0);
+						lex_read_space(0);
+
+						/* my $self;  # in scope for default argument */
+						if (!invocant && !did_invocant_decl && SvTRUE(spec->shift)) {
+							OP *var;
+
+							var = newOP(OP_PADSV, OPf_MOD | (OPpLVAL_INTRO << 8));
+							var->op_targ = pad_add_name_sv(spec->shift, 0, NULL, NULL);
+
+							*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, var));
+
+							did_invocant_decl = 1;
+						}
+
+						Newx(curdef, 1, DefaultParamSpec);
+						curdef->next = NULL;
+						curdef->limit = param_count;
+						curdef->name = param;
+						curdef->init = NULL;
+						SAVEDESTRUCTOR_X(free_defspec, curdef);
+
+						curdef->next = *pdefaults_tail;
+						*pdefaults_tail = curdef;
+						pdefaults_tail = &curdef->next;
+
+						/* let perl parse the default parameter value */
+						curdef->init = parse_termexpr(0);
+
+						lex_read_space(0);
+						c = lex_peek_unichar(0);
+					} else {
+						if (sigil == '$' && !defaults) {
+							args_min++;
+						}
+					}
 				}
 
 				/* my $param; */
@@ -594,6 +628,10 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 					var->op_targ = pad_add_name_sv(param, 0, NULL, NULL);
 
 					*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, var));
+				}
+
+				if (param_count == 0) {
+					continue;
 				}
 
 				if (c == ',') {
@@ -734,9 +772,23 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 		CvSPECIAL_on(PL_compcv);
 	}
 
+	if (!invocant) {
+		invocant = spec->shift;
+
+		/* my $self;  # wasn't needed yet */
+		if (SvTRUE(invocant) && !did_invocant_decl) {
+			OP *var;
+
+			var = newOP(OP_PADSV, OPf_MOD | (OPpLVAL_INTRO << 8));
+			var->op_targ = pad_add_name_sv(invocant, 0, NULL, NULL);
+
+			*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, var));
+		}
+	}
+
 	/* min/max argument count checks */
 	if (spec->flags & FLAG_CHECK_NARGS) {
-		if (SvTRUE(spec->shift)) {
+		if (SvTRUE(invocant)) {
 			args_min++;
 			if (args_max != -1) {
 				args_max++;
@@ -782,11 +834,11 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 	}
 
 	/* $self = shift; */
-	if (SvTRUE(spec->shift)) {
+	if (SvTRUE(invocant)) {
 		OP *var, *shift;
 
 		var = newOP(OP_PADSV, OPf_WANT_SCALAR);
-		var->op_targ = pad_findmy_sv(spec->shift, 0);
+		var->op_targ = pad_findmy_sv(invocant, 0);
 
 		shift = newASSIGNOP(OPf_STACKED, var, 0, newOP(OP_SHIFT, 0));
 		*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, shift));
@@ -917,14 +969,15 @@ BOOT:
 WARNINGS_ENABLE {
 	HV *const stash = gv_stashpvs(MY_PKG, GV_ADD);
 	/**/
-	newCONSTSUB(stash, "FLAG_NAME_OK", newSViv(FLAG_NAME_OK));
-	newCONSTSUB(stash, "FLAG_ANON_OK", newSViv(FLAG_ANON_OK));
+	newCONSTSUB(stash, "FLAG_NAME_OK",      newSViv(FLAG_NAME_OK));
+	newCONSTSUB(stash, "FLAG_ANON_OK",      newSViv(FLAG_ANON_OK));
 	newCONSTSUB(stash, "FLAG_DEFAULT_ARGS", newSViv(FLAG_DEFAULT_ARGS));
-	newCONSTSUB(stash, "FLAG_CHECK_NARGS", newSViv(FLAG_CHECK_NARGS));
+	newCONSTSUB(stash, "FLAG_CHECK_NARGS",  newSViv(FLAG_CHECK_NARGS));
+	newCONSTSUB(stash, "FLAG_INVOCANT",     newSViv(FLAG_INVOCANT));
 	newCONSTSUB(stash, "HINTK_KEYWORDS", newSVpvs(HINTK_KEYWORDS));
-	newCONSTSUB(stash, "HINTK_FLAGS_", newSVpvs(HINTK_FLAGS_));
-	newCONSTSUB(stash, "HINTK_SHIFT_", newSVpvs(HINTK_SHIFT_));
-	newCONSTSUB(stash, "HINTK_ATTRS_", newSVpvs(HINTK_ATTRS_));
+	newCONSTSUB(stash, "HINTK_FLAGS_",   newSVpvs(HINTK_FLAGS_));
+	newCONSTSUB(stash, "HINTK_SHIFT_",   newSVpvs(HINTK_SHIFT_));
+	newCONSTSUB(stash, "HINTK_ATTRS_",   newSVpvs(HINTK_ATTRS_));
 	/**/
 	next_keyword_plugin = PL_keyword_plugin;
 	PL_keyword_plugin = my_keyword_plugin;
