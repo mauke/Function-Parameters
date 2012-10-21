@@ -207,6 +207,22 @@ Function::Parameters - subroutine definitions with parameter lists
 
 =pod
 
+ use Function::Parameters qw(:strict);
+ 
+ fun greet($x) {
+   print "Hello, $x\n";
+ }
+ 
+ greet "foo", "bar";
+ # Dies at runtime with "Too many arguments for fun greet"
+ 
+ greet;
+ # Dies at runtime with "Not enough arguments for fun greet"
+
+=cut
+
+=pod
+
  # use different keywords
  use Function::Parameters {
    proc => 'function',
@@ -222,11 +238,6 @@ Function::Parameters - subroutine definitions with parameter lists
 
 This module lets you use parameter lists in your subroutines. Thanks to
 L<PL_keyword_plugin|perlapi/PL_keyword_plugin> it works without source filters.
-
-WARNING: This is my first attempt at writing L<XS code|perlxs> and I have
-almost no experience with perl's internals. So while this module might
-appear to work, it could also conceivably make your programs segfault.
-Consider this module alpha quality.
 
 =head2 Basic stuff
 
@@ -335,7 +346,7 @@ instead of a comma and will by initialized by shifting the first element off
 C<@_>.
 
 You can combine C<shift> and C<invocant>, in which case the variable named in
-C<shift> serves as a default shift target for functions that don't use an
+C<shift> serves as a default shift target for functions that don't specify an
 explicit invocant.
 
 =item C<attributes>, C<attrs>
