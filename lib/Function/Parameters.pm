@@ -58,13 +58,20 @@ for my $k (keys %type_map) {
 sub import {
 	my $class = shift;
 
-	@_ or @_ = {
-		fun => 'function',
-		method => 'method',
-	};
+	if (!@_) {
+		@_ = {
+			fun => 'function',
+			method => 'method',
+		};
+	}
+	if (@_ == 1 && $_[0] eq ':strict') {
+		@_ = {
+			fun => 'function_strict',
+			method => 'method_strict',
+		};
+	}
 	if (@_ == 1 && ref($_[0]) eq 'HASH') {
-		@_ = map [$_, $_[0]{$_}], keys %{$_[0]}
-			or return;
+		@_ = map [$_, $_[0]{$_}], keys %{$_[0]};
 	}
 
 	my %spec;
@@ -267,6 +274,12 @@ The following shortcuts are available:
 
 =pod
 
+ use Function::Parameters ':strict';
+    # is equivalent to #
+ use Function::Parameters { fun => 'function_strict', method => 'method_strict' };
+
+=pod
+
 The following shortcuts are deprecated and may be removed from a future version
 of this module:
 
@@ -284,10 +297,10 @@ of this module:
    # is equivalent to #
  use Function::Parameters { 'foo' => 'function', 'bar' => 'method' };
 
-That is, if you want to pass arguments to L<Function::Parameters>, use a
-hashref, not a list of strings.
+That is, if you want to create custom keywords with L<Function::Parameters>,
+use a hashref, not a list of strings.
 
-You can customize the properties of the generated keywords even more by passing
+You can tune the properties of the generated keywords even more by passing
 a hashref instead of a string. This hash can have the following keys:
 
 =over

@@ -14,6 +14,7 @@ t/attrs.t
 t/bonus.t
 t/checkered.t
 t/checkered_2.t
+t/checkered_3.t
 t/defaults.t
 t/defaults_regress.t
 t/eating_strict_error.fail
