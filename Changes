@@ -1,5 +1,9 @@
 Revision history for Function-Parameters
 
+0.10    2012-10-21
+        - add ':strict' import target
+        - support $invocant: parameter syntax
+
 0.09    2012-10-14
         - fix wrong line number for statement immediately following a function
 
