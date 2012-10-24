@@ -1,4 +1,4 @@
-use 5.014;
+use 5.006;
 use strict;
 use warnings;
 use ExtUtils::MakeMaker;
@@ -16,6 +16,7 @@ WriteMakefile(
     BUILD_REQUIRES => {
         'Dir::Self' => 0,
         'Test::More' => 0,
+        'Test::Fatal' => 0,
     },
     PREREQ_PM => {
     	'Carp' => 0,
@@ -35,6 +36,7 @@ WriteMakefile(
     	},
     },
     depend => { Makefile => '$(VERSION_FROM)' },
+    test => { TESTS => 't/*.t t/foreign/*.t t/foreign/*/*.t' },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean               => { FILES => 'Function-Parameters-*' },
 );

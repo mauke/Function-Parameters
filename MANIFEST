@@ -43,3 +43,15 @@ t/strict_3.fail
 t/strict_4.fail
 t/strict_5.fail
 t/unicode.t
+t/foreign/MooseX-Method-Signatures/attributes.t
+t/foreign/MooseX-Method-Signatures/caller.t
+t/foreign/MooseX-Method-Signatures/errors.t
+t/foreign/MooseX-Method-Signatures/eval.t
+t/foreign/MooseX-Method-Signatures/lib/InvalidCase01.pm
+t/foreign/MooseX-Method-Signatures/lib/Redefined.pm
+t/foreign/MooseX-Method-Signatures/list.t
+t/foreign/MooseX-Method-Signatures/no_signature.t
+t/foreign/MooseX-Method-Signatures/precedence.t
+t/foreign/MooseX-Method-Signatures/sigs-optional.t
+t/foreign/MooseX-Method-Signatures/too_many_args.t
+t/foreign/MooseX-Method-Signatures/undef_method_arg.t
