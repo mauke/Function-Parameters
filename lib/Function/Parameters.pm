@@ -32,11 +32,13 @@ my %type_map = (
 		name => 'optional',
 		default_arguments => 1,
 		check_argument_count => 0,
+		named_parameters => 1,
 	},
 	method   => {
 		name => 'optional',
 		default_arguments => 1,
 		check_argument_count => 0,
+		named_parameters => 1,
 		attrs => ':method',
 		shift => '$self',
 		invocant => 1,
@@ -45,6 +47,7 @@ my %type_map = (
 		name => 'optional',
 		default_arguments => 1,
 		check_argument_count => 0,
+		named_parameters => 1,
 		attributes => ':method',
 		shift => '$class',
 		invocant => 1,
@@ -113,6 +116,7 @@ sub import {
 		;
 		$clean{check_argument_count} = !!delete $type{check_argument_count};
 		$clean{invocant} = !!delete $type{invocant};
+		$clean{named_parameters} = !!delete $type{named_parameters};
 
 		%type and confess "Invalid keyword property: @{[keys %type]}";
 
@@ -130,6 +134,7 @@ sub import {
 		$flags |= FLAG_DEFAULT_ARGS if $type->{default_arguments};
 		$flags |= FLAG_CHECK_NARGS if $type->{check_argument_count};
 		$flags |= FLAG_INVOCANT if $type->{invocant};
+		$flags |= FLAG_NAMED_PARAMS if $type->{named_parameters};
 		$^H{HINTK_FLAGS_ . $kw} = $flags;
 		$^H{HINTK_SHIFT_ . $kw} = $type->{shift};
 		$^H{HINTK_ATTRS_ . $kw} = $type->{attrs};

@@ -101,7 +101,7 @@ is eval('fun ($x, %y = ()) {}'), undef;
 like $@, qr/default value/;
 
 is eval('nofun ($x = 42) {}'), undef;
-like $@, qr/nofun.*unexpected.*=.*parameter/;
+like $@, qr/nofun.*default argument/;
 
 
 {
