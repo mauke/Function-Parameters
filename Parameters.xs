@@ -88,6 +88,8 @@ WARNINGS_ENABLE
 
 #define DEFSTRUCT(T) typedef struct T T; struct T
 
+#define UV_BITS (sizeof (UV) * CHAR_BIT)
+
 enum {
 	FLAG_NAME_OK      = 0x01,
 	FLAG_ANON_OK      = 0x02,
@@ -1280,6 +1282,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 			int nameblock_ix;
 			OP *nameblock;
 			PADOFFSET vb, vc, vi, vk;
+			int vb_is_str, vc_is_str;
 			const size_t pos = count_positional_params(param_spec);
 
 			nameblock = NULL;
@@ -1290,21 +1293,23 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 
 				decl = NULL;
 
+				vb_is_str = param_spec->named_required.used > UV_BITS;
 				if (!param_spec->named_required.used || !(spec->flags & FLAG_CHECK_NARGS)) {
 					vb = 0;
 				} else {
 					var = newOP(OP_PADSV, OPf_MOD | (OPpLVAL_INTRO << 8));
 					var->op_targ = vb = pad_add_name_pvs("$__B", 0, NULL, NULL);
-					var = newASSIGNOP(OPf_STACKED, var, 0, newSVOP(OP_CONST, 0, newSVpvs("")));
+					var = newASSIGNOP(OPf_STACKED, var, 0, newSVOP(OP_CONST, 0, vb_is_str ? newSVpvs("") : newSVuv(0)));
 					decl = op_append_list(OP_LINESEQ, decl, newSTATEOP(0, NULL, var));
 				}
 
+				vc_is_str = param_spec->named_optional.used > UV_BITS;
 				if (!param_spec->named_optional.used) {
 					vc = 0;
 				} else {
 					var = newOP(OP_PADSV, OPf_MOD | (OPpLVAL_INTRO << 8));
 					var->op_targ = vc = pad_add_name_pvs("$__C", 0, NULL, NULL);
-					var = newASSIGNOP(OPf_STACKED, var, 0, newSVOP(OP_CONST, 0, newSVpvs("")));
+					var = newASSIGNOP(OPf_STACKED, var, 0, newSVOP(OP_CONST, 0, vc_is_str ? newSVpvs("") : newSVuv(0)));
 					decl = op_append_list(OP_LINESEQ, decl, newSTATEOP(0, NULL, var));
 				}
 
@@ -1393,7 +1398,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 						OP *err, *croak;
 
 						err = newSVOP(OP_CONST, 0,
-						              newSVpvf("In %"SVf": No such named parameter: ", SVfARG(declarator)));
+						              newSVpvf("In %"SVf": no such named parameter: ", SVfARG(declarator)));
 						err = newBINOP(
 							OP_CONCAT, 0,
 							err,
@@ -1416,12 +1421,19 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 
 						if (!(spec->flags & FLAG_CHECK_NARGS)) {
 							vec = NULL;
-						} else {
+						} else if (vc_is_str) {
 							vec = newASSIGNOP(
 								OPf_STACKED,
 								mkvecbits(aTHX_ vc, i),
 								0,
 								newSVOP(OP_CONST, 0, newSViv(1))
+							);
+						} else {
+							vec = newASSIGNOP(
+								OPf_STACKED,
+								my_var(0, vc),
+								OP_BIT_OR,
+								newSVOP(OP_CONST, 0, newSVuv((UV)1 << i))
 							);
 						}
 
@@ -1461,12 +1473,19 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 
 						if (!(spec->flags & FLAG_CHECK_NARGS)) {
 							vec = NULL;
-						} else {
+						} else if (vb_is_str) {
 							vec = newASSIGNOP(
 								OPf_STACKED,
 								mkvecbits(aTHX_ vb, i),
 								0,
 								newSVOP(OP_CONST, 0, newSViv(1))
+							);
+						} else {
+							vec = newASSIGNOP(
+								OPf_STACKED,
+								my_var(0, vb),
+								OP_BIT_OR,
+								newSVOP(OP_CONST, 0, newSVuv((UV)1 << i))
 							);
 						}
 
@@ -1539,7 +1558,10 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 						char *p = SvPV(sv, n);
 						cur = newCONDOP(
 							0,
-							mkvecbits(aTHX_ vb, i),
+							vb_is_str
+								? mkvecbits(aTHX_ vb, i)
+								: newBINOP(OP_BIT_AND, 0, my_var(0, vb), newSVOP(OP_CONST, 0, newSVuv((UV)1 << i)))
+							,
 							newNULLLIST(),
 							newSVOP(OP_CONST, 0, newSVpvn_utf8(p + 1, n - 1, SvUTF8(sv)))
 						);
@@ -1560,7 +1582,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 
 				err = newSVOP(
 					OP_CONST, 0,
-					newSVpvf("In %"SVf": Missing named parameter(s): ", SVfARG(declarator))
+					newSVpvf("In %"SVf": missing named parameter(s): ", SVfARG(declarator))
 				);
 				err = newBINOP(OP_CONCAT, 0, err, join);
 				croak = newCVREF(
@@ -1572,11 +1594,26 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 					OPf_STACKED,
 					op_append_elem(OP_LIST, err, croak)
 				);
-				cond = newBINOP(
-					OP_SNE, 0,
-					my_var(aTHX_ 0, vb),
-					newSVOP(OP_CONST, 0, mkbits1(aTHX_ param_spec->named_required.used))
-				);
+				if (vb_is_str) {
+					cond = newBINOP(
+						OP_SNE, 0,
+						my_var(aTHX_ 0, vb),
+						newSVOP(OP_CONST, 0, mkbits1(aTHX_ param_spec->named_required.used))
+					);
+				} else {
+					cond = newBINOP(
+						OP_NE, 0,
+						my_var(aTHX_ 0, vb),
+						newSVOP(
+							OP_CONST, 0,
+							newSVuv(
+								param_spec->named_required.used == UV_BITS
+								? ~(UV)0
+								: ((UV)1 << param_spec->named_required.used) - 1
+							)
+						)
+					);
+				}
 				err = newCONDOP(
 					0,
 					cond,
@@ -1602,7 +1639,12 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 					);
 					cur->init = NULL;
 
-					cond = newUNOP(OP_NOT, OPf_SPECIAL, mkvecbits(aTHX_ vc, i));
+					cond = newUNOP(
+						OP_NOT, OPf_SPECIAL,
+						vc_is_str
+						? mkvecbits(aTHX_ vc, i)
+						: newBINOP(OP_BIT_AND, 0, my_var(0, vc), newSVOP(OP_CONST, 0, newSVuv((UV)1 << i)))
+					);
 
 					init = newCONDOP(0, cond, init, NULL);
 
