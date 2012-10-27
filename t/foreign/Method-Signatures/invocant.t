@@ -39,9 +39,9 @@ our $skip_no_invocants;
             $self->bar($arg);
         }
 
-#        method no_invocant_named_param($arg) {
-#            $self->bar($arg);
-#        }
+        method no_invocant_named_param(:$arg) {
+            $self->bar($arg);
+        }
 
     };
     is $@, '', 'compiles without invocant';
@@ -64,4 +64,4 @@ is( Stuff->without_space(42),       42 );
 
 my $stuff = Stuff->new;
 is( $stuff->no_invocant_class_type(Foo::Bar->new),     'Foo::Bar' );
-#is( $stuff->no_invocant_named_param(arg => Foo->new),  'Foo' );
+is( $stuff->no_invocant_named_param(arg => Foo->new),  'Foo' );

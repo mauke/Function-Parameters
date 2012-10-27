@@ -34,11 +34,10 @@ use Test::More;
     is( Stuff->some_optional(18), 18 );
 
 
-#    # are named parameters optional by default?
-#    method named_params(:$this, :$that) {}
-#
-#    lives_ok { Stuff->named_params(this => 0) } 'can leave out some named params';
-#    lives_ok { Stuff->named_params(         ) } 'can leave out all named params';
+    method named_params(:$this = undef, :$that = undef) {}
+
+    is exception { Stuff->named_params(this => 0) }, undef, 'can leave out some named params';
+    is exception { Stuff->named_params(         ) }, undef, 'can leave out all named params';
 
 
     # are slurpy parameters optional by default?
