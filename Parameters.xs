@@ -1431,7 +1431,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 						} else {
 							vec = newASSIGNOP(
 								OPf_STACKED,
-								my_var(0, vc),
+								my_var(aTHX_ 0, vc),
 								OP_BIT_OR,
 								newSVOP(OP_CONST, 0, newSVuv((UV)1 << i))
 							);
@@ -1483,7 +1483,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 						} else {
 							vec = newASSIGNOP(
 								OPf_STACKED,
-								my_var(0, vb),
+								my_var(aTHX_ 0, vb),
 								OP_BIT_OR,
 								newSVOP(OP_CONST, 0, newSVuv((UV)1 << i))
 							);
@@ -1560,7 +1560,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 							0,
 							vb_is_str
 								? mkvecbits(aTHX_ vb, i)
-								: newBINOP(OP_BIT_AND, 0, my_var(0, vb), newSVOP(OP_CONST, 0, newSVuv((UV)1 << i)))
+								: newBINOP(OP_BIT_AND, 0, my_var(aTHX_ 0, vb), newSVOP(OP_CONST, 0, newSVuv((UV)1 << i)))
 							,
 							newNULLLIST(),
 							newSVOP(OP_CONST, 0, newSVpvn_utf8(p + 1, n - 1, SvUTF8(sv)))
@@ -1643,7 +1643,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 						OP_NOT, OPf_SPECIAL,
 						vc_is_str
 						? mkvecbits(aTHX_ vc, i)
-						: newBINOP(OP_BIT_AND, 0, my_var(0, vc), newSVOP(OP_CONST, 0, newSVuv((UV)1 << i)))
+						: newBINOP(OP_BIT_AND, 0, my_var(aTHX_ 0, vc), newSVOP(OP_CONST, 0, newSVuv((UV)1 << i)))
 					);
 
 					init = newCONDOP(0, cond, init, NULL);
