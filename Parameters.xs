@@ -673,6 +673,10 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 			my_check_prototype(aTHX_ declarator, proto);
 			lex_read_space(0);
 			c = lex_peek_unichar(0);
+			if (!(c == ':' || c == '{')) {
+				lex_stuff_pvs(":", 0);
+				c = ':';
+			}
 		}
 	}
 
