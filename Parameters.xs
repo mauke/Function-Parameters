@@ -1283,7 +1283,37 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 			OP *nameblock;
 			PADOFFSET vb, vc, vi, vk;
 			int vb_is_str, vc_is_str;
-			const size_t pos = count_positional_params(param_spec);
+
+			{
+				OP *lhs;
+				size_t i, lim;
+
+				lhs = NULL;
+
+				for (i = 0, lim = param_spec->named_required.used; i < lim; i++) {
+					OP *const var = my_var(
+						aTHX_
+						OPf_MOD | OPf_WANT_LIST | (OPpLVAL_INTRO << 8),
+						param_spec->named_required.data[i].padoff
+					);
+					lhs = op_append_elem(OP_LIST, lhs, var);
+				}
+
+				for (i = 0, lim = param_spec->named_optional.used; i < lim; i++) {
+					OP *const var = my_var(
+						aTHX_
+						OPf_MOD | OPf_WANT_LIST | (OPpLVAL_INTRO << 8),
+						param_spec->named_optional.data[i].param.padoff
+					);
+					lhs = op_append_elem(OP_LIST, lhs, var);
+				}
+
+				lhs->op_flags |= OPf_PARENS;
+				*prelude_sentinel = op_append_list(
+					OP_LINESEQ, *prelude_sentinel,
+					lhs
+				);
+			}
 
 			nameblock = NULL;
 			nameblock_ix = S_block_start(aTHX_ TRUE);
@@ -1319,7 +1349,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 
 				var = newOP(OP_PADSV, OPf_MOD | (OPpLVAL_INTRO << 8));
 				var->op_targ = vi = pad_add_name_pvs("$__I", 0, NULL, NULL);
-				var = newASSIGNOP(OPf_STACKED, var, 0, newSVOP(OP_CONST, 0, newSViv(pos)));
+				var = newASSIGNOP(OPf_STACKED, var, 0, newSVOP(OP_CONST, 0, newSViv(count_positional_params(param_spec))));
 				decl = op_append_list(OP_LINESEQ, decl, newSTATEOP(0, NULL, var));
 
 				//S_intro_my(aTHX);
