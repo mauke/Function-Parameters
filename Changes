@@ -1,5 +1,10 @@
 Revision history for Function-Parameters
 
+1.00    2012-11-01
+        - add named parameters with ':$foo, :$bar' syntax
+        - rewrite documentation
+        - more tests (some of them copied from similar modules on CPAN)
+
 0.10    2012-10-21
         - add ':strict' import target
         - support $invocant: parameter syntax
