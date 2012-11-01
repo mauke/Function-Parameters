@@ -76,6 +76,7 @@ t/named_params.t
 t/pod.t
 t/precedence.t
 t/prototype.t
+t/recursion.t
 t/regress.t
 t/rename.t
 t/strict.t
