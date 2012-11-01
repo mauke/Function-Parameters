@@ -21,6 +21,8 @@ t/eating_strict_error.fail
 t/eating_strict_error.t
 t/eating_strict_error_2.fail
 t/elsewhere.t
+t/foreign/Method-Signatures-Simple/02-use.t
+t/foreign/Method-Signatures-Simple/03-config.t
 t/foreign/Method-Signatures/anon.t
 t/foreign/Method-Signatures/array_param.t
 t/foreign/Method-Signatures/at_underscore.t
