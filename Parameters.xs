@@ -450,6 +450,7 @@ DEFSTRUCT(ParamSpec) {
 	VEC(Param) named_required;
 	VEC(ParamInit) named_optional;
 	Param slurpy;
+	PADOFFSET rest_hash;
 };
 
 DEFVECTOR_INIT(pv_init, Param);
@@ -467,6 +468,7 @@ static void ps_init(ParamSpec *ps) {
 	pv_init(&ps->named_required);
 	piv_init(&ps->named_optional);
 	p_init(&ps->slurpy);
+	ps->rest_hash = NOT_IN_PAD;
 }
 
 #define DEFVECTOR_EXTEND(N, B) static B (*N(VEC(B) *p)) { \
@@ -741,6 +743,25 @@ static OP *mkargselemv(pTHX_ PADOFFSET v) {
 	return mkargselem(aTHX_ my_var(aTHX_ 0, v));
 }
 
+static OP *mkhvelem(pTHX_ PADOFFSET h, OP *k) {
+	OP *hv = my_var_g(aTHX_ OP_PADHV, OPf_REF, h);
+	return newBINOP(OP_HELEM, 0, hv, k);
+}
+
+static OP *mkconstsv(pTHX_ SV *sv) {
+	return newSVOP(OP_CONST, 0, sv);
+}
+
+static OP *mkconstiv(pTHX_ IV i) {
+	return mkconstsv(aTHX_ newSViv(i));
+}
+
+static OP *mkconstpv(pTHX_ const char *p, size_t n) {
+	return mkconstsv(aTHX_ newSVpv(p, n));
+}
+
+#define mkconstpvs(S) mkconstpv(aTHX_ "" S "", sizeof S - 1)
+
 static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len, const KWSpec *spec) {
 	ParamSpec *param_spec;
 	SV *declarator;
@@ -1013,7 +1034,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 				}
 
 				if (attr) {
-					*attrs_sentinel = op_append_elem(OP_LIST, *attrs_sentinel, newSVOP(OP_CONST, 0, SvREFCNT_inc_simple_NN(attr)));
+					*attrs_sentinel = op_append_elem(OP_LIST, *attrs_sentinel, mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(attr)));
 				}
 
 				if (c == ':') {
@@ -1041,8 +1062,8 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 
 		newATTRSUB(
 			sub_ix,
-			newSVOP(OP_CONST, 0, SvREFCNT_inc_simple_NN(saw_name)),
-			proto ? newSVOP(OP_CONST, 0, SvREFCNT_inc_simple_NN(proto)) : NULL,
+			mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(saw_name)),
+			proto ? mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(proto)) : NULL,
 			NULL,
 			NULL
 		);
@@ -1067,23 +1088,26 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 		if (amin > 0) {
 			OP *chk, *cond, *err, *croak;
 
-			err = newSVOP(OP_CONST, 0,
-				          newSVpvf("Not enough arguments for %"SVf" (expected %d, got ", SVfARG(declarator), amin));
-			err = newBINOP(OP_CONCAT, 0,
-				           err,
-				           newAVREF(newGVOP(OP_GV, 0, PL_defgv)));
-			err = newBINOP(OP_CONCAT, 0,
-				           err,
-				           newSVOP(OP_CONST, 0, newSVpvs(")")));
+			err = mkconstsv(aTHX_ newSVpvf("Not enough arguments for %"SVf" (expected %d, got ", SVfARG(declarator), amin));
+			err = newBINOP(
+				OP_CONCAT, 0,
+				err,
+				newAVREF(newGVOP(OP_GV, 0, PL_defgv))
+			);
+			err = newBINOP(
+				OP_CONCAT, 0,
+				err,
+				mkconstpvs(")")
+			);
 
 			croak = newCVREF(OPf_WANT_SCALAR,
-				             newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV)));
+			                 newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV)));
 			err = newUNOP(OP_ENTERSUB, OPf_STACKED,
-				          op_append_elem(OP_LIST, err, croak));
+			              op_append_elem(OP_LIST, err, croak));
 
 			cond = newBINOP(OP_LT, 0,
-				            newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
-				            newSVOP(OP_CONST, 0, newSViv(amin)));
+			                newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
+			                mkconstiv(aTHX_ amin));
 			chk = newLOGOP(OP_AND, 0, cond, err);
 
 			*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, chk));
@@ -1093,23 +1117,30 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 		if (amax >= 0) {
 			OP *chk, *cond, *err, *croak;
 
-			err = newSVOP(OP_CONST, 0,
-				          newSVpvf("Too many arguments for %"SVf" (expected %d, got ", SVfARG(declarator), amax));
-			err = newBINOP(OP_CONCAT, 0,
-				           err,
-				           newAVREF(newGVOP(OP_GV, 0, PL_defgv)));
-			err = newBINOP(OP_CONCAT, 0,
-				           err,
-				           newSVOP(OP_CONST, 0, newSVpvs(")")));
+			err = mkconstsv(aTHX_ newSVpvf("Too many arguments for %"SVf" (expected %d, got ", SVfARG(declarator), amax));
+			err = newBINOP(
+				OP_CONCAT, 0,
+				err,
+				newAVREF(newGVOP(OP_GV, 0, PL_defgv))
+			);
+			err = newBINOP(
+				OP_CONCAT, 0,
+				err,
+				mkconstpvs(")")
+			);
 
-			croak = newCVREF(OPf_WANT_SCALAR,
-				             newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV)));
+			croak = newCVREF(
+				OPf_WANT_SCALAR,
+				newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV))
+			);
 			err = newUNOP(OP_ENTERSUB, OPf_STACKED,
-				          op_append_elem(OP_LIST, err, croak));
+			op_append_elem(OP_LIST, err, croak));
 
-			cond = newBINOP(OP_GT, 0,
-				            newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
-				            newSVOP(OP_CONST, 0, newSViv(amax)));
+			cond = newBINOP(
+				OP_GT, 0,
+				newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
+				mkconstiv(aTHX_ amax)
+			);
 			chk = newLOGOP(OP_AND, 0, cond, err);
 
 			*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, chk));
@@ -1119,30 +1150,27 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 			OP *chk, *cond, *err, *croak;
 			const UV fixed = count_positional_params(param_spec) + !!param_spec->invocant.name;
 
-			err = newSVOP(OP_CONST, 0,
-				          newSVpvf("Odd number of paired arguments for %"SVf"", SVfARG(declarator)));
+			err = mkconstsv(aTHX_ newSVpvf("Odd number of paired arguments for %"SVf"", SVfARG(declarator)));
 
-			croak = newCVREF(OPf_WANT_SCALAR,
-				             newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV)));
+			croak = newCVREF(
+				OPf_WANT_SCALAR,
+				newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV))
+			);
 			err = newUNOP(OP_ENTERSUB, OPf_STACKED,
-				          op_append_elem(OP_LIST, err, croak));
+			op_append_elem(OP_LIST, err, croak));
 
 			cond = newBINOP(OP_GT, 0,
-				            fixed
-				            ? newBINOP(OP_SUBTRACT, 0,
-				                       newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
-				                       newSVOP(OP_CONST, 0, newSVuv(fixed)))
-				            : newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
-				            newSVOP(OP_CONST, 0, newSViv(0)));
+			                newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
+			                mkconstiv(aTHX_ fixed));
 			cond = newLOGOP(OP_AND, 0,
-				            cond,
-				            newBINOP(OP_MODULO, 0,
-				                     fixed
-				                     ? newBINOP(OP_SUBTRACT, 0,
-				                                newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
-				                                newSVOP(OP_CONST, 0, newSVuv(fixed)))
-				                     : newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
-				                     newSVOP(OP_CONST, 0, newSViv(2))));
+			                cond,
+			                newBINOP(OP_MODULO, 0,
+			                         fixed
+			                         ? newBINOP(OP_SUBTRACT, 0,
+			                                    newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
+			                                    mkconstiv(aTHX_ fixed))
+			                         : newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
+			                         mkconstiv(aTHX_ 2)));
 			chk = newLOGOP(OP_AND, 0, cond, err);
 
 			*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, chk));
@@ -1203,23 +1231,58 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 				lhs = op_append_elem(OP_LIST, lhs, var);
 			}
 
-			if (param_spec->slurpy.name) {
-				if (count_named_params(param_spec)) {
-					OP *const var = my_var_g(
-						aTHX_
-						SvPV_nolen(param_spec->slurpy.name)[0] == '@' ? OP_PADAV : OP_PADHV,
-						OPf_MOD | (OPpLVAL_INTRO << 8),
-						param_spec->slurpy.padoff
-					);
-					*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, var));
+			{
+				PADOFFSET padoff;
+				I32 type;
+				bool slurpy_hash;
+
+				/*
+				 * cases:
+				 *  1) no named params
+				 *   1.1) slurpy
+				 *       => put it in
+				 *   1.2) no slurpy
+				 *       => nop
+				 *  2) named params
+				 *   2.1) no slurpy
+				 *       => synthetic %{rest}
+				 *   2.2) slurpy is a hash
+				 *       => put it in
+				 *   2.3) slurpy is an array
+				 *       => synthetic %{rest}
+				 *          remember to declare array later
+				 */
+
+				slurpy_hash = param_spec->slurpy.name && SvPV_nolen(param_spec->slurpy.name)[0] == '%';
+				if (!count_named_params(param_spec)) {
+					if (param_spec->slurpy.name) {
+						padoff = param_spec->slurpy.padoff;
+						type = slurpy_hash ? OP_PADHV : OP_PADAV;
+					} else {
+						padoff = NOT_IN_PAD;
+						type = OP_PADSV;
+					}
+				} else if (slurpy_hash) {
+					padoff = param_spec->slurpy.padoff;
+					type = OP_PADHV;
 				} else {
+					padoff = param_spec->rest_hash = pad_add_name_pvs("%{rest}", 0, NULL, NULL);
+					type = OP_PADHV;
+				}
+
+				if (padoff != NOT_IN_PAD) {
 					OP *const var = my_var_g(
 						aTHX_
-						SvPV_nolen(param_spec->slurpy.name)[0] == '@' ? OP_PADAV : OP_PADHV,
+						type,
 						OPf_WANT_LIST | (OPpLVAL_INTRO << 8),
-						param_spec->slurpy.padoff
+						padoff
 					);
+
 					lhs = op_append_elem(OP_LIST, lhs, var);
+
+					if (type == OP_PADHV) {
+						param_spec->rest_hash = padoff;
+					}
 				}
 			}
 
@@ -1238,7 +1301,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 			}
 		}
 
-		/* default arguments */
+		/* default positional arguments */
 		{
 			size_t i, lim, req;
 			OP *nest;
@@ -1253,7 +1316,7 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 				cond = newBINOP(
 					OP_LT, 0,
 					newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
-					newSVOP(OP_CONST, 0, newSViv(req + i + 1))
+					mkconstiv(aTHX_ req + i + 1)
 				);
 
 				var = my_var(aTHX_ 0, cur->param.padoff);
@@ -1279,6 +1342,146 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 
 		/* named parameters */
 		if (count_named_params(param_spec)) {
+			size_t i, lim;
+
+			assert(param_spec->rest_hash != NOT_IN_PAD);
+
+			for (i = 0, lim = param_spec->named_required.used; i < lim; i++) {
+				Param *cur = &param_spec->named_required.data[i];
+				size_t n;
+				char *p = SvPV(cur->name, n);
+				OP *var, *cond;
+
+				cond = mkhvelem(aTHX_ param_spec->rest_hash, mkconstpv(aTHX_ p + 1, n - 1));
+
+				if (spec->flags & FLAG_CHECK_NARGS) {
+					OP *croak, *msg;
+
+					var = mkhvelem(aTHX_ param_spec->rest_hash, mkconstpv(aTHX_ p + 1, n - 1));
+					var = newUNOP(OP_DELETE, 0, var);
+
+					msg = mkconstsv(aTHX_ newSVpvf("In %"SVf": missing named parameter: %.*s", SVfARG(declarator), (int)(n - 1), p + 1));
+					croak = newCVREF(
+						OPf_WANT_SCALAR,
+						newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV))
+					);
+					croak = newUNOP(OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, msg, croak));
+
+					cond = newUNOP(OP_EXISTS, 0, cond);
+
+					cond = newCONDOP(0, cond, var, croak);
+				}
+
+				var = my_var(
+					aTHX_
+					OPf_MOD | (OPpLVAL_INTRO << 8),
+					cur->padoff
+				);
+				var = newASSIGNOP(OPf_STACKED, var, 0, cond);
+
+				*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, var));
+			}
+
+			for (i = 0, lim = param_spec->named_optional.used; i < lim; i++) {
+				ParamInit *cur = &param_spec->named_optional.data[i];
+				size_t n;
+				char *p = SvPV(cur->param.name, n);
+				OP *var, *cond;
+
+				var = mkhvelem(aTHX_ param_spec->rest_hash, mkconstpv(aTHX_ p + 1, n - 1));
+				var = newUNOP(OP_DELETE, 0, var);
+
+				cond = mkhvelem(aTHX_ param_spec->rest_hash, mkconstpv(aTHX_ p + 1, n - 1));
+				cond = newUNOP(OP_EXISTS, 0, cond);
+
+				cond = newCONDOP(0, cond, var, cur->init);
+				cur->init = NULL;
+
+				var = my_var(
+					aTHX_
+					OPf_MOD | (OPpLVAL_INTRO << 8),
+					cur->param.padoff
+				);
+				var = newASSIGNOP(OPf_STACKED, var, 0, cond);
+
+				*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, var));
+			}
+
+			if (!param_spec->slurpy.name) {
+				if (spec->flags & FLAG_CHECK_NARGS) {
+					/* croak if %{rest} */
+					OP *croak, *cond, *keys, *msg;
+
+					keys = newUNOP(OP_KEYS, 0, my_var_g(aTHX_ OP_PADHV, 0, param_spec->rest_hash));
+					keys = newLISTOP(OP_SORT, 0, newOP(OP_PUSHMARK, 0), keys);
+					{
+						OP *first, *mid, *last;
+
+						last = keys;
+
+						mid = mkconstpvs(", ");
+						mid->op_sibling = last;
+
+						first = newOP(OP_PUSHMARK, 0);
+
+						keys = newLISTOP(OP_JOIN, 0, first, mid);
+						keys->op_targ = pad_alloc(OP_JOIN, SVs_PADTMP);
+						((LISTOP *)keys)->op_last = last;
+					}
+
+					msg = mkconstsv(aTHX_ newSVpvf("In %"SVf": no such named parameter: ", SVfARG(declarator)));
+					msg = newBINOP(OP_CONCAT, 0, msg, keys);
+
+					croak = newCVREF(
+						OPf_WANT_SCALAR,
+						newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV))
+					);
+					croak = newUNOP(OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, msg, croak));
+
+					cond = newUNOP(OP_KEYS, 0, my_var_g(aTHX_ OP_PADHV, 0, param_spec->rest_hash));
+					croak = newCONDOP(0, cond, croak, NULL);
+
+					*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, croak));
+				} else {
+					OP *clear;
+
+					clear = newASSIGNOP(
+						OPf_STACKED,
+						my_var_g(aTHX_ OP_PADHV, 0, param_spec->rest_hash),
+						0,
+						newNULLLIST()
+					);
+
+					*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, clear));
+				}
+			} else if (param_spec->slurpy.padoff != param_spec->rest_hash) {
+				OP *var, *clear;
+
+				assert(SvPV_nolen(param_spec->slurpy.name)[0] == '@');
+
+				var = my_var_g(
+					aTHX_
+					OP_PADAV,
+					OPf_MOD | (OPpLVAL_INTRO << 8),
+					param_spec->slurpy.padoff
+				);
+
+				var = newASSIGNOP(OPf_STACKED, var, 0, my_var_g(aTHX_ OP_PADHV, 0, param_spec->rest_hash));
+
+				*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, var));
+
+				clear = newASSIGNOP(
+					OPf_STACKED,
+					my_var_g(aTHX_ OP_PADHV, 0, param_spec->rest_hash),
+					0,
+					newNULLLIST()
+				);
+
+				*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, clear));
+			}
+		}
+
+		if (count_named_params(param_spec) && 0) {
 			int nameblock_ix;
 			OP *nameblock;
 			PADOFFSET vb, vc, vi, vk;
@@ -1352,7 +1555,6 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 				var = newASSIGNOP(OPf_STACKED, var, 0, newSVOP(OP_CONST, 0, newSViv(count_positional_params(param_spec))));
 				decl = op_append_list(OP_LINESEQ, decl, newSTATEOP(0, NULL, var));
 
-				//S_intro_my(aTHX);
 				nameblock = op_append_list(OP_LINESEQ, nameblock, decl);
 			}
 
@@ -1669,14 +1871,12 @@ static int parse_fun(pTHX_ OP **pop, const char *keyword_ptr, STRLEN keyword_len
 					);
 					cur->init = NULL;
 
-					cond = newUNOP(
-						OP_NOT, OPf_SPECIAL,
-						vc_is_str
+					cond = vc_is_str
 						? mkvecbits(aTHX_ vc, i)
 						: newBINOP(OP_BIT_AND, 0, my_var(aTHX_ 0, vc), newSVOP(OP_CONST, 0, newSVuv((UV)1 << i)))
-					);
+					;
 
-					init = newCONDOP(0, cond, init, NULL);
+					init = newCONDOP(0, cond, NULL, init);
 
 					nameblock = op_append_list(OP_LINESEQ, nameblock, newSTATEOP(0, NULL, init));
 				}

@@ -25,7 +25,7 @@ fun name_1(:$n1) { [$n1, @_] }
 like exception { name_1 }, qr/Not enough arguments/;
 like exception { name_1 'n1' }, qr/Not enough arguments/;
 like exception { name_1 'asdf' }, qr/Not enough arguments/;
-like exception { name_1 huh => 1 }, qr/\bnamed\b.+\bhuh\b/;
+like exception { name_1 n1 => 0, huh => 1 }, qr/\bnamed\b.+\bhuh\b/;
 is_deeply name_1(n1 => undef), [undef, n1 => undef];
 is_deeply name_1(n1 => 'a'), ['a', n1 => 'a'];
 is_deeply name_1(n1 => 'a', n1 => 'b'), ['b', n1 => 'a', n1 => 'b'];
@@ -49,7 +49,7 @@ like exception { pos_1_name_1 }, qr/Not enough arguments/;
 like exception { pos_1_name_1 42 }, qr/Not enough arguments/;
 like exception { pos_1_name_1 42, 'n1' }, qr/Not enough arguments/;
 like exception { pos_1_name_1 42, 'asdf' }, qr/Not enough arguments/;
-like exception { pos_1_name_1 42, huh => 1 }, qr/\bnamed\b.+\bhuh\b/;
+like exception { pos_1_name_1 42, n1 => 0, huh => 1 }, qr/\bnamed\b.+\bhuh\b/;
 is_deeply pos_1_name_1(42, n1 => undef), [42, undef, 42, n1 => undef];
 is_deeply pos_1_name_1(42, n1 => 'a'), [42, 'a', 42, n1 => 'a'];
 is_deeply pos_1_name_1(42, n1 => 'a', n1 => 'b'), [42, 'b', 42, n1 => 'a', n1 => 'b'];
@@ -94,7 +94,7 @@ like exception { name_1_slurp huh => 1 }, qr/missing named\b.+\bn1\b/;
 is_deeply name_1_slurp(n1 => 'a'), ['a', [], n1 => 'a'];
 like exception { name_1_slurp n1 => 'a', 'n1' }, qr/Odd number/;
 is_deeply name_1_slurp(n1 => 'a', foo => 'bar'), ['a', [foo => 'bar'], n1 => 'a', foo => 'bar'];
-is_deeply name_1_slurp(foo => 'bar', n1 => 'a', foo => 'quux'), ['a', [foo => 'bar', foo => 'quux'], foo => 'bar', n1 => 'a', foo => 'quux'];
+is_deeply name_1_slurp(foo => 'bar', n1 => 'a', foo => 'quux'), ['a', [foo => 'quux'], foo => 'bar', n1 => 'a', foo => 'quux'];
 
 
 fun name_0_1_slurp(:$n1 = 'd', @rest) { [$n1, \@rest, @_] }
@@ -106,7 +106,7 @@ is_deeply name_0_1_slurp(n1 => 'a'), ['a', [], n1 => 'a'];
 like exception { name_0_1_slurp n1 => 'a', 'n1' }, qr/Odd number/;
 is_deeply name_0_1_slurp(a => 'b'), ['d', [a => 'b'], a => 'b'];
 is_deeply name_0_1_slurp(n1 => 'a', foo => 'bar'), ['a', [foo => 'bar'], n1 => 'a', foo => 'bar'];
-is_deeply name_0_1_slurp(foo => 'bar', n1 => 'a', foo => 'quux'), ['a', [foo => 'bar', foo => 'quux'], foo => 'bar', n1 => 'a', foo => 'quux'];
+is_deeply name_0_1_slurp(foo => 'bar', n1 => 'a', foo => 'quux'), ['a', [foo => 'quux'], foo => 'bar', n1 => 'a', foo => 'quux'];
 
 
 fun name_2(:$n1, :$n2) { [$n1, $n2, @_] }
@@ -137,7 +137,7 @@ fun name_1_2(:$n1, :$n2 = 'f') { [$n1, $n2, @_] }
 like exception { name_1_2 }, qr/Not enough arguments/;
 like exception { name_1_2 'n1' }, qr/Not enough arguments/;
 like exception { name_1_2 'asdf' }, qr/Not enough arguments/;
-like exception { name_1_2 huh => 1 }, qr/\bnamed\b.+\bhuh\b/;
+like exception { name_1_2 n1 => 0, huh => 1 }, qr/\bnamed\b.+\bhuh\b/;
 is_deeply name_1_2(n1 => 'a'), ['a', 'f', n1 => 'a'];
 is_deeply name_1_2(n1 => 'a', n1 => 'b'), ['b', 'f', n1 => 'a', n1 => 'b'];
 like exception { name_1_2 n2 => 'a' }, qr/missing named\b.+\bn1\b/;
@@ -178,14 +178,14 @@ is_deeply name_0_2(n1 => 'a', n1 => 'b', n2 => 42), ['b', 42, n1 => 'a', n1 => '
 is_deeply name_0_2(n1 => 'a', n2 => 42, n1 => undef), [undef, 42, n1 => 'a', n2 => 42, n1 => undef];
 
 
-fun pos_1_2_name_0_3_slurp($p1, $p2 = 'E', :$n1 = undef, :$n2 = 'A', :$n3 = 'F', @rest) { [$p1, $p2, $n1, $n2, $n3, \@rest, @_] }
+fun pos_1_2_name_0_3_slurp($p1, $p2 = 'E', :$n1 = undef, :$n2 = 'A', :$n3 = 'F', @rest) { [$p1, $p2, $n1, $n2, $n3, {@rest}, @_] }
 
 like exception { pos_1_2_name_0_3_slurp }, qr/Not enough/;
-is_deeply pos_1_2_name_0_3_slurp('a'), ['a', 'E', undef, 'A', 'F', [], 'a'];
-is_deeply pos_1_2_name_0_3_slurp('a', 'b'), ['a', 'b', undef, 'A', 'F', [], 'a', 'b'];
+is_deeply pos_1_2_name_0_3_slurp('a'), ['a', 'E', undef, 'A', 'F', {}, 'a'];
+is_deeply pos_1_2_name_0_3_slurp('a', 'b'), ['a', 'b', undef, 'A', 'F', {}, 'a', 'b'];
 like exception { pos_1_2_name_0_3_slurp 'a', 'b', 'c' }, qr/Odd number/;
-is_deeply pos_1_2_name_0_3_slurp('a', 'b', 'c', 'd'), ['a', 'b', undef, 'A', 'F', ['c', 'd'], 'a', 'b', 'c', 'd'];
+is_deeply pos_1_2_name_0_3_slurp('a', 'b', 'c', 'd'), ['a', 'b', undef, 'A', 'F', {'c', 'd'}, 'a', 'b', 'c', 'd'];
 like exception { pos_1_2_name_0_3_slurp 'a', 'b', 'c', 'd', 'e' }, qr/Odd number/;
-is_deeply pos_1_2_name_0_3_slurp('a', 'b', 'c', 'd', 'e', 'f'), ['a', 'b', undef, 'A', 'F', ['c', 'd', 'e', 'f'], 'a', 'b', 'c', 'd', 'e', 'f'];
-is_deeply pos_1_2_name_0_3_slurp('a', 'b', n2 => 'c', n1 => 'd'), ['a', 'b', 'd', 'c', 'F', [], 'a', 'b', n2 => 'c', n1 => 'd'];
-is_deeply pos_1_2_name_0_3_slurp('a', 'b', n2 => 'c', beans => 'legume', n1 => 'd'), ['a', 'b', 'd', 'c', 'F', [beans => 'legume'], 'a', 'b', n2 => 'c', beans => 'legume', n1 => 'd'];
+is_deeply pos_1_2_name_0_3_slurp('a', 'b', 'c', 'd', 'e', 'f'), ['a', 'b', undef, 'A', 'F', {'c', 'd', 'e', 'f'}, 'a', 'b', 'c', 'd', 'e', 'f'];
+is_deeply pos_1_2_name_0_3_slurp('a', 'b', n2 => 'c', n1 => 'd'), ['a', 'b', 'd', 'c', 'F', {}, 'a', 'b', n2 => 'c', n1 => 'd'];
+is_deeply pos_1_2_name_0_3_slurp('a', 'b', n2 => 'c', beans => 'legume', n1 => 'd'), ['a', 'b', 'd', 'c', 'F', {beans => 'legume'}, 'a', 'b', n2 => 'c', beans => 'legume', n1 => 'd'];
