@@ -9,7 +9,7 @@ use Carp qw(confess);
 
 use XSLoader;
 BEGIN {
-	our $VERSION = '0.10_01';
+	our $VERSION = 0.10_03;
 	XSLoader::load;
 }
 
@@ -32,11 +32,13 @@ my %type_map = (
 		name => 'optional',
 		default_arguments => 1,
 		check_argument_count => 0,
+		named_parameters => 1,
 	},
 	method   => {
 		name => 'optional',
 		default_arguments => 1,
 		check_argument_count => 0,
+		named_parameters => 1,
 		attrs => ':method',
 		shift => '$self',
 		invocant => 1,
@@ -45,6 +47,7 @@ my %type_map = (
 		name => 'optional',
 		default_arguments => 1,
 		check_argument_count => 0,
+		named_parameters => 1,
 		attributes => ':method',
 		shift => '$class',
 		invocant => 1,
@@ -113,6 +116,7 @@ sub import {
 		;
 		$clean{check_argument_count} = !!delete $type{check_argument_count};
 		$clean{invocant} = !!delete $type{invocant};
+		$clean{named_parameters} = !!delete $type{named_parameters};
 
 		%type and confess "Invalid keyword property: @{[keys %type]}";
 
@@ -130,6 +134,7 @@ sub import {
 		$flags |= FLAG_DEFAULT_ARGS if $type->{default_arguments};
 		$flags |= FLAG_CHECK_NARGS if $type->{check_argument_count};
 		$flags |= FLAG_INVOCANT if $type->{invocant};
+		$flags |= FLAG_NAMED_PARAMS if $type->{named_parameters};
 		$^H{HINTK_FLAGS_ . $kw} = $flags;
 		$^H{HINTK_SHIFT_ . $kw} = $type->{shift};
 		$^H{HINTK_ATTRS_ . $kw} = $type->{attrs};
@@ -163,7 +168,7 @@ Function::Parameters - subroutine definitions with parameter lists
 
 =head1 SYNOPSIS
 
- use Function::Parameters;
+ use Function::Parameters qw(:strict);
  
  # simple function
  fun foo($bar, $baz) {
@@ -193,349 +198,383 @@ Function::Parameters - subroutine definitions with parameter lists
    return bless { %init }, $class;
  }
  
- # function with default arguments
+ # function with optional parameters
  fun search($haystack, $needle = qr/^(?!)/, $offset = 0) {
    ...
  }
  
- # method with default arguments
- method skip($amount = 1) {
-   $self->{position} += $amount;
- }
-
-=cut
-
-=pod
-
- use Function::Parameters qw(:strict);
- 
- fun greet($x) {
-   print "Hello, $x\n";
+ # method with named parameters
+ method resize(:$width, :$height) {
+   $self->{width}  = $width;
+   $self->{height} = $height;
  }
  
- greet "foo", "bar";
- # Dies at runtime with "Too many arguments for fun greet"
+ $obj->resize(height => 4, width => 5);
  
- greet;
- # Dies at runtime with "Not enough arguments for fun greet"
-
-=cut
-
-=pod
-
- # use different keywords
- use Function::Parameters {
-   proc => 'function',
-   meth => 'method',
- };
- 
- my $f = proc ($x) { $x * 2 };
- meth get_age() {
-   return $self->{age};
+ # function with named optional parameters
+ fun search($haystack, :$needle = qr/^(?!)/, :$offset = 0) {
+   ...
  }
+ 
+ my $results = search $text, offset => 200;
 
 =head1 DESCRIPTION
 
-This module lets you use parameter lists in your subroutines. Thanks to
-L<PL_keyword_plugin|perlapi/PL_keyword_plugin> it works without source filters.
+This module extends Perl with keywords that let you define functions with
+parameter lists. It uses Perl's L<keyword plugin|perlapi/PL_keyword_plugin>
+API, so it works reliably and doesn't require a source filter.
 
-=head2 Basic stuff
+=head2 Basics
 
-To use this new functionality, you have to use C<fun> instead of C<sub> -
-C<sub> continues to work as before. The syntax is almost the same as for
-C<sub>, but after the subroutine name (or directly after C<fun> if you're
-writing an anonymous sub) you can write a parameter list in parentheses. This
-list consists of comma-separated variables.
+The anatomy of a function (as recognized by this module):
 
-The effect of C<fun foo($bar, $baz) {> is as if you'd written
-C<sub foo { my ($bar, $baz) = @_; >, i.e. the parameter list is simply
-copied into L<my|perlfunc/my-EXPR> and initialized from L<@_|perlvar/"@_">.
+=over
 
-In addition you can use C<method>, which understands the same syntax as C<fun>
-but automatically creates a C<$self> variable for you. So by writing
-C<method foo($bar, $baz) {> you get the same effect as
-C<sub foo { my $self = shift; my ($bar, $baz) = @_; >.
+=item 1.
 
-=head2 Customizing the generated keywords
+The keyword introducing the function.
 
-You can customize the names of the keywords injected into your scope. To do
-that you pass a reference to a hash mapping keywords to types in the import
-list:
+=item 2.
 
- use Function::Parameters {
-   KEYWORD1 => TYPE1,
-   KEYWORD2 => TYPE2,
-   ...
- };
+The function name (optional).
 
-Or more concretely:
+=item 3.
 
- use Function::Parameters { proc => 'function', meth => 'method' }; # -or-
- use Function::Parameters { proc => 'function' }; # -or-
- use Function::Parameters { meth => 'method' }; # etc.
+The parameter list (optional).
 
-The first line creates two keywords, C<proc> and C<meth> (for defining
-functions and methods, respectively). The last two lines only create one
-keyword. Generally the hash keys (keywords) can be any identifiers you want
-while the values (types) have to be either a hash reference (see below) or
-C<'function'>, C<'method'>, C<'classmethod'>, C<'function_strict'>,
-C<'method_strict'>, or C<'classmethod_strict'>. The main difference between
-C<'function'> and C<'method'> is that C<'method'>s automatically
-L<shift|perlfunc/shift> their first argument into C<$self> (C<'classmethod'>s
-are similar but shift into C<$class>).
+=item 4.
 
-The following shortcuts are available:
+The prototype (optional).
 
- use Function::Parameters;
-    # is equivalent to #
- use Function::Parameters { fun => 'function', method => 'method' };
+=item 5.
+
+The attribute list (optional).
+
+=item 6.
+
+The function body.
+
+=back
+
+Example:
+
+  # (1)   (2) (3)      (4)   (5)     (6)
+    fun   foo ($x, $y) :($$) :lvalue { ... }
+ 
+  #         (1) (6)
+    my $f = fun { ... };
+
+In the following section I'm going to describe all parts in order from simplest to most complex.
+
+=head3 Body
+
+This is just a normal block of statements, as with L<C<sub>|perlsub>. No surprises here.
+
+=head3 Name
+
+If present, it specifies the name of the function being defined. As with
+L<C<sub>|perlsub>, if a name is present, the whole declaration is syntactically
+a statement and its effects are performed at compile time (i.e. at runtime you
+can call functions whose definitions only occur later in the file). If no name
+is present, the declaration is an expression that evaluates to a reference to
+the function in question. No surprises here either.
+
+=head3 Attributes
+
+Attributes are relatively unusual in Perl code, but if you want them, they work
+exactly the same as with L<C<sub>|perlsub/Subroutine-Attributes>.
+
+=head3 Prototype
+
+As with L<C<sub>|perlsub/Prototypes>, a prototype, if present, contains hints as to how
+the compiler should parse calls to this function. This means prototypes have no
+effect if the function call is compiled before the function declaration has
+been seen by the compiler or if the function to call is only determined at
+runtime (e.g. because it's called as a method or through a reference).
+
+With L<C<sub>|perlsub>, a prototype comes directly after the function name (if
+any). C<Function::Parameters> reserves this spot for the
+L<parameter list|/"Parameter list">. To specify a prototype, put it as the
+first attribute (e.g. C<fun foo :(&$$)>). This is syntactically unambiguous
+because normal L<attributes|/Attributes> need a name after the colon.
+
+=head3 Parameter list
+
+The parameter list is a list of variables enclosed in parentheses, except it's
+actually a bit more complicated than that. A parameter list can include the
+following 6 parts, all of which are optional:
+
+=over
+
+=item 1. Invocant
+
+This is a scalar variable followed by a colon (C<:>) and no comma. If an
+invocant is present in the parameter list, the first element of
+L<C<@_>|perlvar/@ARG> is automatically L<C<shift>ed|perlfunc/shift> off and
+placed in this variable. This is intended for methods:
+
+  method new($class: %init) {
+    return bless { %init }, $class;
+  }
+
+  method throw($self:) {
+    die $self;
+  }
+
+=item 2. Required positional parameters
+
+The most common kind of parameter. This is simply a comma-separated list of
+scalars, which are filled from left to right with the arguments that the caller
+passed in:
+
+  fun add($x, $y) {
+    return $x + $y;
+  }
+  
+  say add(2, 3);  # "5"
+
+=item 3. Optional positional parameters
+
+Parameters can be marked as optional by putting an equals sign (C<=>) and an
+expression (the "default argument") after them. If no corresponding argument is
+passed in by the caller, the default argument will be used to initialize the
+parameter:
+
+  fun scale($base, $factor = 2) {
+    return $base * $factor;
+  }
+ 
+  say scale(3, 5);  # "15"
+  say scale(3);     # "6"
+
+The default argument is I<not> cached. Every time a function is called with
+some optional arguments missing, the corresponding default arguments are
+evaluated from left to right. This makes no difference for a value like C<2>
+but it is important for expressions with side effects, such as reference
+constructors (C<[]>, C<{}>) or function calls.
+
+Default arguments see not only the surrounding lexical scope of their function
+but also any preceding parameters. This allows the creation of dynamic defaults
+based on previous arguments:
+
+  method set_name($self: $nick = $self->default_nick, $real_name = $nick) {
+    $self->{nick} = $nick;
+    $self->{real_name} = $real_name;
+  }
+ 
+  $obj->set_name("simplicio");  # same as: $obj->set_name("simplicio", "simplicio");
+
+Because default arguments are actually evaluated as part of the function body,
+you can also do silly things like this:
+
+  fun foo($n = return "nope") {
+    "you gave me $n"
+  }
+ 
+  say foo(2 + 2);  # "you gave me 4"
+  say foo();       # "nope"
+
+=item 4. Required named parameters
+
+By putting a colon (C<:>) in front of a parameter you can make it named
+instead of positional:
+
+  fun rectangle(:$width, :$height) {
+    ...
+  }
+ 
+  rectangle(width => 2, height => 5);
+  rectangle(height => 5, width => 2);  # same thing!
+
+That is, the caller must specify a key name in addition to the value, but in
+exchange the order of the arguments doesn't matter anymore. As with hash
+initialization, you can specify the same key multiple times and the last
+occurrence wins:
+
+  rectangle(height => 1, width => 2, height => 2, height => 5;
+  # same as: rectangle(width => 2, height => 5);
+
+You can combine positional and named parameters as long as the positional
+parameters come first:
+
+  fun named_rectangle($name, :$width, :$height) {
+    ...
+  }
+ 
+  named_rectangle("Avocado", width => 0.5, height => 1.2);
+
+=item 5. Optional named parameters
+
+As with positional parameters, you can make named parameters optional by
+specifying a default argument after an equals sign (C<=>):
+
+  fun rectangle(:$width, :$height, :$color = "chartreuse") {
+    ...
+  }
+ 
+  rectangle(height => 10, width => 5);
+  # same as: rectangle(height => 10, width => 5, color => "chartreuse");
 
 =cut
 
 =pod
+  
+  fun get($url, :$cookie_jar = HTTP::Cookies->new(), :$referrer = $url) {
+    ...
+  }
 
- use Function::Parameters ':strict';
-    # is equivalent to #
- use Function::Parameters { fun => 'function_strict', method => 'method_strict' };
+  my $data = get "http://www.example.com/", referrer => undef;  # overrides $referrer = $url
 
-=pod
+The above example shows that passing any value (even C<undef>) will override
+the default argument.
 
-The following shortcuts are deprecated and may be removed from a future version
-of this module:
+=item 6. Slurpy parameter
 
- # DEPRECATED
- use Function::Parameters 'foo';
-   # is equivalent to #
- use Function::Parameters { 'foo' => 'function' };
+Finally you can put an array or hash in the parameter list, which will gobble
+up the remaining arguments (if any):
 
-=cut
+  fun foo($x, $y, @rest) { ... }
+ 
+  foo "a", "b";            # $x = "a", $y = "b", @rest = ()
+  foo "a", "b", "c";       # $x = "a", $y = "b", @rest = ("c")
+  foo "a", "b", "c", "d";  # $x = "a", $y = "b", @rest = ("c", "d")
 
-=pod
+If you combine this with named parameters, the slurpy parameter will end up
+containing all unrecognized keys:
 
- # DEPRECATED
- use Function::Parameters 'foo', 'bar';
-   # is equivalent to #
- use Function::Parameters { 'foo' => 'function', 'bar' => 'method' };
+  fun bar(:$size, @whatev) { ... }
+ 
+  bar weight => 20, size => 2, location => [0, -3];
+  # $size = 2, @whatev = ('weight', 20, 'location', [0, -3])
 
-That is, if you want to create custom keywords with L<Function::Parameters>,
-use a hashref, not a list of strings.
+=back
 
-You can tune the properties of the generated keywords even more by passing
-a hashref instead of a string. This hash can have the following keys:
+Apart from the L<C<shift>|perlfunc/shift> performed by the L<invocant|/"1.
+Invocant">, all of the above leave L<C<@_>|perlvar/@ARG> unchanged; and if you
+don't specify a parameter list at all, L<C<@_>|perlvar/@ARG> is all you get.
+
+=head3 Keyword
+
+The keywords provided by C<Function::Parameters> are customizable. Since
+C<Function::Parameters> is actually a L<pragma|perlpragma>, the provided
+keywords have lexical scope. The following import variants can be used:
+
+=over
+
+=item C<use Function::Parameters ':strict'>
+
+Provides the keywords C<fun> and C<method> (described below) and enables
+argument checks so that calling a function and omitting a required argument (or
+passing too many arguments) will throw an error.
+
+=item C<use Function::Parameters>
+
+Provides the keywords C<fun> and C<method> (described below) and enables
+"lax" mode: Omitting a required argument sets it to C<undef> while excess
+arguments are silently ignored.
+
+=item C<< use Function::Parameters { KEYWORD1 => TYPE1, KEYWORD2 => TYPE2, ... } >>
+
+Provides completely custom keywords as described by their types. A "type" is
+either a string (one of the predefined types C<function>, C<method>,
+C<classmethod>, C<function_strict>, C<method_strict>, C<classmethod_strict>) or
+a reference to a hash with the following keys:
 
 =over
 
 =item C<name>
 
-Valid values: C<optional> (default), C<required> (all uses of this keyword must
-specify a function name), and C<prohibited> (all uses of this keyword must not
-specify a function name). This means a C<< name => 'prohibited' >> keyword can
-only be used for defining anonymous functions.
+Valid values: C<optional> (default), C<required> (all functions defined with
+this keyword must have a name), and C<prohibited> (functions defined with this
+keyword must be anonymous).
 
 =item C<shift>
 
-Valid values: strings that look like a scalar variable. Any function created by
-this keyword will automatically L<shift|perlfunc/shift> its first argument into
-a local variable whose name is specified here.
+Valid values: strings that look like scalar variables. This lets you specify a
+default L<invocant|/"1. Invocant">, i.e. a function defined with this keyword
+that doesn't have an explicit invocant in its parameter list will automatically
+L<C<shift>|perlfunc/shift> its first argument into the variable specified here.
 
 =item C<invocant>
 
-Valid values: booleans. This lets users of this keyword specify an explicit
-invocant, that is, the first parameter may be followed by a C<:> (colon)
-instead of a comma and will by initialized by shifting the first element off
-C<@_>.
+Valid values: booleans. If you set this to a true value, the keyword will
+accept L<invocants|/"1. Invocant"> in parameter lists; otherwise specifying
+an invocant in a function defined with this keyword is a syntax error.
 
-You can combine C<shift> and C<invocant>, in which case the variable named in
-C<shift> serves as a default shift target for functions that don't specify an
-explicit invocant.
+=item C<attributes>
 
-=item C<attributes>, C<attrs>
-
-Valid values: strings that are valid source code for attributes. Any value
-specified here will be inserted as a subroutine attribute in the generated
-code. Thus:
-
- use Function::Parameters { sub_l => { attributes => ':lvalue' } };
- sub_l foo() {
-   ...
- }
-
-turns into
-
- sub foo :lvalue {
-   ...
- }
-
-It is recommended that you use C<attributes> in new code but C<attrs> is also
-accepted for now.
+Valid values: strings containing (source code for) attributes. This causes any
+function defined with this keyword to have the specified
+L<attributes|attributes> (in addition to any attributes specified in the
+function definition itself).
 
 =item C<default_arguments>
 
-Valid values: booleans. This property is on by default, so you have to pass
-C<< default_arguments => 0 >> to turn it off. If it is disabled, using C<=> in
-a parameter list causes a syntax error. Otherwise it lets you specify
-default arguments directly in the parameter list:
-
- fun foo($x, $y = 42, $z = []) {
-   ...
- }
-
-turns into
-
- sub foo {
-   my ($x, $y, $z) = @_;
-   $y = 42 if @_ < 2;
-   $z = [] if @_ < 3;
-   ...
- }
-
-You can even refer to previous parameters in the same parameter list:
-
- print fun ($x, $y = $x + 1) { "$x and $y" }->(9);  # "9 and 10"
-
-This also works with the implicit first parameter of methods:
-
- method scale($factor = $self->default_factor) {
-   $self->{amount} *= $factor;
- }
+Valid values: booleans. This property is on by default; use
+C<< default_arguments => 0 >> to turn it off. This controls whether optional
+parameters are allowed. If it is turned off, using C<=> in parameter lists is
+a syntax error.
 
 =item C<check_argument_count>
 
-Valid values: booleans. This property is off by default. If it is enabled, the
-generated code will include checks to make sure the number of passed arguments
-is correct (and otherwise throw an exception via L<Carp::croak|Carp>):
-
-  fun foo($x, $y = 42, $z = []) {
-    ...
-  }
-
-turns into
-
- sub foo {
-   Carp::croak "Not enough arguments for fun foo" if @_ < 1;
-   Carp::croak "Too many arguments for fun foo" if @_ > 3;
-   my ($x, $y, $z) = @_;
-   $y = 42 if @_ < 2;
-   $z = [] if @_ < 3;
-   ...
- }
+Valid values: booleans. If turned on, functions defined with this keyword will
+automatically check that they have been passed all required arguments and no
+excess arguments. If this check fails, an exception will by thrown via
+L<C<Carp::croak>|Carp>.
 
 =back
 
-Plain C<'function'> is equivalent to:
+The predefined type C<function> is equivalent to:
 
  {
    name => 'optional',
+   invocant => 0,
    default_arguments => 1,
    check_argument_count => 0,
  }
 
-(These are all default values so C<'function'> is also equivalent to C<{}>.)
+These are all default values, so C<function> is also equivalent to C<{}>.
 
-C<'function_strict'> is like C<'function'> but with
-C<< check_argument_count => 1 >>.
-
-C<'method'> is equivalent to:
+C<method> is equivalent to:
 
  {
    name => 'optional',
-   default_arguments => 1,
-   check_argument_count => 0,
-   attributes => ':method',
    shift => '$self',
    invocant => 1,
+   attributes => ':method',
+   default_arguments => 1,
+   check_argument_count => 0,
  }
 
-C<'method_strict'> is like C<'method'> but with
-C<< check_argument_count => 1 >>.
 
-C<'classmethod'> is equivalent to:
+C<classmethod> is equivalent to:
 
  {
    name => 'optional',
-   default_arguments => 1,
-   check_argument_count => 0,
-   attributes => ':method',
    shift => '$class',
    invocant => 1,
+   attributes => ':method',
+   default_arguments => 1,
+   check_argument_count => 0,
  }
 
-C<'classmethod_strict'> is like C<'classmethod'> but with
-C<< check_argument_count => 1 >>.
+C<function_strict>, C<method_strict>, and
+C<classmethod_strict> are like C<function>, C<method>, and
+C<classmethod>, respectively, but with C<< check_argument_count => 1 >>.
 
-=head2 Syntax and generated code
+=back
 
-Normally, Perl subroutines are not in scope in their own body, meaning the
-parser doesn't know the name C<foo> or its prototype while processing the body
-of C<sub foo ($) { foo $bar[1], $bar[0]; }>, parsing it as
-C<$bar-E<gt>foo([1], $bar[0])>. Yes. You can add parens to change the
-interpretation of this code, but C<foo($bar[1], $bar[0])> will only trigger
-a I<foo() called too early to check prototype> warning. This module attempts
-to fix all of this by adding a subroutine declaration before the function body,
-so the parser knows the name (and possibly prototype) while it processes the
-body. Thus C<fun foo($x) :($) { $x }> really turns into
-C<sub foo ($) { sub foo ($); my ($x) = @_; $x }>.
+Plain C<use Function::Parameters> is equivalent to
+C<< use Function::Parameters { fun => 'function', method => 'method' } >>.
 
-If you need L<subroutine attributes|perlsub/Subroutine-Attributes>, you can
-put them after the parameter list with their usual syntax.
+C<use Function::Parameters qw(:strict)> is equivalent to
+C<< use Function::Parameters { fun => 'function_strict', method => 'method_strict' } >>.
 
-Syntactically, these new parameter lists live in the spot normally occupied
-by L<prototypes|perlsub/"Prototypes">. However, you can include a prototype by
-specifying it as the first attribute (this is syntactically unambiguous
-because normal attributes have to start with a letter while a prototype starts
-with C<(>).
+=head2 Wrapping C<Function::Parameters>
 
-As an example, the following declaration uses every available feature
-(subroutine name, parameter list, default arguments, prototype, default
-attributes, attributes, argument count checks, and implicit C<$self> overriden
-by an explicit invocant declaration):
-
- method foo($this: $x, $y, $z = sqrt 5)
-   :($$$;$)
-   :lvalue
-   :Banana(2 + 2)
- {
-   ...
- }
-
-And here's what it turns into:
-
- sub foo ($$$;$) :method :lvalue :Banana(2 + 2) {
-   sub foo ($$$;$);
-   Carp::croak "Not enough arguments for method foo" if @_ < 3;
-   Carp::croak "Too many arguments for method foo" if @_ > 4;
-   my $this = shift;
-   my ($x, $y, $z) = @_;
-   $z = sqrt 5 if @_ < 3;
-   ...
- }
-
-Another example:
-
- my $coderef = fun ($p, $q)
-   :(;$$)
-   :lvalue
-   :Gazebo((>:O)) {
-   ...
- };
-
-And the generated code:
-
- my $coderef = sub (;$$) :lvalue :Gazebo((>:O)) {
-   # vvv   only if check_argument_count is enabled    vvv
-   Carp::croak "Not enough arguments for fun (anon)" if @_ < 2;
-   Carp::croak "Too many arguments for fun (anon)" if @_ > 2;
-   # ^^^                                              ^^^
-   my ($p, $q) = @_;
-   ...
- };
-
-=head2 Wrapping Function::Parameters
-
-If you want to wrap L<Function::Parameters>, you just have to call its
-C<import> method. It always applies to the file that is currently being parsed
-and its effects are L<lexical|perlpragma> (i.e. it works like L<warnings> or
-L<strict>).
+If you want to write a wrapper around C<Function::Parameters>, you only have to
+call its C<import> method. Due to its L<pragma|perlpragma> nature it always
+affects the file that is currently being compiled.
 
  package Some::Wrapper;
  use Function::Parameters ();
@@ -543,6 +582,23 @@ L<strict>).
    Function::Parameters->import;
    # or Function::Parameters->import(@custom_import_args);
  }
+
+=head2 How it works
+
+The module is actually written in L<C|perlxs> and uses
+L<C<PL_keyword_plugin>|perlapi/PL_keyword_plugin> to generate opcodes directly.
+However, you can run L<C<perl -MO=Deparse ...>|B::Deparse> on your code to see
+what happens under the hood. In the simplest case (no argument checks, possibly
+an L<invocant|/"1. Invocant">, required positional/slurpy parameters only), the
+generated code corresponds to:
+
+  fun foo($x, $y, @z) { ... }
+  # ... turns into ...
+  sub foo { my ($x, $y, @z) = @_; sub foo; ... }
+
+  method bar($x, $y, @z) { ... }
+  # ... turns into ...
+  sub bar :method { my $self = shift; my ($x, $y, @z) = @_; sub bar; ... }
 
 =head1 AUTHOR
 

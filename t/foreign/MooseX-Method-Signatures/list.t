@@ -1,7 +1,7 @@
 #!perl
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 21;
+use Test::More tests => 23;
 use Test::Fatal;
 use Function::Parameters qw(:strict);
 
@@ -70,10 +70,10 @@ my $o = bless {} => 'Foo';
     is(exception { $meth->($o, 'foo', 42, 23) }, undef);
 }
 
-#{
-#    eval 'my $meth = method (:$foo, :@bar) { }';
-#    like $@, qr/arrays or hashes cannot be named/i;
-#
-#    eval 'my $meth = method ($foo, @bar, :$baz) { }';
-#    like $@, qr/named parameters can not be combined with slurpy positionals/i;
-#}
+{
+    eval 'my $meth = method (:$foo, :@bar) { }';
+    like $@, qr/\bnamed\b.+\bbar\b.+\barray\b/;
+
+    eval 'my $meth = method ($foo, @bar, :$baz) { }';
+    like $@, qr/\bbar\b.+\bbaz\b/;
+}
