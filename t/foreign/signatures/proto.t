@@ -30,14 +30,14 @@ BEGIN { is(@warnings, 0, 'no warnings with correct :proto declarations') }
 fun invalid_proto ($x) : (invalid) { $x }
 
 BEGIN {
-    TODO: {
-        local $TODO = ':proto checks not yet implemented';
+    #TODO: {
+    #    local $TODO = ':proto checks not yet implemented';
         is(@warnings, 1, 'warning with illegal :proto');
         like(
             $warnings[0],
             qr/Illegal character in prototype for fun invalid_proto : invalid at /,
             'warning looks sane',
         );
-    }
+    #}
 }
 
