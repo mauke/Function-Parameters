@@ -23,6 +23,7 @@ WriteMakefile(
     },
     PREREQ_PM => {
         'Carp' => 0,
+        'Moo' => 0,
         'XSLoader' => 0,
         'warnings' => 0,
     },

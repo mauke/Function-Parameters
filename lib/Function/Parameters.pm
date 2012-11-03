@@ -155,6 +155,50 @@ sub unimport {
 }
 
 
+our %metadata;
+
+sub _register_info {
+	my (
+		$key,
+		$declarator,
+		$invocant,
+		$positional_required,
+		$positional_optional,
+		$named_required,
+		$named_optional,
+		$slurpy,
+	) = @_;
+
+	my $blob = pack '(Z*)*',
+		$declarator,
+		$invocant // '',
+		join(' ', @$positional_required),
+		join(' ', @$positional_optional),
+		join(' ', @$named_required),
+		join(' ', @$named_optional),
+		$slurpy // '',
+	;
+
+	$metadata{$key} = $blob;
+}
+
+sub info {
+	my ($func) = @_;
+	my $key = _cv_root $func or return undef;
+	my $blob = $metadata{$key} or return undef;
+	my @info = unpack '(Z*)*', $blob;
+	require Function::Parameters::Info;
+	Function::Parameters::Info->new(
+		keyword => $info[0],
+		invocant => $info[1] || undef,
+		_positional_required => [split ' ', $info[2]],
+		_positional_optional => [split ' ', $info[3]],
+		_named_required => [split ' ', $info[4]],
+		_named_optional => [split ' ', $info[5]],
+		slurpy => $info[6] || undef,
+	)
+}
+
 'ok'
 
 __END__

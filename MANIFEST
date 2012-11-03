@@ -5,6 +5,7 @@ Makefile.PL
 Parameters.xs
 README
 lib/Function/Parameters.pm
+lib/Function/Parameters/Info.pm
 padop_on_crack.c.inc
 t/00-load.t
 t/01-compiles.t
@@ -64,6 +65,7 @@ t/foreign/signatures/proto.t
 t/foreign/signatures/weird.t
 t/hueg.t
 t/imports.t
+t/info.t
 t/invocant.t
 t/lexical.t
 t/lineno-torture.t

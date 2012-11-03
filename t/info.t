@@ -1,0 +1,109 @@
+#!perl
+use warnings FATAL => 'all';
+use strict;
+
+use Test::More tests => 68;
+
+use Function::Parameters;
+
+fun foo($pr1, $pr2, $po1 = 1, $po2 = 2, :$no1 = 3, :$no2 = 4, %r) {}
+
+{
+	my $info = Function::Parameters::info \&foo;
+	is $info->keyword, 'fun';
+	is $info->invocant, undef;
+	is_deeply [$info->positional_required], [qw($pr1 $pr2)];
+	is scalar $info->positional_required, 2;
+	is_deeply [$info->positional_optional], [qw($po1 $po2)];
+	is scalar $info->positional_optional, 2;
+	is_deeply [$info->named_required], [];
+	is scalar $info->named_required, 0;
+	is_deeply [$info->named_optional], [qw($no1 $no2)];
+	is scalar $info->named_optional, 2;
+	is $info->slurpy, '%r';
+}
+
+{
+	my $info = Function::Parameters::info fun ($pr1, :$nr1, :$nr2) {};
+	is $info->keyword, 'fun';
+	is $info->invocant, undef;
+	is_deeply [$info->positional_required], [qw($pr1)];
+	is scalar $info->positional_required, 1;
+	is_deeply [$info->positional_optional], [];
+	is scalar $info->positional_optional, 0;
+	is_deeply [$info->named_required], [qw($nr1 $nr2)];
+	is scalar $info->named_required, 2;
+	is_deeply [$info->named_optional], [];
+	is scalar $info->named_optional, 0;
+	is $info->slurpy, undef;
+}
+
+sub bar {}
+
+is Function::Parameters::info(\&bar), undef;
+
+is Function::Parameters::info(sub {}), undef;
+
+method baz($class: $po1 = 1, $po2 = 2, $po3 = 3, :$no1 = 4, @rem) {}
+
+{
+	my $info = Function::Parameters::info \&baz;
+	is $info->keyword, 'method';
+	is $info->invocant, '$class';
+	is_deeply [$info->positional_required], [];
+	is scalar $info->positional_required, 0;
+	is_deeply [$info->positional_optional], [qw($po1 $po2 $po3)];
+	is scalar $info->positional_optional, 3;
+	is_deeply [$info->named_required], [];
+	is scalar $info->named_required, 0;
+	is_deeply [$info->named_optional], [qw($no1)];
+	is scalar $info->named_optional, 1;
+	is $info->slurpy, '@rem';
+}
+
+{
+	my $info = Function::Parameters::info method () {};
+	is $info->keyword, 'method';
+	is $info->invocant, '$self';
+	is_deeply [$info->positional_required], [];
+	is scalar $info->positional_required, 0;
+	is_deeply [$info->positional_optional], [];
+	is scalar $info->positional_optional, 0;
+	is_deeply [$info->named_required], [];
+	is scalar $info->named_required, 0;
+	is_deeply [$info->named_optional], [];
+	is scalar $info->named_optional, 0;
+	is $info->slurpy, undef;
+}
+
+{
+	use Function::Parameters { proc => 'function' };
+	my $info = Function::Parameters::info proc {};
+	is $info->keyword, 'proc';
+	is $info->invocant, undef;
+	is_deeply [$info->positional_required], [];
+	is scalar $info->positional_required, 0;
+	is_deeply [$info->positional_optional], [];
+	is scalar $info->positional_optional, 0;
+	is_deeply [$info->named_required], [];
+	is scalar $info->named_required, 0;
+	is_deeply [$info->named_optional], [];
+	is scalar $info->named_optional, 0;
+	is $info->slurpy, '@_';
+}
+
+{
+	my $info = Function::Parameters::info method {};
+	is $info->keyword, 'method';
+	is $info->invocant, '$self';
+	is_deeply [$info->positional_required], [];
+	is scalar $info->positional_required, 0;
+	is_deeply [$info->positional_optional], [];
+	is scalar $info->positional_optional, 0;
+	is_deeply [$info->named_required], [];
+	is scalar $info->named_required, 0;
+	is_deeply [$info->named_optional], [];
+	is scalar $info->named_optional, 0;
+	is $info->slurpy, '@_';
+}
+

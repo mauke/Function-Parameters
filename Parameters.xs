@@ -786,6 +786,123 @@ static OP *mkconstpv(pTHX_ const char *p, size_t n) {
 
 #define mkconstpvs(S) mkconstpv(aTHX_ "" S "", sizeof S - 1)
 
+static void register_info(pTHX_ UV key, SV *declarator, const KWSpec *kws, const ParamSpec *ps) {
+	dSP;
+
+	ENTER;
+	SAVETMPS;
+
+	PUSHMARK(SP);
+	EXTEND(SP, 8);
+
+	/* 0 */ {
+		mPUSHu(key);
+	}
+	/* 1 */ {
+		size_t n;
+		char *p = SvPV(declarator, n);
+		char *q = memchr(p, ' ', n);
+		mPUSHp(p, q ? q - p : n);
+	}
+	if (!ps) {
+		if (SvTRUE(kws->shift)) {
+			PUSHs(kws->shift);
+		} else {
+			PUSHmortal;
+		}
+		mPUSHs(newRV_noinc((SV *)newAV()));
+		mPUSHs(newRV_noinc((SV *)newAV()));
+		mPUSHs(newRV_noinc((SV *)newAV()));
+		mPUSHs(newRV_noinc((SV *)newAV()));
+		mPUSHp("@_", 2);
+	} else {
+		/* 2 */ {
+			if (ps->invocant.name) {
+				PUSHs(ps->invocant.name);
+			} else {
+				PUSHmortal;
+			}
+		}
+		/* 3 */ {
+			size_t i, lim;
+			AV *av;
+
+			lim = ps->positional_required.used;
+
+			av = newAV();
+			if (lim) {
+				av_extend(av, lim - 1);
+				for (i = 0; i < lim; i++) {
+					av_push(av, SvREFCNT_inc_simple_NN(ps->positional_required.data[i].name));
+				}
+			}
+
+			mPUSHs(newRV_noinc((SV *)av));
+		}
+		/* 4 */ {
+			size_t i, lim;
+			AV *av;
+
+			lim = ps->positional_optional.used;
+
+			av = newAV();
+			if (lim) {
+				av_extend(av, lim - 1);
+				for (i = 0; i < lim; i++) {
+					av_push(av, SvREFCNT_inc_simple_NN(ps->positional_optional.data[i].param.name));
+				}
+			}
+
+			mPUSHs(newRV_noinc((SV *)av));
+		}
+		/* 5 */ {
+			size_t i, lim;
+			AV *av;
+
+			lim = ps->named_required.used;
+
+			av = newAV();
+			if (lim) {
+				av_extend(av, lim - 1);
+				for (i = 0; i < lim; i++) {
+					av_push(av, SvREFCNT_inc_simple_NN(ps->named_required.data[i].name));
+				}
+			}
+
+			mPUSHs(newRV_noinc((SV *)av));
+		}
+		/* 6 */ {
+			size_t i, lim;
+			AV *av;
+
+			lim = ps->named_optional.used;
+
+			av = newAV();
+			if (lim) {
+				av_extend(av, lim - 1);
+				for (i = 0; i < lim; i++) {
+					av_push(av, SvREFCNT_inc_simple_NN(ps->named_optional.data[i].param.name));
+				}
+			}
+
+			mPUSHs(newRV_noinc((SV *)av));
+		}
+		/* 7 */ {
+			if (ps->slurpy.name) {
+				PUSHs(ps->slurpy.name);
+			} else {
+				PUSHmortal;
+			}
+		}
+	}
+	PUTBACK;
+
+	call_pv(MY_PKG "::_register_info", G_VOID);
+
+	FREETMPS;
+	LEAVE;
+}
+
 static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRLEN keyword_len, const KWSpec *spec) {
 	ParamSpec *param_spec;
 	SV *declarator;
@@ -1525,32 +1642,38 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
 	/* it's go time. */
 	{
+		CV *cv;
 		OP *const attrs = *attrs_sentinel;
 		*attrs_sentinel = NULL;
+
 		SvREFCNT_inc_simple_void(PL_compcv);
 
 		/* close outer block: '}' */
 		S_block_end(aTHX_ save_ix, body);
 
-		if (!saw_name) {
-			*pop = newANONATTRSUB(
-				floor_ix,
-				proto ? newSVOP(OP_CONST, 0, SvREFCNT_inc_simple_NN(proto)) : NULL,
-				attrs,
-				body
-			);
-			return KEYWORD_PLUGIN_EXPR;
-		}
-
-		newATTRSUB(
+		cv = newATTRSUB(
 			floor_ix,
-			newSVOP(OP_CONST, 0, SvREFCNT_inc_simple_NN(saw_name)),
+			saw_name ? newSVOP(OP_CONST, 0, SvREFCNT_inc_simple_NN(saw_name)) : NULL,
 			proto ? newSVOP(OP_CONST, 0, SvREFCNT_inc_simple_NN(proto)) : NULL,
 			attrs,
 			body
 		);
-		*pop = newOP(OP_NULL, 0);
-		return KEYWORD_PLUGIN_STMT;
+
+		register_info(aTHX_ PTR2UV(CvROOT(cv)), declarator, spec, param_spec);
+
+		if (saw_name) {
+			*pop = newOP(OP_NULL, 0);
+			return KEYWORD_PLUGIN_STMT;
+		}
+
+		*pop = newUNOP(
+			OP_REFGEN, 0,
+			newSVOP(
+				OP_ANONCODE, 0,
+				(SV *)cv
+			)
+		);
+		return KEYWORD_PLUGIN_EXPR;
 	}
 }
 
@@ -1578,8 +1701,21 @@ static int my_keyword_plugin(pTHX_ char *keyword_ptr, STRLEN keyword_len, OP **o
 
 WARNINGS_RESET
 
-MODULE = Function::Parameters   PACKAGE = Function::Parameters
+MODULE = Function::Parameters   PACKAGE = Function::Parameters   PREFIX = fp_
 PROTOTYPES: ENABLE
+
+UV
+fp__cv_root(sv)
+	SV * sv
+	PREINIT:
+		CV *cv;
+		HV *hv;
+		GV *gv;
+	CODE:
+		cv = sv_2cv(sv, &hv, &gv, 0);
+		RETVAL = PTR2UV(cv ? CvROOT(cv) : NULL);
+	OUTPUT:
+		RETVAL
 
 BOOT:
 WARNINGS_ENABLE {
