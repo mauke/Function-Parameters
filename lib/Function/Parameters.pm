@@ -2,7 +2,6 @@ package Function::Parameters;
 
 use v5.14.0;
 
-use strict;
 use warnings;
 
 use Carp qw(confess);
