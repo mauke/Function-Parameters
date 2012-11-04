@@ -2,9 +2,11 @@
 use warnings FATAL => 'all';
 use strict;
 
-use Test::More tests => 104;
+use Test::More tests => 122;
 
 use Function::Parameters;
+
+sub Inf () { 0 + 'Inf' }
 
 fun foo($pr1, $pr2, $po1 = 1, $po2 = 2, :$no1 = 3, :$no2 = 4, %r) {}
 
@@ -21,6 +23,8 @@ fun foo($pr1, $pr2, $po1 = 1, $po2 = 2, :$no1 = 3, :$no2 = 4, %r) {}
 	is_deeply [$info->named_optional], [qw($no1 $no2)];
 	is scalar $info->named_optional, 2;
 	is $info->slurpy, '%r';
+	is $info->args_min, 2;
+	is $info->args_max, Inf;
 }
 
 {
@@ -36,6 +40,8 @@ fun foo($pr1, $pr2, $po1 = 1, $po2 = 2, :$no1 = 3, :$no2 = 4, %r) {}
 	is_deeply [$info->named_optional], [];
 	is scalar $info->named_optional, 0;
 	is $info->slurpy, undef;
+	is $info->args_min, 5;
+	is $info->args_max, Inf;
 }
 
 sub bar {}
@@ -59,6 +65,8 @@ method baz($class: $po1 = 1, $po2 = 2, $po3 = 3, :$no1 = 4, @rem) {}
 	is_deeply [$info->named_optional], [qw($no1)];
 	is scalar $info->named_optional, 1;
 	is $info->slurpy, '@rem';
+	is $info->args_min, 1;
+	is $info->args_max, Inf;
 }
 
 {
@@ -74,6 +82,8 @@ method baz($class: $po1 = 1, $po2 = 2, $po3 = 3, :$no1 = 4, @rem) {}
 	is_deeply [$info->named_optional], [];
 	is scalar $info->named_optional, 0;
 	is $info->slurpy, undef;
+	is $info->args_min, 1;
+	is $info->args_max, 1;
 }
 
 {
@@ -90,6 +100,8 @@ method baz($class: $po1 = 1, $po2 = 2, $po3 = 3, :$no1 = 4, @rem) {}
 	is_deeply [$info->named_optional], [];
 	is scalar $info->named_optional, 0;
 	is $info->slurpy, '@_';
+	is $info->args_min, 0;
+	is $info->args_max, Inf;
 }
 
 {
@@ -105,6 +117,8 @@ method baz($class: $po1 = 1, $po2 = 2, $po3 = 3, :$no1 = 4, @rem) {}
 	is_deeply [$info->named_optional], [];
 	is scalar $info->named_optional, 0;
 	is $info->slurpy, '@_';
+	is $info->args_min, 1;
+	is $info->args_max, Inf;
 }
 
 {
@@ -126,6 +140,8 @@ method baz($class: $po1 = 1, $po2 = 2, $po3 = 3, :$no1 = 4, @rem) {}
 		is_deeply [$info->named_optional], [];
 		is scalar $info->named_optional, 0;
 		is $info->slurpy, undef;
+		is $info->args_min, 6;
+		is $info->args_max, Inf;
 		is $f->(), $i;
 	}
 }

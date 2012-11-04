@@ -613,6 +613,16 @@ C<< use Function::Parameters { fun => 'function', method => 'method' } >>.
 C<use Function::Parameters qw(:strict)> is equivalent to
 C<< use Function::Parameters { fun => 'function_strict', method => 'method_strict' } >>.
 
+=head2 Introspection
+
+You can ask a function at runtime what parameters it has. This functionality is
+available through the function C<Function::Parameters::info> (which is not
+exported, so you have to call it by its full name). It takes a reference to a
+function, and returns either C<undef> (if it knows nothing about the function)
+or a L<Function::Parameters::Info> object describing the parameter list.
+
+See L<Function::Parameters::Info> for examples.
+
 =head2 Wrapping C<Function::Parameters>
 
 If you want to write a wrapper around C<Function::Parameters>, you only have to
@@ -642,6 +652,10 @@ generated code corresponds to:
   method bar($x, $y, @z) { ... }
   # ... turns into ...
   sub bar :method { my $self = shift; my ($x, $y, @z) = @_; sub bar; ... }
+
+=head1 SEE ALSO
+
+L<Function::Parameters::Info>
 
 =head1 AUTHOR
 
