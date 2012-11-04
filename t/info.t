@@ -2,7 +2,7 @@
 use warnings FATAL => 'all';
 use strict;
 
-use Test::More tests => 68;
+use Test::More tests => 104;
 
 use Function::Parameters;
 
@@ -107,3 +107,25 @@ method baz($class: $po1 = 1, $po2 = 2, $po3 = 3, :$no1 = 4, @rem) {}
 	is $info->slurpy, '@_';
 }
 
+{
+	my @fs;
+	for my $i (qw(aku soku zan)) {
+		push @fs, [$i => fun (:$sin, :$swift, :$slay) { $i }];
+	}
+	for my $kf (@fs) {
+		my ($i, $f) = @$kf;
+		my $info = Function::Parameters::info $f;
+		is $info->keyword, 'fun';
+		is $info->invocant, undef;
+		is_deeply [$info->positional_required], [];
+		is scalar $info->positional_required, 0;
+		is_deeply [$info->positional_optional], [];
+		is scalar $info->positional_optional, 0;
+		is_deeply [$info->named_required], [qw($sin $swift $slay)];
+		is scalar $info->named_required, 3;
+		is_deeply [$info->named_optional], [];
+		is scalar $info->named_optional, 0;
+		is $info->slurpy, undef;
+		is $f->(), $i;
+	}
+}
