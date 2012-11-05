@@ -96,7 +96,9 @@ enum {
 	FLAG_DEFAULT_ARGS = 0x04,
 	FLAG_CHECK_NARGS  = 0x08,
 	FLAG_INVOCANT     = 0x10,
-	FLAG_NAMED_PARAMS = 0x20
+	FLAG_NAMED_PARAMS = 0x20,
+	FLAG_TYPES_OK     = 0x40,
+	FLAG_CHECK_TARGS  = 0x80
 };
 
 DEFSTRUCT(KWSpec) {
@@ -242,10 +244,15 @@ static int kw_flags(pTHX_ Sentinel sen, const char *kw_ptr, STRLEN kw_len, KWSpe
 }
 
 
-static void free_ptr_op(pTHX_ void *vp) {
+static void free_ptr_op_void(pTHX_ void *vp) {
 	OP **pp = vp;
 	op_free(*pp);
 	Safefree(pp);
+}
+
+static void free_op_void(pTHX_ void *vp) {
+	OP *p = vp;
+	op_free(p);
 }
 
 #define sv_eq_pvs(SV, S) my_sv_eq_pvn(aTHX_ SV, "" S "", sizeof (S) - 1)
@@ -489,10 +496,97 @@ static void my_check_prototype(pTHX_ Sentinel sen, const SV *declarator, SV *pro
 	}
 }
 
+static SV *parse_type(pTHX_ Sentinel, const SV *);
+
+static SV *parse_type_paramd(pTHX_ Sentinel sen, const SV *declarator) {
+	I32 c;
+	SV *t;
+
+	t = my_scan_word(aTHX_ sen, TRUE);
+	lex_read_space(0);
+
+	c = lex_peek_unichar(0);
+	if (c == '[') {
+		SV *u;
+
+		lex_read_unichar(0);
+		lex_read_space(0);
+		my_sv_cat_c(aTHX_ t, c);
+
+		u = parse_type(aTHX_ sen, declarator);
+		sv_catsv(t, u);
+
+		c = lex_peek_unichar(0);
+		if (c != ']') {
+			croak("In %"SVf": missing ']' after '%"SVf"'", SVfARG(declarator), SVfARG(t));
+		}
+		lex_read_unichar(0);
+		lex_read_space(0);
+
+		my_sv_cat_c(aTHX_ t, c);
+	}
+
+	return t;
+}
+
+static SV *parse_type(pTHX_ Sentinel sen, const SV *declarator) {
+	I32 c;
+	SV *t;
+
+	t = parse_type_paramd(aTHX_ sen, declarator);
+
+	c = lex_peek_unichar(0);
+	while (c == '|') {
+		SV *u;
+
+		lex_read_unichar(0);
+		lex_read_space(0);
+
+		my_sv_cat_c(aTHX_ t, c);
+		u = parse_type_paramd(aTHX_ sen, declarator);
+		sv_catsv(t, u);
+
+		c = lex_peek_unichar(0);
+	}
+
+	return t;
+}
+
+static SV *reify_type(pTHX_ Sentinel sen, const SV *declarator, SV *name) {
+	SV *t;
+	int n;
+	dSP;
+
+	ENTER;
+	SAVETMPS;
+
+	PUSHMARK(SP);
+	EXTEND(SP, 1);
+	PUSHs(name);
+	PUTBACK;
+
+	n = call_pv("Moose::Util::TypeConstraints::find_or_parse_type_constraint", G_SCALAR);
+	SPAGAIN;
+
+	assert(n == 1);
+	t = sentinel_mortalize(sen, SvREFCNT_inc(POPs));
+
+	PUTBACK;
+	FREETMPS;
+	LEAVE;
+
+	if (!SvTRUE(t)) {
+		croak("In %"SVf": undefined type '%"SVf"'", SVfARG(declarator), SVfARG(name));
+	}
+
+	return t;
+}
+
 
 DEFSTRUCT(Param) {
 	SV *name;
 	PADOFFSET padoff;
+	SV *type;
 };
 
 DEFSTRUCT(ParamInit) {
@@ -532,6 +626,7 @@ DEFVECTOR_INIT(piv_init, ParamInit);
 static void p_init(Param *p) {
 	p->name = NULL;
 	p->padoff = NOT_IN_PAD;
+	p->type = NULL;
 }
 
 static void ps_init(ParamSpec *ps) {
@@ -570,6 +665,7 @@ DEFVECTOR_EXTEND(piv_extend, ParamInit);
 static void p_clear(pTHX_ Param *p) {
 	p->name = NULL;
 	p->padoff = NOT_IN_PAD;
+	p->type = NULL;
 }
 
 static void pi_clear(pTHX_ ParamInit *pi) {
@@ -671,6 +767,35 @@ static size_t count_named_params(const ParamSpec *ps) {
 	return ps->named_required.used + ps->named_optional.used;
 }
 
+static void my_require(pTHX_ const char *file) {
+	require_pv(file);
+	if (SvTRUE(ERRSV)) {
+		croak_sv(ERRSV);
+	}
+}
+
+static SV *my_eval(pTHX_ Sentinel sen, I32 floor, OP *op) {
+	SV *sv;
+	CV *cv;
+	dSP;
+
+	cv = newATTRSUB(floor, NULL, NULL, NULL, op);
+
+	ENTER;
+	SAVETMPS;
+
+	PUSHMARK(SP);
+	call_sv((SV *)cv, G_SCALAR | G_NOARGS);
+	SPAGAIN;
+	sv = sentinel_mortalize(sen, SvREFCNT_inc(POPs));
+
+	PUTBACK;
+	FREETMPS;
+	LEAVE;
+
+	return sv;
+}
+
 enum {
 	PARAM_INVOCANT = 0x01,
 	PARAM_NAMED    = 0x02
@@ -683,16 +808,55 @@ static PADOFFSET parse_param(
 	pTHX_
 	Sentinel sen,
 	const SV *declarator, const KWSpec *spec, ParamSpec *param_spec,
-	int *pflags, SV **pname, OP **pinit
+	int *pflags, SV **pname, OP **pinit, SV **ptype
 ) {
 	I32 c;
 	char sigil;
-	SV *name;
+	SV *name, *typeobj, *typename;
 
 	assert(!*pinit);
 	*pflags = 0;
+	*ptype = NULL;
 
 	c = lex_peek_unichar(0);
+
+	if (spec->flags & FLAG_TYPES_OK) {
+		if (c == '(') {
+			I32 floor;
+			OP *expr;
+
+			lex_read_unichar(0);
+
+			floor = start_subparse(FALSE, CVf_ANON);
+
+			if (!(expr = parse_fullexpr(PARSE_OPTIONAL))) {
+				croak("In %"SVf": invalid type expression", SVfARG(declarator));
+			}
+			sentinel_register(sen, expr, free_op_void);
+
+			lex_read_space(0);
+			c = lex_peek_unichar(0);
+			if (c != ')') {
+				croak("In %"SVf": missing ')' after type expression", SVfARG(declarator));
+			}
+			lex_read_unichar(0);
+			lex_read_space(0);
+
+			*ptype = my_eval(aTHX_ sen, floor, expr);
+			if (!sv_isobject(*ptype)) {
+				croak("In %"SVf": (%"SVf") doesn't look like a type object", SVfARG(declarator), SVfARG(*ptype));
+			}
+
+			c = lex_peek_unichar(0);
+		} else if (my_is_uni_xidfirst(aTHX_ c)) {
+			typename = parse_type(aTHX_ sen, declarator);
+			my_require(aTHX_ "Moose/Util/TypeConstraints.pm");
+			typeobj = reify_type(aTHX_ sen, declarator, typename);
+			*ptype = typeobj;
+
+			c = lex_peek_unichar(0);
+		}
+	}
 
 	if (c == ':') {
 		lex_read_unichar(0);
@@ -706,6 +870,7 @@ static PADOFFSET parse_param(
 	if (c == -1) {
 		croak("In %"SVf": unterminated parameter list", SVfARG(declarator));
 	}
+
 	if (!(c == '$' || c == '@' || c == '%')) {
 		croak("In %"SVf": unexpected '%c' in parameter list (expecting a sigil)", SVfARG(declarator), (int)c);
 	}
@@ -786,6 +951,63 @@ static OP *mkconstpv(pTHX_ const char *p, size_t n) {
 
 #define mkconstpvs(S) mkconstpv(aTHX_ "" S "", sizeof S - 1)
 
+static OP *mktypecheck(pTHX_ const SV *declarator, int nr, SV *name, PADOFFSET padoff, SV *type) {
+	/* $type->check($value) or Carp::croak "...: " . $type->get_message($value) */
+	OP *chk, *cond, *err, *msg, *xcroak;
+
+	err = mkconstsv(aTHX_ newSVpvf("In %"SVf": parameter %d (%"SVf"): ", SVfARG(declarator), nr, SVfARG(name)));
+	{
+		OP *args = NULL;
+
+		args = op_append_elem(OP_LIST, args, mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(type)));
+		args = op_append_elem(
+			OP_LIST, args,
+			padoff == NOT_IN_PAD
+				? S_newDEFSVOP(aTHX)
+				: my_var(aTHX_ 0, padoff)
+		);
+		args = op_append_elem(OP_LIST, args, newUNOP(OP_METHOD, 0, mkconstpvs("get_message")));
+
+		msg = args;
+		msg->op_type = OP_ENTERSUB;
+		msg->op_ppaddr = PL_ppaddr[OP_ENTERSUB];
+		msg->op_flags |= OPf_STACKED;
+	}
+
+	msg = newBINOP(OP_CONCAT, 0, err, msg);
+
+	xcroak = newCVREF(
+		OPf_WANT_SCALAR,
+		newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV))
+	);
+	xcroak = newUNOP(OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, msg, xcroak));
+
+	{
+		OP *args = NULL;
+
+		args = op_append_elem(OP_LIST, args, mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(type)));
+		args = op_append_elem(
+			OP_LIST, args,
+			padoff == NOT_IN_PAD
+				? S_newDEFSVOP(aTHX)
+				: my_var(aTHX_ 0, padoff)
+		);
+		args = op_append_elem(OP_LIST, args, newUNOP(OP_METHOD, 0, mkconstpvs("check")));
+
+		chk = args;
+		chk->op_type = OP_ENTERSUB;
+		chk->op_ppaddr = PL_ppaddr[OP_ENTERSUB];
+		chk->op_flags |= OPf_STACKED;
+	}
+
+	chk = newLOGOP(OP_OR, 0, chk, xcroak);
+	return chk;
+}
+
+static OP *mktypecheckp(pTHX_ const SV *declarator, int nr, const Param *param) {
+	return mktypecheck(aTHX_ declarator, nr, param->name, param->padoff, param->type);
+}
+
 static void register_info(pTHX_ UV key, SV *declarator, const KWSpec *kws, const ParamSpec *ps) {
 	dSP;
 
@@ -793,7 +1015,7 @@ static void register_info(pTHX_ UV key, SV *declarator, const KWSpec *kws, const
 	SAVETMPS;
 
 	PUSHMARK(SP);
-	EXTEND(SP, 8);
+	EXTEND(SP, 10);
 
 	/* 0 */ {
 		mPUSHu(key);
@@ -810,20 +1032,28 @@ static void register_info(pTHX_ UV key, SV *declarator, const KWSpec *kws, const
 		} else {
 			PUSHmortal;
 		}
+		PUSHmortal;
 		mPUSHs(newRV_noinc((SV *)newAV()));
 		mPUSHs(newRV_noinc((SV *)newAV()));
 		mPUSHs(newRV_noinc((SV *)newAV()));
 		mPUSHs(newRV_noinc((SV *)newAV()));
 		mPUSHp("@_", 2);
+		PUSHmortal;
 	} else {
-		/* 2 */ {
+		/* 2, 3 */ {
 			if (ps->invocant.name) {
 				PUSHs(ps->invocant.name);
+				if (ps->invocant.type) {
+					PUSHs(ps->invocant.type);
+				} else {
+					PUSHmortal;
+				}
 			} else {
+				PUSHmortal;
 				PUSHmortal;
 			}
 		}
-		/* 3 */ {
+		/* 4 */ {
 			size_t i, lim;
 			AV *av;
 
@@ -831,25 +1061,11 @@ static void register_info(pTHX_ UV key, SV *declarator, const KWSpec *kws, const
 
 			av = newAV();
 			if (lim) {
-				av_extend(av, lim - 1);
+				av_extend(av, (lim - 1) * 2);
 				for (i = 0; i < lim; i++) {
-					av_push(av, SvREFCNT_inc_simple_NN(ps->positional_required.data[i].name));
-				}
-			}
-
-			mPUSHs(newRV_noinc((SV *)av));
-		}
-		/* 4 */ {
-			size_t i, lim;
-			AV *av;
-
-			lim = ps->positional_optional.used;
-
-			av = newAV();
-			if (lim) {
-				av_extend(av, lim - 1);
-				for (i = 0; i < lim; i++) {
-					av_push(av, SvREFCNT_inc_simple_NN(ps->positional_optional.data[i].param.name));
+					Param *cur = &ps->positional_required.data[i];
+					av_push(av, SvREFCNT_inc_simple_NN(cur->name));
+					av_push(av, cur->type ? SvREFCNT_inc_simple_NN(cur->type) : &PL_sv_undef);
 				}
 			}
 
@@ -859,13 +1075,15 @@ static void register_info(pTHX_ UV key, SV *declarator, const KWSpec *kws, const
 			size_t i, lim;
 			AV *av;
 
-			lim = ps->named_required.used;
+			lim = ps->positional_optional.used;
 
 			av = newAV();
 			if (lim) {
-				av_extend(av, lim - 1);
+				av_extend(av, (lim - 1) * 2);
 				for (i = 0; i < lim; i++) {
-					av_push(av, SvREFCNT_inc_simple_NN(ps->named_required.data[i].name));
+					Param *cur = &ps->positional_optional.data[i].param;
+					av_push(av, SvREFCNT_inc_simple_NN(cur->name));
+					av_push(av, cur->type ? SvREFCNT_inc_simple_NN(cur->type) : &PL_sv_undef);
 				}
 			}
 
@@ -875,22 +1093,48 @@ static void register_info(pTHX_ UV key, SV *declarator, const KWSpec *kws, const
 			size_t i, lim;
 			AV *av;
 
-			lim = ps->named_optional.used;
+			lim = ps->named_required.used;
 
 			av = newAV();
 			if (lim) {
-				av_extend(av, lim - 1);
+				av_extend(av, (lim - 1) * 2);
 				for (i = 0; i < lim; i++) {
-					av_push(av, SvREFCNT_inc_simple_NN(ps->named_optional.data[i].param.name));
+					Param *cur = &ps->named_required.data[i];
+					av_push(av, SvREFCNT_inc_simple_NN(cur->name));
+					av_push(av, cur->type ? SvREFCNT_inc_simple_NN(cur->type) : &PL_sv_undef);
 				}
 			}
 
 			mPUSHs(newRV_noinc((SV *)av));
 		}
 		/* 7 */ {
+			size_t i, lim;
+			AV *av;
+
+			lim = ps->named_optional.used;
+
+			av = newAV();
+			if (lim) {
+				av_extend(av, (lim - 1) * 2);
+				for (i = 0; i < lim; i++) {
+					Param *cur = &ps->named_optional.data[i].param;
+					av_push(av, SvREFCNT_inc_simple_NN(cur->name));
+					av_push(av, cur->type ? SvREFCNT_inc_simple_NN(cur->type) : &PL_sv_undef);
+				}
+			}
+
+			mPUSHs(newRV_noinc((SV *)av));
+		}
+		/* 8, 9 */ {
 			if (ps->slurpy.name) {
 				PUSHs(ps->slurpy.name);
+				if (ps->slurpy.type) {
+					PUSHs(ps->slurpy.type);
+				} else {
+					PUSHmortal;
+				}
 			} else {
+				PUSHmortal;
 				PUSHmortal;
 			}
 		}
@@ -960,7 +1204,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 	/* initialize synthetic optree */
 	Newx(prelude_sentinel, 1, OP *);
 	*prelude_sentinel = NULL;
-	sentinel_register(sen, prelude_sentinel, free_ptr_op);
+	sentinel_register(sen, prelude_sentinel, free_ptr_op_void);
 
 	/* parameters */
 	param_spec = NULL;
@@ -971,7 +1215,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
 		Newx(init_sentinel, 1, OP *);
 		*init_sentinel = NULL;
-		sentinel_register(sen, init_sentinel, free_ptr_op);
+		sentinel_register(sen, init_sentinel, free_ptr_op_void);
 
 		Newx(param_spec, 1, ParamSpec);
 		ps_init(param_spec);
@@ -982,11 +1226,11 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
 		while ((c = lex_peek_unichar(0)) != ')') {
 			int flags;
-			SV *name;
+			SV *name, *type;
 			char sigil;
 			PADOFFSET padoff;
 
-			padoff = parse_param(aTHX_ sen, declarator, spec, param_spec, &flags, &name, init_sentinel);
+			padoff = parse_param(aTHX_ sen, declarator, spec, param_spec, &flags, &name, init_sentinel, &type);
 
 			S_intro_my(aTHX);
 
@@ -1019,6 +1263,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 				assert(!*init_sentinel);
 				param_spec->slurpy.name = name;
 				param_spec->slurpy.padoff = padoff;
+				param_spec->slurpy.type = type;
 				continue;
 			}
 
@@ -1038,6 +1283,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 				}
 				param_spec->invocant.name = name;
 				param_spec->invocant.padoff = padoff;
+				param_spec->invocant.type = type;
 				continue;
 			}
 
@@ -1058,6 +1304,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 					ParamInit *pi = piv_extend(&param_spec->named_optional);
 					pi->param.name = name;
 					pi->param.padoff = padoff;
+					pi->param.type = type;
 					pi->init = *init_sentinel;
 					*init_sentinel = NULL;
 					param_spec->named_optional.used++;
@@ -1069,6 +1316,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 					Param *p = pv_extend(&param_spec->named_required);
 					p->name = name;
 					p->padoff = padoff;
+					p->type = type;
 					param_spec->named_required.used++;
 				}
 			} else {
@@ -1076,6 +1324,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 					ParamInit *pi = piv_extend(&param_spec->positional_optional);
 					pi->param.name = name;
 					pi->param.padoff = padoff;
+					pi->param.type = type;
 					pi->init = *init_sentinel;
 					*init_sentinel = NULL;
 					param_spec->positional_optional.used++;
@@ -1083,6 +1332,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 					Param *p = pv_extend(&param_spec->positional_required);
 					p->name = name;
 					p->padoff = padoff;
+					p->type = type;
 					param_spec->positional_required.used++;
 				}
 			}
@@ -1131,7 +1381,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 	/* attributes */
 	Newx(attrs_sentinel, 1, OP *);
 	*attrs_sentinel = NULL;
-	sentinel_register(sen, attrs_sentinel, free_ptr_op);
+	sentinel_register(sen, attrs_sentinel, free_ptr_op_void);
 
 	if (c == ':' || c == '{') /* '}' - hi, vim */ {
 
@@ -1231,7 +1481,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
 		amin = args_min(aTHX_ param_spec, spec);
 		if (amin > 0) {
-			OP *chk, *cond, *err, *croak;
+			OP *chk, *cond, *err, *xcroak;
 
 			err = mkconstsv(aTHX_ newSVpvf("Not enough arguments for %"SVf" (expected %d, got ", SVfARG(declarator), amin));
 			err = newBINOP(
@@ -1245,10 +1495,10 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 				mkconstpvs(")")
 			);
 
-			croak = newCVREF(OPf_WANT_SCALAR,
-			                 newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV)));
+			xcroak = newCVREF(OPf_WANT_SCALAR,
+			                  newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV)));
 			err = newUNOP(OP_ENTERSUB, OPf_STACKED,
-			              op_append_elem(OP_LIST, err, croak));
+			              op_append_elem(OP_LIST, err, xcroak));
 
 			cond = newBINOP(OP_LT, 0,
 			                newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
@@ -1260,7 +1510,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
 		amax = args_max(param_spec);
 		if (amax >= 0) {
-			OP *chk, *cond, *err, *croak;
+			OP *chk, *cond, *err, *xcroak;
 
 			err = mkconstsv(aTHX_ newSVpvf("Too many arguments for %"SVf" (expected %d, got ", SVfARG(declarator), amax));
 			err = newBINOP(
@@ -1274,12 +1524,12 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 				mkconstpvs(")")
 			);
 
-			croak = newCVREF(
+			xcroak = newCVREF(
 				OPf_WANT_SCALAR,
 				newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV))
 			);
 			err = newUNOP(OP_ENTERSUB, OPf_STACKED,
-			op_append_elem(OP_LIST, err, croak));
+			op_append_elem(OP_LIST, err, xcroak));
 
 			cond = newBINOP(
 				OP_GT, 0,
@@ -1292,17 +1542,17 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 		}
 
 		if (param_spec && (count_named_params(param_spec) || (param_spec->slurpy.name && SvPV_nolen(param_spec->slurpy.name)[0] == '%'))) {
-			OP *chk, *cond, *err, *croak;
+			OP *chk, *cond, *err, *xcroak;
 			const UV fixed = count_positional_params(param_spec) + !!param_spec->invocant.name;
 
 			err = mkconstsv(aTHX_ newSVpvf("Odd number of paired arguments for %"SVf"", SVfARG(declarator)));
 
-			croak = newCVREF(
+			xcroak = newCVREF(
 				OPf_WANT_SCALAR,
 				newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV))
 			);
 			err = newUNOP(OP_ENTERSUB, OPf_STACKED,
-			op_append_elem(OP_LIST, err, croak));
+			op_append_elem(OP_LIST, err, xcroak));
 
 			cond = newBINOP(OP_GT, 0,
 			                newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
@@ -1349,6 +1599,10 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 			var = newASSIGNOP(OPf_STACKED, var, 0, newOP(OP_SHIFT, 0));
 
 			*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, var));
+
+			if (param_spec->invocant.type && (spec->flags & FLAG_CHECK_TARGS)) {
+				*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, mktypecheckp(aTHX_ declarator, 0, &param_spec->invocant)));
+			}
 		}
 
 		/* my (...) = @_; */
@@ -1500,21 +1754,21 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 				cond = mkhvelem(aTHX_ param_spec->rest_hash, mkconstpv(aTHX_ p + 1, n - 1));
 
 				if (spec->flags & FLAG_CHECK_NARGS) {
-					OP *croak, *msg;
+					OP *xcroak, *msg;
 
 					var = mkhvelem(aTHX_ param_spec->rest_hash, mkconstpv(aTHX_ p + 1, n - 1));
 					var = newUNOP(OP_DELETE, 0, var);
 
 					msg = mkconstsv(aTHX_ newSVpvf("In %"SVf": missing named parameter: %.*s", SVfARG(declarator), (int)(n - 1), p + 1));
-					croak = newCVREF(
+					xcroak = newCVREF(
 						OPf_WANT_SCALAR,
 						newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV))
 					);
-					croak = newUNOP(OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, msg, croak));
+					xcroak = newUNOP(OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, msg, xcroak));
 
 					cond = newUNOP(OP_EXISTS, 0, cond);
 
-					cond = newCONDOP(0, cond, var, croak);
+					cond = newCONDOP(0, cond, var, xcroak);
 				}
 
 				var = my_var(
@@ -1555,7 +1809,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 			if (!param_spec->slurpy.name) {
 				if (spec->flags & FLAG_CHECK_NARGS) {
 					/* croak if %{rest} */
-					OP *croak, *cond, *keys, *msg;
+					OP *xcroak, *cond, *keys, *msg;
 
 					keys = newUNOP(OP_KEYS, 0, my_var_g(aTHX_ OP_PADHV, 0, param_spec->rest_hash));
 					keys = newLISTOP(OP_SORT, 0, newOP(OP_PUSHMARK, 0), keys);
@@ -1577,16 +1831,16 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 					msg = mkconstsv(aTHX_ newSVpvf("In %"SVf": no such named parameter: ", SVfARG(declarator)));
 					msg = newBINOP(OP_CONCAT, 0, msg, keys);
 
-					croak = newCVREF(
+					xcroak = newCVREF(
 						OPf_WANT_SCALAR,
 						newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV))
 					);
-					croak = newUNOP(OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, msg, croak));
+					xcroak = newUNOP(OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, msg, xcroak));
 
 					cond = newUNOP(OP_KEYS, 0, my_var_g(aTHX_ OP_PADHV, 0, param_spec->rest_hash));
-					croak = newCONDOP(0, cond, croak, NULL);
+					xcroak = newCONDOP(0, cond, xcroak, NULL);
 
-					*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, croak));
+					*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, xcroak));
 				} else {
 					OP *clear;
 
@@ -1623,6 +1877,65 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 				);
 
 				*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, clear));
+			}
+		}
+
+		if (spec->flags & FLAG_CHECK_TARGS) {
+			size_t i, lim, base;
+
+			base = 1;
+			for (i = 0, lim = param_spec->positional_required.used; i < lim; i++) {
+				Param *cur = &param_spec->positional_required.data[i];
+
+				if (cur->type) {
+					*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, mktypecheckp(aTHX_ declarator, base + i, cur)));
+				}
+			}
+			base += i;
+
+			for (i = 0, lim = param_spec->positional_optional.used; i < lim; i++) {
+				Param *cur = &param_spec->positional_optional.data[i].param;
+
+				if (cur->type) {
+					*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, mktypecheckp(aTHX_ declarator, base + i, cur)));
+				}
+			}
+			base += i;
+
+			for (i = 0, lim = param_spec->named_required.used; i < lim; i++) {
+				Param *cur = &param_spec->named_required.data[i];
+
+				if (cur->type) {
+					*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, mktypecheckp(aTHX_ declarator, base + i, cur)));
+				}
+			}
+			base += i;
+
+			for (i = 0, lim = param_spec->named_optional.used; i < lim; i++) {
+				Param *cur = &param_spec->named_optional.data[i].param;
+
+				if (cur->type) {
+					*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, mktypecheckp(aTHX_ declarator, base + i, cur)));
+				}
+			}
+			base += i;
+
+			if (param_spec->slurpy.type) {
+				/* $type->valid($_) or croak $type->get_message($_) for @rest / values %rest */
+				OP *body, *list, *loop;
+
+				body = mktypecheck(aTHX_ declarator, base, param_spec->slurpy.name, NOT_IN_PAD, param_spec->slurpy.type);
+
+				if (SvPV_nolen(param_spec->slurpy.name)[0] == '@') {
+					list = my_var_g(aTHX_ OP_PADAV, 0, param_spec->slurpy.padoff);
+				} else {
+					list = my_var_g(aTHX_ OP_PADHV, 0, param_spec->slurpy.padoff);
+					list = newUNOP(OP_VALUES, 0, list);
+				}
+
+				loop = newFOROP(0, NULL, list, body, NULL);
+
+				*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, loop));
 			}
 		}
 	}
@@ -1727,6 +2040,8 @@ WARNINGS_ENABLE {
 	newCONSTSUB(stash, "FLAG_CHECK_NARGS",  newSViv(FLAG_CHECK_NARGS));
 	newCONSTSUB(stash, "FLAG_INVOCANT",     newSViv(FLAG_INVOCANT));
 	newCONSTSUB(stash, "FLAG_NAMED_PARAMS", newSViv(FLAG_NAMED_PARAMS));
+	newCONSTSUB(stash, "FLAG_TYPES_OK",     newSViv(FLAG_TYPES_OK));
+	newCONSTSUB(stash, "FLAG_CHECK_TARGS",  newSViv(FLAG_CHECK_TARGS));
 	newCONSTSUB(stash, "HINTK_KEYWORDS", newSVpvs(HINTK_KEYWORDS));
 	newCONSTSUB(stash, "HINTK_FLAGS_",   newSVpvs(HINTK_FLAGS_));
 	newCONSTSUB(stash, "HINTK_SHIFT_",   newSVpvs(HINTK_SHIFT_));

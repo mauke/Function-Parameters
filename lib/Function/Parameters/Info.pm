@@ -8,6 +8,18 @@ use Moo;
 
 our $VERSION = '0.01';
 
+{
+	package Function::Parameters::Param;
+
+	use Moo;
+	use overload
+		fallback => 1,
+		'""' => sub { $_[0]->name },
+	;
+
+	has $_ => (is => 'ro') for qw(name type);
+}
+
 my @pn_ro = glob '{positional,named}_{required,optional}';
 
 for my $attr (qw[keyword invocant slurpy], map "_$_", @pn_ro) {

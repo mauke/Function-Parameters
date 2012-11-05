@@ -1052,6 +1052,23 @@ static PADOFFSET S_pad_findmy(pTHX_ const char *name, U32 flags) {
 
 #endif
 
+#ifndef pad_findmy_pvs
+  #define pad_findmy_pvs(S, FLAGS) S_pad_findmy(aTHX_ "" S "", FLAGS)
+#endif
+
+static OP *S_newDEFSVOP(pTHX) {
+	dVAR;
+	const PADOFFSET offset = pad_findmy_pvs("$_", 0);
+	if (offset == NOT_IN_PAD || PAD_COMPNAME_FLAGS_isOUR(offset)) {
+		return newSVREF(newGVOP(OP_GV, 0, PL_defgv));
+	}
+	else {
+		OP * const o = newOP(OP_PADSV, 0);
+		o->op_targ = offset;
+		return o;
+	}
+}
+
 static U32 S_intro_my(pTHX) {
 	dVAR;
 	SV **svp;

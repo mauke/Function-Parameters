@@ -32,12 +32,14 @@ my %type_map = (
 		default_arguments => 1,
 		check_argument_count => 0,
 		named_parameters => 1,
+		types => 1,
 	},
 	method   => {
 		name => 'optional',
 		default_arguments => 1,
 		check_argument_count => 0,
 		named_parameters => 1,
+		types => 1,
 		attrs => ':method',
 		shift => '$self',
 		invocant => 1,
@@ -47,6 +49,7 @@ my %type_map = (
 		default_arguments => 1,
 		check_argument_count => 0,
 		named_parameters => 1,
+		types => 1,
 		attributes => ':method',
 		shift => '$class',
 		invocant => 1,
@@ -116,6 +119,7 @@ sub import {
 		$clean{check_argument_count} = !!delete $type{check_argument_count};
 		$clean{invocant} = !!delete $type{invocant};
 		$clean{named_parameters} = !!delete $type{named_parameters};
+		$clean{types} = !!delete $type{types};
 
 		%type and confess "Invalid keyword property: @{[keys %type]}";
 
@@ -131,9 +135,10 @@ sub import {
 			FLAG_ANON_OK | FLAG_NAME_OK
 		;
 		$flags |= FLAG_DEFAULT_ARGS if $type->{default_arguments};
-		$flags |= FLAG_CHECK_NARGS if $type->{check_argument_count};
+		$flags |= FLAG_CHECK_NARGS | FLAG_CHECK_TARGS if $type->{check_argument_count};
 		$flags |= FLAG_INVOCANT if $type->{invocant};
 		$flags |= FLAG_NAMED_PARAMS if $type->{named_parameters};
+		$flags |= FLAG_TYPES_OK if $type->{types};
 		$^H{HINTK_FLAGS_ . $kw} = $flags;
 		$^H{HINTK_SHIFT_ . $kw} = $type->{shift};
 		$^H{HINTK_ATTRS_ . $kw} = $type->{attrs};
@@ -162,40 +167,58 @@ sub _register_info {
 		$key,
 		$declarator,
 		$invocant,
+		$invocant_type,
 		$positional_required,
 		$positional_optional,
 		$named_required,
 		$named_optional,
 		$slurpy,
+		$slurpy_type,
 	) = @_;
 
-	my $blob = pack '(Z*)*',
-		$declarator,
-		$invocant // '',
-		join(' ', @$positional_required),
-		join(' ', @$positional_optional),
-		join(' ', @$named_required),
-		join(' ', @$named_optional),
-		$slurpy // '',
-	;
+	my $info = {
+		declarator => $declarator,
+		invocant => defined $invocant ? [$invocant, $invocant_type] : undef,
+		slurpy   => defined $slurpy   ? [$slurpy  , $slurpy_type  ] : undef,
+		positional_required => $positional_required,
+		positional_optional => $positional_optional,
+		named_required => $named_required,
+		named_optional => $named_optional,
+	};
 
-	$metadata{$key} = $blob;
+	$metadata{$key} = $info;
+}
+
+sub _mkparam1 {
+	my ($pair) = @_;
+	my ($v, $t) = @{$pair || []} or return undef;
+	Function::Parameters::Param->new(
+		name => $v,
+		type => $t,
+	)
+}
+
+sub _mkparams {
+	my @r;
+	while (my ($v, $t) = splice @_, 0, 2) {
+		push @r, Function::Parameters::Param->new(
+			name => $v,
+			type => $t,
+		);
+	}
+	\@r
 }
 
 sub info {
 	my ($func) = @_;
 	my $key = _cv_root $func or return undef;
-	my $blob = $metadata{$key} or return undef;
-	my @info = unpack '(Z*)*', $blob;
+	my $info = $metadata{$key} or return undef;
 	require Function::Parameters::Info;
 	Function::Parameters::Info->new(
-		keyword => $info[0],
-		invocant => $info[1] || undef,
-		_positional_required => [split ' ', $info[2]],
-		_positional_optional => [split ' ', $info[3]],
-		_named_required => [split ' ', $info[4]],
-		_named_optional => [split ' ', $info[5]],
-		slurpy => $info[6] || undef,
+		keyword => $info->{declarator},
+		invocant => _mkparam1($info->{invocant}),
+		slurpy => _mkparam1($info->{slurpy}),
+		(map +("_$_" => _mkparams @{$info->{$_}}), glob '{positional,named}_{required,optional}')
 	)
 }
 
