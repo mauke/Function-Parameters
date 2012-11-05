@@ -78,7 +78,7 @@ methods are available:
 =head2 $info->invocant
 
 Returns the name of the variable into which the first argument is
-L<C<shift>|perlfunc/shift>ed into automatically, or C<undef> if no such thing
+L<C<shift>|perlfunc/shift>ed automatically, or C<undef> if no such thing
 exists. This will usually return C<'$self'> for methods.
 
 =head2 $info->positional_required
