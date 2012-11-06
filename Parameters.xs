@@ -121,7 +121,9 @@ static void sentinel_clear_void(pTHX_ void *p) {
 	Resource **pp = p;
 	while (*pp) {
 		Resource *cur = *pp;
-		cur->destroy(aTHX_ cur->data);
+		if (cur->destroy) {
+			cur->destroy(aTHX_ cur->data);
+		}
 		cur->data = (void *)"no";
 		cur->destroy = NULL;
 		*pp = cur->next;
@@ -129,7 +131,7 @@ static void sentinel_clear_void(pTHX_ void *p) {
 	}
 }
 
-static void sentinel_register(Sentinel sen, void *data, void (*destroy)(pTHX_ void *)) {
+static Resource *sentinel_register(Sentinel sen, void *data, void (*destroy)(pTHX_ void *)) {
 	Resource *cur;
 
 	Newx(cur, 1, Resource);
@@ -137,6 +139,12 @@ static void sentinel_register(Sentinel sen, void *data, void (*destroy)(pTHX_ vo
 	cur->destroy = destroy;
 	cur->next = *sen;
 	*sen = cur;
+
+	return cur;
+}
+
+static void sentinel_disarm(Resource *p) {
+	p->destroy = NULL;
 }
 
 static void my_sv_refcnt_dec_void(pTHX_ void *p) {
@@ -812,7 +820,7 @@ static PADOFFSET parse_param(
 ) {
 	I32 c;
 	char sigil;
-	SV *name, *typeobj, *typename;
+	SV *name;
 
 	assert(!*pinit);
 	*pflags = 0;
@@ -824,15 +832,18 @@ static PADOFFSET parse_param(
 		if (c == '(') {
 			I32 floor;
 			OP *expr;
+			Resource *expr_sentinel;
 
 			lex_read_unichar(0);
 
-			floor = start_subparse(FALSE, CVf_ANON);
+			floor = start_subparse(FALSE, 0);
+			SAVEFREESV(PL_compcv);
+			CvSPECIAL_on(PL_compcv);
 
 			if (!(expr = parse_fullexpr(PARSE_OPTIONAL))) {
 				croak("In %"SVf": invalid type expression", SVfARG(declarator));
 			}
-			sentinel_register(sen, expr, free_op_void);
+			expr_sentinel = sentinel_register(sen, expr, free_op_void);
 
 			lex_read_space(0);
 			c = lex_peek_unichar(0);
@@ -842,17 +853,19 @@ static PADOFFSET parse_param(
 			lex_read_unichar(0);
 			lex_read_space(0);
 
+			SvREFCNT_inc_simple_void(PL_compcv);
+			sentinel_disarm(expr_sentinel);
 			*ptype = my_eval(aTHX_ sen, floor, expr);
+			*ptype = reify_type(aTHX_ sen, declarator, *ptype);
 			if (!sv_isobject(*ptype)) {
 				croak("In %"SVf": (%"SVf") doesn't look like a type object", SVfARG(declarator), SVfARG(*ptype));
 			}
 
 			c = lex_peek_unichar(0);
 		} else if (my_is_uni_xidfirst(aTHX_ c)) {
-			typename = parse_type(aTHX_ sen, declarator);
+			*ptype = parse_type(aTHX_ sen, declarator);
 			my_require(aTHX_ "Moose/Util/TypeConstraints.pm");
-			typeobj = reify_type(aTHX_ sen, declarator, typename);
-			*ptype = typeobj;
+			*ptype = reify_type(aTHX_ sen, declarator, *ptype);
 
 			c = lex_peek_unichar(0);
 		}
