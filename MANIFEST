@@ -21,6 +21,17 @@ t/eating_strict_error.fail
 t/eating_strict_error.t
 t/eating_strict_error_2.fail
 t/elsewhere.t
+t/foreign/Fun/anon.t
+t/foreign/Fun/basic.t
+t/foreign/Fun/closure-proto.t
+t/foreign/Fun/compile-time.t
+t/foreign/Fun/defaults.t
+t/foreign/Fun/name.t
+t/foreign/Fun/package.t
+t/foreign/Fun/recursion.t
+t/foreign/Fun/slurpy-syntax-errors.t
+t/foreign/Fun/slurpy.t
+t/foreign/Fun/state.t
 t/foreign/Method-Signatures-Simple/02-use.t
 t/foreign/Method-Signatures-Simple/03-config.t
 t/foreign/Method-Signatures/anon.t
