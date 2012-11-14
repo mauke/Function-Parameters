@@ -135,6 +135,18 @@ Returns the maximum number of arguments this function accepts. This is computed
 as follows: If there is any named or slurpy parameter, the result is C<Inf>.
 Otherwise the result is the sum of all invocant and positional parameters.
 
+=head2 Experimental feature: Types
+
+All the methods described above actually return parameter objects wherever the
+description says "name". These objects have two methods: C<name>, which
+returns the name of the parameter (as a plain string), and C<type>, which
+returns the corresponding type constraint object (or undef if there was no type
+specified).
+
+This should be invisible if you don't use types because the objects also
+L<overload|overload> stringification to call C<name>. That is, if you treat
+parameter objects like strings, they behave like strings (i.e. their names).
+
 =head1 SEE ALSO
 
 L<Function::Parameters>

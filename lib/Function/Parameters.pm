@@ -659,6 +659,44 @@ affects the file that is currently being compiled.
    # or Function::Parameters->import(@custom_import_args);
  }
 
+=head2 Experimental feature: Types
+
+An experimental feature is now available: You can annotate parameters with
+L<Moose types|Moose::Manual::Types>. That is, before each parameter you can put
+a type specification consisting of identifiers (C<Foo>), unions (C<... | ...>),
+and parametric types (C<...[...]>). Example:
+
+  fun foo(Int $n, ArrayRef[String | CodeRef] $cb) { ... }
+
+If you do this, L<Moose> will be loaded automatically (if that hasn't happened
+yet). These specifications are parsed and validated using
+L<C<Moose::Util::TypeConstraints::find_or_parse_type_constraint>|Moose::Util::TypeConstraints/find_or_parse_type_constraint>.
+
+If you are in "lax" mode, nothing further happens and the types are ignored. If
+you are in "strict" mode, C<Function::Parameters> generates code to make sure
+any values passed in conform to the type (via
+L<< C<< $constraint->check($value) >>|Moose::Meta::TypeConstraint/$constraint->check($value) >>.
+
+In addition, these type constraints are inspectable through the
+L<Function::Parameters::Info> object returned by
+L<C<Function::Parameters::info>|/Introspection>.
+
+=head2 Experimental experimental feature: Type expressions
+
+An even more experimental feature is the ability to specify arbitrary
+expressions as types. The syntax for this is like the literal types described
+above, but with an expression wrapped in parentheses (C<( EXPR )>). Example:
+
+  fun foo(('Int') $n, ($othertype) $x) { ... }
+
+Every type expression must return either a string (which is resolved as for
+literal types), or a L<type constraint object|Moose::Meta::TypeConstraint>
+(providing C<check> and C<get_message> methods).
+
+Note that these expressions are evaluated (once) at parse time (similar to
+C<BEGIN> blocks), so make sure that any variables you use are set and any
+functions you call are defined at parse time.
+
 =head2 How it works
 
 The module is actually written in L<C|perlxs> and uses
@@ -675,6 +713,39 @@ generated code corresponds to:
   method bar($x, $y, @z) { ... }
   # ... turns into ...
   sub bar :method { my $self = shift; my ($x, $y, @z) = @_; sub bar; ... }
+
+=head1 SUPPORT AND DOCUMENTATION
+
+After installing, you can find documentation for this module with the
+perldoc command.
+
+    perldoc Function::Parameters
+
+You can also look for information at:
+
+=over
+
+=item MetaCPAN
+
+L<https://metacpan.org/module/Function%3A%3AParameters>
+
+=item RT, CPAN's request tracker
+
+L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Function-Parameters>
+
+=item AnnoCPAN, Annotated CPAN documentation
+
+L<http://annocpan.org/dist/Function-Parameters>
+
+=item CPAN Ratings
+
+L<http://cpanratings.perl.org/d/Function-Parameters>
+
+=item Search CPAN
+
+L<http://search.cpan.org/dist/Function-Parameters/>
+
+=back
 
 =head1 SEE ALSO
 
