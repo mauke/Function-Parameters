@@ -802,7 +802,7 @@ static void register_info(pTHX_ UV key, SV *declarator, const KWSpec *kws, const
 		size_t n;
 		char *p = SvPV(declarator, n);
 		char *q = memchr(p, ' ', n);
-		mPUSHp(p, q ? q - p : n);
+		mPUSHp(p, q ? (size_t)(q - p) : n);
 	}
 	if (!ps) {
 		if (SvTRUE(kws->shift)) {
@@ -1709,12 +1709,12 @@ UV
 fp__cv_root(sv)
 	SV * sv
 	PREINIT:
-		CV *cv;
+		CV *xcv;
 		HV *hv;
 		GV *gv;
 	CODE:
-		cv = sv_2cv(sv, &hv, &gv, 0);
-		RETVAL = PTR2UV(cv ? CvROOT(cv) : NULL);
+		xcv = sv_2cv(sv, &hv, &gv, 0);
+		RETVAL = PTR2UV(xcv ? CvROOT(xcv) : NULL);
 	OUTPUT:
 		RETVAL
 
