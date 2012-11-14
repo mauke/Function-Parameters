@@ -677,7 +677,7 @@ L<C<Moose::Util::TypeConstraints::find_or_parse_type_constraint>|Moose::Util::Ty
 If you are in "lax" mode, nothing further happens and the types are ignored. If
 you are in "strict" mode, C<Function::Parameters> generates code to make sure
 any values passed in conform to the type (via
-L<< C<< $constraint->check($value) >>|Moose::Meta::TypeConstraint/$constraint->check($value) >>.
+L<< C<< $constraint->check($value) >>|Moose::Meta::TypeConstraint/$constraint->check($value) >>).
 
 In addition, these type constraints are inspectable through the
 L<Function::Parameters::Info> object returned by
