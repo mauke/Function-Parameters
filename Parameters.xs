@@ -540,7 +540,7 @@ static SV *reify_type(pTHX_ Sentinel sen, const SV *declarator, SV *name) {
 	PUSHs(name);
 	PUTBACK;
 
-	n = call_pv("Moose::Util::TypeConstraints::find_or_parse_type_constraint", G_SCALAR);
+	n = call_pv("Moose::Util::TypeConstraints::find_or_create_isa_type_constraint", G_SCALAR);
 	SPAGAIN;
 
 	assert(n == 1);

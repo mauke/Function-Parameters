@@ -40,12 +40,15 @@ t/foreign/Method-Signatures/array_param.t
 t/foreign/Method-Signatures/at_underscore.t
 t/foreign/Method-Signatures/attributes.t
 t/foreign/Method-Signatures/caller.t
+t/foreign/Method-Signatures/comments.t
 t/foreign/Method-Signatures/defaults.t
 t/foreign/Method-Signatures/error_interruption.t
 t/foreign/Method-Signatures/func.t
 t/foreign/Method-Signatures/invocant.t
 t/foreign/Method-Signatures/larna.t
+t/foreign/Method-Signatures/lib/Bad.pm
 t/foreign/Method-Signatures/lib/BarfyDie.pm
+t/foreign/Method-Signatures/lib/MooseLoadTest.pm
 t/foreign/Method-Signatures/method.t
 t/foreign/Method-Signatures/named.t
 t/foreign/Method-Signatures/odd_number.t
@@ -55,7 +58,11 @@ t/foreign/Method-Signatures/paren_on_own_line.t
 t/foreign/Method-Signatures/paren_plus_open_block.t
 t/foreign/Method-Signatures/required.t
 t/foreign/Method-Signatures/slurpy.t
+t/foreign/Method-Signatures/syntax_errors.t
 t/foreign/Method-Signatures/too_many_args.t
+t/foreign/Method-Signatures/type_check.t
+t/foreign/Method-Signatures/typeload_moose.t
+t/foreign/Method-Signatures/typeload_notypes.t
 t/foreign/MooseX-Method-Signatures/attributes.t
 t/foreign/MooseX-Method-Signatures/caller.t
 t/foreign/MooseX-Method-Signatures/errors.t
