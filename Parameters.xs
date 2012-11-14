@@ -157,39 +157,6 @@ static SV *sentinel_mortalize(Sentinel sen, SV *sv) {
 	return sv;
 }
 
-static void my_safefree(void *p) {
-	Safefree(p);
-}
-
-#define SENTINEL_ALLOC(SEN, P, N, T) STMT_START { \
-	Newx(P, N, T); \
-	sentinel_register(SEN, P, my_safefree); \
-} STMT_END
-
-#define SENTINEL_MDUP(SEN, P, O, N, T) STMT_START { \
-	void *const _sentinel_mdup_tmp_ = (P); \
-	SENTINEL_ALLOC(SEN, P, N, T); \
-	memcpy(P, _sentinel_mdup_tmp_, O * sizeof (T)); \
-} STMT_END
-
-#define SENTINEL_REALLOC(SEN, P, N, T) STMT_START { \
-	assert((N) > 0); \
-	if (!(P)) { \
-		SENTINEL_ALLOC(SEN, P, N, T); \
-	} else { \
-		Resource **_sentinel_realloc_tmp_ = (SEN); \
-		for (;;) { \
-			assert(*_sentinel_realloc_tmp_ != NULL); \
-			if ((*_sentinel_realloc_tmp_)->data == (P)) { \
-				Renew((*_sentinel_realloc_tmp_)->data, N, T); \
-				(P) = (*_sentinel_realloc_tmp_)->data; \
-				break; \
-			} \
-			_sentinel_realloc_tmp_ = &(*_sentinel_realloc_tmp_)->next; \
-		} \
-	} \
-} STMT_END
-
 static int kw_flags(pTHX_ Sentinel sen, const char *kw_ptr, STRLEN kw_len, KWSpec *spec) {
 	HV *hints;
 	SV *sv, **psv;
