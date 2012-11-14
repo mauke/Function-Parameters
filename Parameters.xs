@@ -283,7 +283,7 @@ enum {
 
 static void my_sv_cat_c(pTHX_ SV *sv, U32 c) {
 	char ds[UTF8_MAXBYTES + 1], *d;
-	d = uvchr_to_utf8(ds, c);
+	d = (char *)uvchr_to_utf8((U8 *)ds, c);
 	if (d - ds > 1) {
 		sv_utf8_upgrade(sv);
 	}
@@ -1322,11 +1322,13 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 					*init_sentinel = NULL;
 					param_spec->named_optional.used++;
 				} else {
+					Param *p;
+
 					if (param_spec->positional_optional.used) {
 						croak("In %"SVf": can't combine optional positional (%"SVf") and required named (%"SVf") parameters", SVfARG(declarator), SVfARG(param_spec->positional_optional.data[0].param.name), SVfARG(name));
 					}
 
-					Param *p = pv_extend(&param_spec->named_required);
+					p = pv_extend(&param_spec->named_required);
 					p->name = name;
 					p->padoff = padoff;
 					p->type = type;
@@ -1490,7 +1492,6 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 	/* check number of arguments */
 	if (spec->flags & FLAG_CHECK_NARGS) {
 		int amin, amax;
-		size_t named;
 
 		amin = args_min(aTHX_ param_spec, spec);
 		if (amin > 0) {
