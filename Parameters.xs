@@ -268,7 +268,7 @@ enum {
 
 static void my_sv_cat_c(pTHX_ SV *sv, U32 c) {
 	char ds[UTF8_MAXBYTES + 1], *d;
-	d = uvchr_to_utf8(ds, c);
+	d = (char *)uvchr_to_utf8((U8 *)ds, c);
 	if (d - ds > 1) {
 		sv_utf8_upgrade(sv);
 	}
@@ -1062,11 +1062,13 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 					*init_sentinel = NULL;
 					param_spec->named_optional.used++;
 				} else {
+					Param *p;
+
 					if (param_spec->positional_optional.used) {
 						croak("In %"SVf": can't combine optional positional (%"SVf") and required named (%"SVf") parameters", SVfARG(declarator), SVfARG(param_spec->positional_optional.data[0].param.name), SVfARG(name));
 					}
 
-					Param *p = pv_extend(&param_spec->named_required);
+					p = pv_extend(&param_spec->named_required);
 					p->name = name;
 					p->padoff = padoff;
 					param_spec->named_required.used++;
@@ -1227,11 +1229,10 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 	/* check number of arguments */
 	if (spec->flags & FLAG_CHECK_NARGS) {
 		int amin, amax;
-		size_t named;
 
 		amin = args_min(aTHX_ param_spec, spec);
 		if (amin > 0) {
-			OP *chk, *cond, *err, *croak;
+			OP *chk, *cond, *err, *xcroak;
 
 			err = mkconstsv(aTHX_ newSVpvf("Not enough arguments for %"SVf" (expected %d, got ", SVfARG(declarator), amin));
 			err = newBINOP(
@@ -1245,10 +1246,10 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 				mkconstpvs(")")
 			);
 
-			croak = newCVREF(OPf_WANT_SCALAR,
-			                 newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV)));
+			xcroak = newCVREF(OPf_WANT_SCALAR,
+			                  newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV)));
 			err = newUNOP(OP_ENTERSUB, OPf_STACKED,
-			              op_append_elem(OP_LIST, err, croak));
+			              op_append_elem(OP_LIST, err, xcroak));
 
 			cond = newBINOP(OP_LT, 0,
 			                newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
@@ -1260,7 +1261,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
 		amax = args_max(param_spec);
 		if (amax >= 0) {
-			OP *chk, *cond, *err, *croak;
+			OP *chk, *cond, *err, *xcroak;
 
 			err = mkconstsv(aTHX_ newSVpvf("Too many arguments for %"SVf" (expected %d, got ", SVfARG(declarator), amax));
 			err = newBINOP(
@@ -1274,12 +1275,12 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 				mkconstpvs(")")
 			);
 
-			croak = newCVREF(
+			xcroak = newCVREF(
 				OPf_WANT_SCALAR,
 				newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV))
 			);
 			err = newUNOP(OP_ENTERSUB, OPf_STACKED,
-			op_append_elem(OP_LIST, err, croak));
+			op_append_elem(OP_LIST, err, xcroak));
 
 			cond = newBINOP(
 				OP_GT, 0,
@@ -1292,17 +1293,17 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 		}
 
 		if (param_spec && (count_named_params(param_spec) || (param_spec->slurpy.name && SvPV_nolen(param_spec->slurpy.name)[0] == '%'))) {
-			OP *chk, *cond, *err, *croak;
+			OP *chk, *cond, *err, *xcroak;
 			const UV fixed = count_positional_params(param_spec) + !!param_spec->invocant.name;
 
 			err = mkconstsv(aTHX_ newSVpvf("Odd number of paired arguments for %"SVf"", SVfARG(declarator)));
 
-			croak = newCVREF(
+			xcroak = newCVREF(
 				OPf_WANT_SCALAR,
 				newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV))
 			);
 			err = newUNOP(OP_ENTERSUB, OPf_STACKED,
-			op_append_elem(OP_LIST, err, croak));
+			op_append_elem(OP_LIST, err, xcroak));
 
 			cond = newBINOP(OP_GT, 0,
 			                newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
@@ -1500,21 +1501,21 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 				cond = mkhvelem(aTHX_ param_spec->rest_hash, mkconstpv(aTHX_ p + 1, n - 1));
 
 				if (spec->flags & FLAG_CHECK_NARGS) {
-					OP *croak, *msg;
+					OP *xcroak, *msg;
 
 					var = mkhvelem(aTHX_ param_spec->rest_hash, mkconstpv(aTHX_ p + 1, n - 1));
 					var = newUNOP(OP_DELETE, 0, var);
 
 					msg = mkconstsv(aTHX_ newSVpvf("In %"SVf": missing named parameter: %.*s", SVfARG(declarator), (int)(n - 1), p + 1));
-					croak = newCVREF(
+					xcroak = newCVREF(
 						OPf_WANT_SCALAR,
 						newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV))
 					);
-					croak = newUNOP(OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, msg, croak));
+					xcroak = newUNOP(OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, msg, xcroak));
 
 					cond = newUNOP(OP_EXISTS, 0, cond);
 
-					cond = newCONDOP(0, cond, var, croak);
+					cond = newCONDOP(0, cond, var, xcroak);
 				}
 
 				var = my_var(
@@ -1555,7 +1556,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 			if (!param_spec->slurpy.name) {
 				if (spec->flags & FLAG_CHECK_NARGS) {
 					/* croak if %{rest} */
-					OP *croak, *cond, *keys, *msg;
+					OP *xcroak, *cond, *keys, *msg;
 
 					keys = newUNOP(OP_KEYS, 0, my_var_g(aTHX_ OP_PADHV, 0, param_spec->rest_hash));
 					keys = newLISTOP(OP_SORT, 0, newOP(OP_PUSHMARK, 0), keys);
@@ -1577,16 +1578,16 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 					msg = mkconstsv(aTHX_ newSVpvf("In %"SVf": no such named parameter: ", SVfARG(declarator)));
 					msg = newBINOP(OP_CONCAT, 0, msg, keys);
 
-					croak = newCVREF(
+					xcroak = newCVREF(
 						OPf_WANT_SCALAR,
 						newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV))
 					);
-					croak = newUNOP(OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, msg, croak));
+					xcroak = newUNOP(OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, msg, xcroak));
 
 					cond = newUNOP(OP_KEYS, 0, my_var_g(aTHX_ OP_PADHV, 0, param_spec->rest_hash));
-					croak = newCONDOP(0, cond, croak, NULL);
+					xcroak = newCONDOP(0, cond, xcroak, NULL);
 
-					*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, croak));
+					*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, xcroak));
 				} else {
 					OP *clear;
 
