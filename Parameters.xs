@@ -577,6 +577,9 @@ static SV *reify_type(pTHX_ Sentinel sen, const SV *declarator, SV *name) {
 	SPAGAIN;
 
 	assert(n == 1);
+	/* don't warn about n being unused if assert() is compiled out */
+	n = n;
+
 	t = sentinel_mortalize(sen, SvREFCNT_inc(POPs));
 
 	PUTBACK;
@@ -966,7 +969,7 @@ static OP *mkconstpv(pTHX_ const char *p, size_t n) {
 
 static OP *mktypecheck(pTHX_ const SV *declarator, int nr, SV *name, PADOFFSET padoff, SV *type) {
 	/* $type->check($value) or Carp::croak "...: " . $type->get_message($value) */
-	OP *chk, *cond, *err, *msg, *xcroak;
+	OP *chk, *err, *msg, *xcroak;
 
 	err = mkconstsv(aTHX_ newSVpvf("In %"SVf": parameter %d (%"SVf"): ", SVfARG(declarator), nr, SVfARG(name)));
 	{
@@ -1936,9 +1939,9 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
 			if (param_spec->slurpy.type) {
 				/* $type->valid($_) or croak $type->get_message($_) for @rest / values %rest */
-				OP *body, *list, *loop;
+				OP *check, *list, *loop;
 
-				body = mktypecheck(aTHX_ declarator, base, param_spec->slurpy.name, NOT_IN_PAD, param_spec->slurpy.type);
+				check = mktypecheck(aTHX_ declarator, base, param_spec->slurpy.name, NOT_IN_PAD, param_spec->slurpy.type);
 
 				if (SvPV_nolen(param_spec->slurpy.name)[0] == '@') {
 					list = my_var_g(aTHX_ OP_PADAV, 0, param_spec->slurpy.padoff);
@@ -1947,7 +1950,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 					list = newUNOP(OP_VALUES, 0, list);
 				}
 
-				loop = newFOROP(0, NULL, list, body, NULL);
+				loop = newFOROP(0, NULL, list, check, NULL);
 
 				*prelude_sentinel = op_append_list(OP_LINESEQ, *prelude_sentinel, newSTATEOP(0, NULL, loop));
 			}
