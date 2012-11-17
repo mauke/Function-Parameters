@@ -2,7 +2,11 @@
 use warnings FATAL => 'all';
 use strict;
 
-use Test::More tests => 122;
+use Test::More
+	eval { require Moo; 1 }
+	? (tests => 122)
+	: (skip_all => "Moo required for testing parameter introspection")
+;
 
 use Function::Parameters;
 

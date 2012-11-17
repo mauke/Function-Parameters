@@ -646,6 +646,9 @@ exported, so you have to call it by its full name). It takes a reference to a
 function, and returns either C<undef> (if it knows nothing about the function)
 or a L<Function::Parameters::Info> object describing the parameter list.
 
+Note: This feature is implemented using L<Moo>, so you'll need to have L<Moo>
+installed if you want to call C<Function::Parameters::info>.
+
 See L<Function::Parameters::Info> for examples.
 
 =head2 Wrapping C<Function::Parameters>
