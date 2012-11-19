@@ -1,5 +1,11 @@
 Revision history for Function-Parameters
 
+1.0003  2012-11-19
+        - clean up internals
+        - fix build errors on some platforms
+        - fix module metadata
+        - some more tests
+
 1.00    2012-11-01
         - add named parameters with ':$foo, :$bar' syntax
         - rewrite documentation
