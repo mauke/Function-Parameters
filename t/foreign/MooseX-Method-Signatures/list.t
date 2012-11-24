@@ -13,7 +13,7 @@ my $o = bless {} => 'Foo';
             return join q{,}, @rest;
         },
         method ($foo, $bar, %rest) {
-            return join q{,}, map { $_ => $rest{$_} } keys %rest;
+            return join q{,}, map { $_ => $rest{$_} } sort keys %rest;
         },
     );
 
