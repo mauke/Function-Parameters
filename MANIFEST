@@ -89,6 +89,7 @@ t/lexical.t
 t/lineno-torture.t
 t/lineno.t
 t/moose_types.t
+t/moosex_types.t
 t/name.t
 t/name_1.fail
 t/name_2.fail
