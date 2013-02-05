@@ -4,20 +4,34 @@ use v5.14.0;
 
 use warnings;
 
-use Moo;
-
 our $VERSION = '0.02';
+
+# If Moo isn't loaded yet but Moose is, avoid pulling in Moo and fall back to Moose
+my ($Moo, $meta_make_immutable);
+BEGIN {
+	if ($INC{'Moose.pm'} && !$INC{'Moo.pm'}) {
+		$Moo = 'Moose';
+		$meta_make_immutable = sub { $_[0]->meta->make_immutable };
+	} else {
+		require Moo;
+		$Moo = 'Moo';
+		$meta_make_immutable = sub {};
+	}
+	$Moo->import;
+}
 
 {
 	package Function::Parameters::Param;
 
-	use Moo;
+	BEGIN { $Moo->import; }
 	use overload
 		fallback => 1,
 		'""' => sub { $_[0]->name },
 	;
 
 	has $_ => (is => 'ro') for qw(name type);
+
+	__PACKAGE__->$meta_make_immutable;
 }
 
 my @pn_ro = glob '{positional,named}_{required,optional}';
@@ -50,6 +64,8 @@ sub args_max {
 	$r += $self->positional_optional;
 	$r
 }
+
+__PACKAGE__->$meta_make_immutable;
 
 'ok'
 
