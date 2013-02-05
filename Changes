@@ -1,5 +1,8 @@
 Revision history for Function-Parameters
 
+1.0004  2012-11-26
+        - fix test relying on hash ordering
+
 1.0003  2012-11-19
         - clean up internals
         - fix build errors on some platforms
