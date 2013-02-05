@@ -645,7 +645,9 @@ function, and returns either C<undef> (if it knows nothing about the function)
 or a L<Function::Parameters::Info> object describing the parameter list.
 
 Note: This feature is implemented using L<Moo>, so you'll need to have L<Moo>
-installed if you want to call C<Function::Parameters::info>.
+installed if you want to call C<Function::Parameters::info> (alternatively, if
+L<Moose> is already loaded by the time C<Function::Parameters::info> is first
+called, it will use that instead).
 
 See L<Function::Parameters::Info> for examples.
 
@@ -760,7 +762,7 @@ Lukas Mai, C<< <l.mai at web.de> >>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2010, 2011, 2012 Lukas Mai.
+Copyright 2010-2013 Lukas Mai.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published
