@@ -1,5 +1,10 @@
 Revision history for Function-Parameters
 
+1.0101  2013-02-05
+        - new reflection API to inspect parameter information of functions
+        - Moose types in parameter lists
+        - more tests
+
 1.0004  2012-11-26
         - fix test relying on hash ordering
 
