@@ -1956,7 +1956,9 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 			body
 		);
 
-		register_info(aTHX_ PTR2UV(CvROOT(cv)), declarator, spec, param_spec);
+		if (cv) {
+			register_info(aTHX_ PTR2UV(CvROOT(cv)), declarator, spec, param_spec);
+		}
 
 		if (saw_name) {
 			*pop = newOP(OP_NULL, 0);
