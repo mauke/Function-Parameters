@@ -4,11 +4,15 @@ CCFLAGS := -DDEVEL $(CCFLAGS)
 
 .PHONY: multitest
 multitest:
-	f=''; \
-	for i in "$$PERLBREW_ROOT"/perls/*5.1[468]*/bin/perl perl; do \
+	f=''; k=''; \
+	for i in "$$PERLBREW_ROOT"/perls/*5.1[46789]*/bin/perl perl; do \
 	    echo "Trying $$i ..."; \
-	    $$i Makefile.PL && make && make test; \
-	    [ $$? = 0 ] || f="$$f $$i"; \
+	    if $$i Makefile.PL && make && make test; then \
+	        k="$$k $$i"; \
+	    else \
+	        f="$$f $$i"; \
+	    fi; \
 	    echo "... done (trying $$i)"; \
 	done; \
+	[ -z "$$k" ] || { echo "OK:    $$k" >&2; } ; \
 	[ -z "$$f" ] || { echo "Failed:$$f" >&2; exit 1; }
