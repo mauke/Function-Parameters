@@ -296,17 +296,9 @@ static void my_sv_cat_c(pTHX_ SV *sv, U32 c) {
 	sv_catpvn(sv, ds, d - ds);
 }
 
-static bool my_is_uni_xidfirst(pTHX_ UV c) {
-	U8 tmpbuf[UTF8_MAXBYTES + 1];
-	uvchr_to_utf8(tmpbuf, c);
-	return is_utf8_xidfirst(tmpbuf);
-}
 
-static bool my_is_uni_xidcont(pTHX_ UV c) {
-	U8 tmpbuf[UTF8_MAXBYTES + 1];
-	uvchr_to_utf8(tmpbuf, c);
-	return is_utf8_xidcont(tmpbuf);
-}
+#define MY_UNI_IDFIRST(C) isIDFIRST_uni(C)
+#define MY_UNI_IDCONT(C)  isALNUM_uni(C)
 
 static SV *my_scan_word(pTHX_ Sentinel sen, bool allow_package) {
 	bool at_start, at_substart;
@@ -320,7 +312,7 @@ static SV *my_scan_word(pTHX_ Sentinel sen, bool allow_package) {
 	c = lex_peek_unichar(0);
 
 	while (c != -1) {
-		if (at_substart ? my_is_uni_xidfirst(aTHX_ c) : my_is_uni_xidcont(aTHX_ c)) {
+		if (at_substart ? MY_UNI_IDFIRST(c) : MY_UNI_IDCONT(c)) {
 			lex_read_unichar(0);
 			my_sv_cat_c(aTHX_ sv, c);
 			at_substart = FALSE;
@@ -328,7 +320,7 @@ static SV *my_scan_word(pTHX_ Sentinel sen, bool allow_package) {
 		} else if (allow_package && !at_substart && c == '\'') {
 			lex_read_unichar(0);
 			c = lex_peek_unichar(0);
-			if (!my_is_uni_xidfirst(aTHX_ c)) {
+			if (!MY_UNI_IDFIRST(c)) {
 				lex_stuff_pvs("'", 0);
 				break;
 			}
@@ -342,7 +334,7 @@ static SV *my_scan_word(pTHX_ Sentinel sen, bool allow_package) {
 			}
 			lex_read_unichar(0);
 			c = lex_peek_unichar(0);
-			if (!my_is_uni_xidfirst(aTHX_ c)) {
+			if (!MY_UNI_IDFIRST(c)) {
 				lex_stuff_pvs("::", 0);
 				break;
 			}
@@ -871,7 +863,7 @@ static PADOFFSET parse_param(
 			}
 
 			c = lex_peek_unichar(0);
-		} else if (my_is_uni_xidfirst(aTHX_ c)) {
+		} else if (MY_UNI_IDFIRST(c)) {
 			*ptype = parse_type(aTHX_ sen, declarator);
 			my_require(aTHX_ "Moose/Util/TypeConstraints.pm");
 			*ptype = reify_type(aTHX_ sen, declarator, *ptype);
