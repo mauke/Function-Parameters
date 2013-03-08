@@ -157,67 +157,6 @@ static SV *sentinel_mortalize(Sentinel sen, SV *sv) {
 	return sv;
 }
 
-static int kw_flags(pTHX_ Sentinel sen, const char *kw_ptr, STRLEN kw_len, KWSpec *spec) {
-	HV *hints;
-	SV *sv, **psv;
-	const char *p, *kw_active;
-	STRLEN kw_active_len;
-
-	spec->flags = 0;
-	spec->shift = sentinel_mortalize(sen, newSVpvs(""));
-	spec->attrs = sentinel_mortalize(sen, newSVpvs(""));
-
-	if (!(hints = GvHV(PL_hintgv))) {
-		return FALSE;
-	}
-	if (!(psv = hv_fetchs(hints, HINTK_KEYWORDS, 0))) {
-		return FALSE;
-	}
-	sv = *psv;
-	kw_active = SvPV(sv, kw_active_len);
-	if (kw_active_len <= kw_len) {
-		return FALSE;
-	}
-	for (
-		p = kw_active;
-		(p = strchr(p, *kw_ptr)) &&
-		p < kw_active + kw_active_len - kw_len;
-		p++
-	) {
-		if (
-			(p == kw_active || p[-1] == ' ') &&
-			p[kw_len] == ' ' &&
-			memcmp(kw_ptr, p, kw_len) == 0
-		) {
-
-#define FETCH_HINTK_INTO(NAME, PTR, LEN, X) STMT_START { \
-	const char *fk_ptr_; \
-	STRLEN fk_len_; \
-	SV *fk_sv_; \
-	fk_sv_ = sentinel_mortalize(sen, newSVpvs(HINTK_ ## NAME)); \
-	sv_catpvn(fk_sv_, PTR, LEN); \
-	fk_ptr_ = SvPV(fk_sv_, fk_len_); \
-	if (!((X) = hv_fetch(hints, fk_ptr_, fk_len_, 0))) { \
-		croak("%s: internal error: $^H{'%.*s'} not set", MY_PKG, (int)fk_len_, fk_ptr_); \
-	} \
-} STMT_END
-
-			FETCH_HINTK_INTO(FLAGS_, kw_ptr, kw_len, psv);
-			spec->flags = SvIV(*psv);
-
-			FETCH_HINTK_INTO(SHIFT_, kw_ptr, kw_len, psv);
-			SvSetSV(spec->shift, *psv);
-
-			FETCH_HINTK_INTO(ATTRS_, kw_ptr, kw_len, psv);
-			SvSetSV(spec->attrs, *psv);
-
-#undef FETCH_HINTK_INTO
-			return TRUE;
-		}
-	}
-	return FALSE;
-}
-
 
 #if HAVE_PERL_VERSION(5, 17, 2)
  #define MY_OP_SLABBED(O) ((O)->op_slabbed)
@@ -2003,24 +1942,85 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 	}
 }
 
+static int kw_flags_enter(pTHX_ Sentinel sen, const char *kw_ptr, STRLEN kw_len, KWSpec *spec) {
+	HV *hints;
+	SV *sv, **psv;
+	const char *p, *kw_active;
+	STRLEN kw_active_len;
+
+	if (!(hints = GvHV(PL_hintgv))) {
+		return FALSE;
+	}
+	if (!(psv = hv_fetchs(hints, HINTK_KEYWORDS, 0))) {
+		return FALSE;
+	}
+	sv = *psv;
+	kw_active = SvPV(sv, kw_active_len);
+	if (kw_active_len <= kw_len) {
+		return FALSE;
+	}
+	for (
+		p = kw_active;
+		(p = strchr(p, *kw_ptr)) &&
+		p < kw_active + kw_active_len - kw_len;
+		p++
+	) {
+		if (
+			(p == kw_active || p[-1] == ' ') &&
+			p[kw_len] == ' ' &&
+			memcmp(kw_ptr, p, kw_len) == 0
+		) {
+			ENTER;
+			SAVETMPS;
+
+			SAVEDESTRUCTOR_X(sentinel_clear_void, sen);
+
+			spec->flags = 0;
+			spec->shift = sentinel_mortalize(sen, newSVpvs(""));
+			spec->attrs = sentinel_mortalize(sen, newSVpvs(""));
+
+#define FETCH_HINTK_INTO(NAME, PTR, LEN, X) STMT_START { \
+	const char *fk_ptr_; \
+	STRLEN fk_len_; \
+	SV *fk_sv_; \
+	fk_sv_ = sentinel_mortalize(sen, newSVpvs(HINTK_ ## NAME)); \
+	sv_catpvn(fk_sv_, PTR, LEN); \
+	fk_ptr_ = SvPV(fk_sv_, fk_len_); \
+	if (!((X) = hv_fetch(hints, fk_ptr_, fk_len_, 0))) { \
+		croak("%s: internal error: $^H{'%.*s'} not set", MY_PKG, (int)fk_len_, fk_ptr_); \
+	} \
+} STMT_END
+
+			FETCH_HINTK_INTO(FLAGS_, kw_ptr, kw_len, psv);
+			spec->flags = SvIV(*psv);
+
+			FETCH_HINTK_INTO(SHIFT_, kw_ptr, kw_len, psv);
+			SvSetSV(spec->shift, *psv);
+
+			FETCH_HINTK_INTO(ATTRS_, kw_ptr, kw_len, psv);
+			SvSetSV(spec->attrs, *psv);
+
+#undef FETCH_HINTK_INTO
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
 static int my_keyword_plugin(pTHX_ char *keyword_ptr, STRLEN keyword_len, OP **op_ptr) {
+	Sentinel sen = { NULL };
 	KWSpec spec;
 	int ret;
-	Sentinel sen = { NULL };
 
-	ENTER;
-	SAVETMPS;
-
-	SAVEDESTRUCTOR_X(sentinel_clear_void, sen);
-
-	if (kw_flags(aTHX_ sen, keyword_ptr, keyword_len, &spec)) {
+	if (kw_flags_enter(aTHX_ sen, keyword_ptr, keyword_len, &spec)) {
+		/* scope was entered, 'sen' and 'spec' are initialized */
 		ret = parse_fun(aTHX_ sen, op_ptr, keyword_ptr, keyword_len, &spec);
+		FREETMPS;
+		LEAVE;
 	} else {
+		/* not one of our keywords, no allocation done */
 		ret = next_keyword_plugin(aTHX_ keyword_ptr, keyword_len, op_ptr);
 	}
-
-	FREETMPS;
-	LEAVE;
 
 	return ret;
 }
