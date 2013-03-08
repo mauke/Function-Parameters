@@ -774,9 +774,11 @@ static size_t count_named_params(const ParamSpec *ps) {
 }
 
 static void my_require(pTHX_ const char *file) {
+	SV *err;
 	require_pv(file);
-	if (SvTRUE(ERRSV)) {
-		croak_sv(ERRSV);
+	err = ERRSV;
+	if (SvTRUE(err)) {
+		croak_sv(err);
 	}
 }
 
