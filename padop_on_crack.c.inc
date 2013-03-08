@@ -716,7 +716,7 @@ static PADOFFSET S_pad_alloc_name(pTHX_ SV *namesv, U32 flags, HV *typestash, HV
 	return offset;
 }
 
-PADOFFSET static S_pad_add_name_pvn(pTHX_ const char *namepv, STRLEN namelen, U32 flags, HV *typestash, HV *ourstash) {
+static PADOFFSET S_pad_add_name_pvn(pTHX_ const char *namepv, STRLEN namelen, U32 flags, HV *typestash, HV *ourstash) {
 	dVAR;
 	PADOFFSET offset;
 	SV *namesv;
