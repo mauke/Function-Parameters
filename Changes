@@ -1,5 +1,11 @@
 Revision history for Function-Parameters
 
+1.0102  2013-03-08
+        - prepare for internals changes in the upcoming 5.18 release
+          (https://rt.cpan.org/Ticket/Display.html?id=83439)
+        - only allocate memory after recognizing a keyword like 'fun'
+          (might speed up parsing a little)
+
 1.0101  2013-02-05
         - new reflection API to inspect parameter information of functions
         - Moose types in parameter lists
