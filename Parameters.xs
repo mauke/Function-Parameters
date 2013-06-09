@@ -220,6 +220,15 @@ static int my_sv_eq_pvn(pTHX_ SV *sv, const char *p, STRLEN n) {
 #include "padop_on_crack.c.inc"
 
 
+static void my_require(pTHX_ const char *file) {
+	SV *err;
+	require_pv(file);
+	err = ERRSV;
+	if (SvTRUE(err)) {
+		croak_sv(err);
+	}
+}
+
 enum {
 	MY_ATTR_LVALUE = 0x01,
 	MY_ATTR_METHOD = 0x02,
@@ -502,6 +511,8 @@ static SV *reify_type(pTHX_ Sentinel sen, const SV *declarator, SV *name) {
 	int n;
 	dSP;
 
+	my_require(aTHX_ "Moose/Util/TypeConstraints.pm");
+
 	ENTER;
 	SAVETMPS;
 
@@ -712,15 +723,6 @@ static size_t count_named_params(const ParamSpec *ps) {
 	return ps->named_required.used + ps->named_optional.used;
 }
 
-static void my_require(pTHX_ const char *file) {
-	SV *err;
-	require_pv(file);
-	err = ERRSV;
-	if (SvTRUE(err)) {
-		croak_sv(err);
-	}
-}
-
 static SV *my_eval(pTHX_ Sentinel sen, I32 floor, OP *op) {
 	SV *sv;
 	CV *cv;
@@ -798,7 +800,9 @@ static PADOFFSET parse_param(
 				sentinel_disarm(expr_sentinel);
 			}
 			*ptype = my_eval(aTHX_ sen, floor, expr);
-			*ptype = reify_type(aTHX_ sen, declarator, *ptype);
+			if (!SvROK(*ptype)) {
+				*ptype = reify_type(aTHX_ sen, declarator, *ptype);
+			}
 			if (!sv_isobject(*ptype)) {
 				croak("In %"SVf": (%"SVf") doesn't look like a type object", SVfARG(declarator), SVfARG(*ptype));
 			}
@@ -806,7 +810,6 @@ static PADOFFSET parse_param(
 			c = lex_peek_unichar(0);
 		} else if (MY_UNI_IDFIRST(c)) {
 			*ptype = parse_type(aTHX_ sen, declarator);
-			my_require(aTHX_ "Moose/Util/TypeConstraints.pm");
 			*ptype = reify_type(aTHX_ sen, declarator, *ptype);
 
 			c = lex_peek_unichar(0);

@@ -16,6 +16,7 @@ WriteMakefile(
     LICENSE => 'perl',
     PL_FILES => {},
     BUILD_REQUIRES => {
+        'constant' => 0,
         'strict' => 0,
         'Dir::Self' => 0,
         'Test::More' => 0,

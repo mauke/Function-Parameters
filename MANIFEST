@@ -88,8 +88,6 @@ t/invocant.t
 t/lexical.t
 t/lineno-torture.t
 t/lineno.t
-t/moose_types.t
-t/moosex_types.t
 t/name.t
 t/name_1.fail
 t/name_2.fail
@@ -108,4 +106,8 @@ t/strict_2.fail
 t/strict_3.fail
 t/strict_4.fail
 t/strict_5.fail
+t/types_custom.t
+t/types_moose.t
+t/types_moose_2.t
+t/types_moosex.t
 t/unicode.t
