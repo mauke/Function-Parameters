@@ -1,5 +1,8 @@
 Revision history for Function-Parameters
 
+1.0103  2013-06-09
+        - properly allow non-moose-based custom type constraints (#85851)
+
 1.0102  2013-03-08
         - prepare for internals changes in the upcoming 5.18 release
           (https://rt.cpan.org/Ticket/Display.html?id=83439)
