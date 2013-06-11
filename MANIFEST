@@ -111,3 +111,4 @@ t/types_moose.t
 t/types_moose_2.t
 t/types_moosex.t
 t/unicode.t
+t/unicode2.t

@@ -979,10 +979,11 @@ static void register_info(pTHX_ UV key, SV *declarator, const KWSpec *kws, const
 		mPUSHu(key);
 	}
 	/* 1 */ {
-		size_t n;
+		STRLEN n;
 		char *p = SvPV(declarator, n);
 		char *q = memchr(p, ' ', n);
-		mPUSHp(p, q ? (size_t)(q - p) : n);
+		SV *tmp = newSVpvn_utf8(p, q ? (size_t)(q - p) : n, SvUTF8(declarator));
+		mPUSHs(tmp);
 	}
 	if (!ps) {
 		if (SvTRUE(kws->shift)) {
@@ -1119,6 +1120,9 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 	I32 c;
 
 	declarator = sentinel_mortalize(sen, newSVpvn(keyword_ptr, keyword_len));
+	if (lex_bufutf8()) {
+		SvUTF8_on(declarator);
+	}
 
 	lex_read_space(0);
 
@@ -1950,6 +1954,7 @@ static int kw_flags_enter(pTHX_ Sentinel sen, const char *kw_ptr, STRLEN kw_len,
 	SV *sv, **psv;
 	const char *p, *kw_active;
 	STRLEN kw_active_len;
+	bool kw_is_utf8;
 
 	if (!(hints = GvHV(PL_hintgv))) {
 		return FALSE;
@@ -1962,6 +1967,9 @@ static int kw_flags_enter(pTHX_ Sentinel sen, const char *kw_ptr, STRLEN kw_len,
 	if (kw_active_len <= kw_len) {
 		return FALSE;
 	}
+
+	kw_is_utf8 = lex_bufutf8();
+
 	for (
 		p = kw_active;
 		(p = strchr(p, *kw_ptr)) &&
@@ -1985,11 +1993,16 @@ static int kw_flags_enter(pTHX_ Sentinel sen, const char *kw_ptr, STRLEN kw_len,
 #define FETCH_HINTK_INTO(NAME, PTR, LEN, X) STMT_START { \
 	const char *fk_ptr_; \
 	STRLEN fk_len_; \
+	I32 fk_xlen_; \
 	SV *fk_sv_; \
 	fk_sv_ = sentinel_mortalize(sen, newSVpvs(HINTK_ ## NAME)); \
 	sv_catpvn(fk_sv_, PTR, LEN); \
 	fk_ptr_ = SvPV(fk_sv_, fk_len_); \
-	if (!((X) = hv_fetch(hints, fk_ptr_, fk_len_, 0))) { \
+	fk_xlen_ = fk_len_; \
+	if (kw_is_utf8) { \
+		fk_xlen_ = -fk_xlen_; \
+	} \
+	if (!((X) = hv_fetch(hints, fk_ptr_, fk_xlen_, 0))) { \
 		croak("%s: internal error: $^H{'%.*s'} not set", MY_PKG, (int)fk_len_, fk_ptr_); \
 	} \
 } STMT_END
