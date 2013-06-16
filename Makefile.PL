@@ -54,21 +54,23 @@ my %opt = (
 	},
 );
 
-if (ExtUtils::MakeMaker->VERSION < 6.67_04) {
+(my $mm_version = ExtUtils::MakeMaker->VERSION) =~ tr/_//d;
+
+if ($mm_version < 6.67_04) {
 	# Why? For the glory of satan, of course!
 	no warnings qw(redefine);
 	*ExtUtils::MM_Any::_add_requirements_to_meta_v1_4 = \&ExtUtils::MM_Any::_add_requirements_to_meta_v2;
 }
 
-if (ExtUtils::MakeMaker->VERSION < 6.63_03) {
+if ($mm_version < 6.63_03) {
 	merge_key_into \%opt, 'BUILD_REQUIRES', 'TEST_REQUIRES';
 }
 
-if (ExtUtils::MakeMaker->VERSION < 6.55_01) {
+if ($mm_version < 6.55_01) {
 	merge_key_into \%opt, 'CONFIGURE_REQUIRES', 'BUILD_REQUIRES';
 }
 
-if (ExtUtils::MakeMaker->VERSION < 6.51_03) {
+if ($mm_version < 6.51_03) {
 	merge_key_into \%opt, 'PREREQ_PM', 'CONFIGURE_REQUIRES';
 }
 
