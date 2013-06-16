@@ -1,5 +1,9 @@
 Revision history for Function-Parameters
 
+1.0104  2013-06-16
+        - support unicode in custom keywords
+        - actually validate default attributes
+
 1.0103  2013-06-09
         - properly allow non-moose-based custom type constraints (#85851)
 

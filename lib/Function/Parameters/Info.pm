@@ -3,7 +3,7 @@ package Function::Parameters::Info;
 use v5.14.0;
 use warnings;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 # If Moo isn't loaded yet but Moose is, avoid pulling in Moo and fall back to Moose
 my $Moo;
