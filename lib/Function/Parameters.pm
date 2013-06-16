@@ -1,7 +1,6 @@
 package Function::Parameters;
 
 use v5.14.0;
-
 use warnings;
 
 use Carp qw(confess);
@@ -57,32 +56,32 @@ sub _assert_valid_attributes {
 
 my @bare_arms = qw(function method);
 my %type_map = (
-	function => {
-		name => 'optional',
-		default_arguments => 1,
+	function    => {
+		name                 => 'optional',
+		default_arguments    => 1,
 		check_argument_count => 0,
-		named_parameters => 1,
-		types => 1,
+		named_parameters     => 1,
+		types                => 1,
 	},
-	method   => {
-		name => 'optional',
-		default_arguments => 1,
+	method      => {
+		name                 => 'optional',
+		default_arguments    => 1,
 		check_argument_count => 0,
-		named_parameters => 1,
-		types => 1,
-		attrs => ':method',
-		shift => '$self',
-		invocant => 1,
+		named_parameters     => 1,
+		types                => 1,
+		attrs                => ':method',
+		shift                => '$self',
+		invocant             => 1,
 	},
-	classmethod   => {
-		name => 'optional',
-		default_arguments => 1,
+	classmethod => {
+		name                 => 'optional',
+		default_arguments    => 1,
 		check_argument_count => 0,
-		named_parameters => 1,
-		types => 1,
-		attributes => ':method',
-		shift => '$class',
-		invocant => 1,
+		named_parameters     => 1,
+		types                => 1,
+		attributes           => ':method',
+		shift                => '$class',
+		invocant             => 1,
 	},
 );
 for my $k (keys %type_map) {
@@ -160,15 +159,15 @@ sub import {
 		my $type = $spec{$kw};
 
 		my $flags =
-			$type->{name} eq 'prohibited' ? FLAG_ANON_OK :
-			$type->{name} eq 'required' ? FLAG_NAME_OK :
-			FLAG_ANON_OK | FLAG_NAME_OK
+			$type->{name} eq 'prohibited' ? FLAG_ANON_OK                :
+			$type->{name} eq 'required'   ? FLAG_NAME_OK                :
+			                                FLAG_ANON_OK | FLAG_NAME_OK
 		;
-		$flags |= FLAG_DEFAULT_ARGS if $type->{default_arguments};
+		$flags |= FLAG_DEFAULT_ARGS                   if $type->{default_arguments};
 		$flags |= FLAG_CHECK_NARGS | FLAG_CHECK_TARGS if $type->{check_argument_count};
-		$flags |= FLAG_INVOCANT if $type->{invocant};
-		$flags |= FLAG_NAMED_PARAMS if $type->{named_parameters};
-		$flags |= FLAG_TYPES_OK if $type->{types};
+		$flags |= FLAG_INVOCANT                       if $type->{invocant};
+		$flags |= FLAG_NAMED_PARAMS                   if $type->{named_parameters};
+		$flags |= FLAG_TYPES_OK                       if $type->{types};
 		$^H{HINTK_FLAGS_ . $kw} = $flags;
 		$^H{HINTK_SHIFT_ . $kw} = $type->{shift};
 		$^H{HINTK_ATTRS_ . $kw} = $type->{attrs};
@@ -623,9 +622,9 @@ L<C<Carp::croak>|Carp>.
 The predefined type C<function> is equivalent to:
 
  {
-   name => 'optional',
-   invocant => 0,
-   default_arguments => 1,
+   name                 => 'optional',
+   invocant             => 0,
+   default_arguments    => 1,
    check_argument_count => 0,
  }
 
@@ -634,11 +633,11 @@ These are all default values, so C<function> is also equivalent to C<{}>.
 C<method> is equivalent to:
 
  {
-   name => 'optional',
-   shift => '$self',
-   invocant => 1,
-   attributes => ':method',
-   default_arguments => 1,
+   name                 => 'optional',
+   shift                => '$self',
+   invocant             => 1,
+   attributes           => ':method',
+   default_arguments    => 1,
    check_argument_count => 0,
  }
 
@@ -646,11 +645,11 @@ C<method> is equivalent to:
 C<classmethod> is equivalent to:
 
  {
-   name => 'optional',
-   shift => '$class',
-   invocant => 1,
-   attributes => ':method',
-   default_arguments => 1,
+   name                 => 'optional',
+   shift                => '$class',
+   invocant             => 1,
+   attributes           => ':method',
+   default_arguments    => 1,
    check_argument_count => 0,
  }
 

@@ -1,7 +1,6 @@
 package Function::Parameters::Info;
 
 use v5.14.0;
-
 use warnings;
 
 our $VERSION = '0.03';
@@ -24,7 +23,7 @@ BEGIN {
 	BEGIN { $Moo->import; }
 	use overload
 		fallback => 1,
-		'""' => sub { $_[0]->name },
+		'""'     => sub { $_[0]->name },
 	;
 
 	has $_ => (is => 'ro') for qw(name type);

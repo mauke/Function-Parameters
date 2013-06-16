@@ -1,6 +1,6 @@
 Function-Parameters
 
-Simple parameter lists for perl subroutines.
+subroutine definitions with parameter lists
 
 
 INSTALLATION
@@ -30,8 +30,8 @@ You can also look for information at:
     CPAN Ratings
         http://cpanratings.perl.org/d/Function-Parameters
 
-    Search CPAN
-        http://search.cpan.org/dist/Function-Parameters/
+    MetaCPAN
+        https://metacpan.org/module/Function::Parameters
 
 
 COPYRIGHT AND LICENCE
