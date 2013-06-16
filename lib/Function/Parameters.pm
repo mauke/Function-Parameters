@@ -23,8 +23,36 @@ sub _assert_valid_identifier {
 
 sub _assert_valid_attributes {
 	my ($attrs) = @_;
-	$attrs =~ /^\s*:\s*[^\W\d]\w*\s*(?:(?:\s|:\s*)[^\W\d]\w*\s*)*(?:\(|\z)/
-		or confess qq{"$attrs" doesn't look like valid attributes};
+	$attrs =~ m{
+		^ \s*+
+		: \s*+
+		(?&ident) (?! [^\s:(] ) (?&param)?+ \s*+
+		(?:
+			(?: : \s*+ )?
+			(?&ident) (?! [^\s:(] ) (?&param)?+ \s*+
+		)*+
+		\z
+
+		(?(DEFINE)
+			(?<ident>
+				[^\W\d]
+				\w*+
+			)
+			(?<param>
+				\(
+				[^()\\]*+
+				(?:
+					(?:
+						\\ .
+					|
+						(?&param)
+					)
+					[^()\\]*+
+				)*+
+				\)
+			)
+		)
+	}sx or confess qq{"$attrs" doesn't look like valid attributes};
 }
 
 my @bare_arms = qw(function method);
