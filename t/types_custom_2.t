@@ -5,10 +5,7 @@ use strict;
 use Test::More tests => 4;
 use Test::Fatal;
 
-use Function::Parameters {
-	fun           => 'function_strict',
-	method        => 'method_strict',
-};
+use Function::Parameters qw(:strict);
 
 {
 	package MyTC;
