@@ -117,6 +117,12 @@ sub import {
 			: [$proto, $bare_arms[$bare++] || confess(qq{Don't know what to do with "$proto"})]
 		;
 		my ($name, $proto_type) = @$item;
+
+		if ($name eq ':typelookup') {
+			$^H{+HINTK_TYPES} = $proto_type;
+			next;
+		}
+
 		_assert_valid_identifier $name;
 
 		unless (ref $proto_type) {
@@ -247,6 +253,16 @@ sub info {
 		slurpy => _mkparam1($info->{slurpy}),
 		(map +("_$_" => _mkparams @{$info->{$_}}), glob '{positional,named}_{required,optional}')
 	)
+}
+
+sub find_or_create_isa_type_constraint {
+	my ($constraint) = @_;
+	my $lookup = $^H{'Function::Parameters/types'} || do {
+		require Moose::Util::TypeConstraints;
+		"Moose::Util::TypeConstraints::find_or_create_isa_type_constraint";
+	};
+	no strict "refs";
+	goto \&$lookup;
 }
 
 'ok'

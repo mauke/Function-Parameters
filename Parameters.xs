@@ -82,6 +82,7 @@ WARNINGS_ENABLE
 #define MY_PKG "Function::Parameters"
 
 #define HINTK_KEYWORDS MY_PKG "/keywords"
+#define HINTK_TYPES    MY_PKG "/types"
 #define HINTK_FLAGS_   MY_PKG "/flags:"
 #define HINTK_SHIFT_   MY_PKG "/shift:"
 #define HINTK_ATTRS_   MY_PKG "/attrs:"
@@ -511,8 +512,6 @@ static SV *reify_type(pTHX_ Sentinel sen, const SV *declarator, SV *name) {
 	int n;
 	dSP;
 
-	my_require(aTHX_ "Moose/Util/TypeConstraints.pm");
-
 	ENTER;
 	SAVETMPS;
 
@@ -521,7 +520,7 @@ static SV *reify_type(pTHX_ Sentinel sen, const SV *declarator, SV *name) {
 	PUSHs(name);
 	PUTBACK;
 
-	n = call_pv("Moose::Util::TypeConstraints::find_or_create_isa_type_constraint", G_SCALAR);
+	n = call_pv("Function::Parameters::find_or_create_isa_type_constraint", G_SCALAR);
 	SPAGAIN;
 
 	assert(n == 1);
@@ -2072,6 +2071,7 @@ WARNINGS_ENABLE {
 	newCONSTSUB(stash, "FLAG_TYPES_OK",     newSViv(FLAG_TYPES_OK));
 	newCONSTSUB(stash, "FLAG_CHECK_TARGS",  newSViv(FLAG_CHECK_TARGS));
 	newCONSTSUB(stash, "HINTK_KEYWORDS", newSVpvs(HINTK_KEYWORDS));
+	newCONSTSUB(stash, "HINTK_TYPES",    newSVpvs(HINTK_TYPES));
 	newCONSTSUB(stash, "HINTK_FLAGS_",   newSVpvs(HINTK_FLAGS_));
 	newCONSTSUB(stash, "HINTK_SHIFT_",   newSVpvs(HINTK_SHIFT_));
 	newCONSTSUB(stash, "HINTK_ATTRS_",   newSVpvs(HINTK_ATTRS_));
