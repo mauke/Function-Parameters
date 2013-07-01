@@ -508,8 +508,11 @@ static SV *parse_type(pTHX_ Sentinel sen, const SV *declarator) {
 }
 
 static SV *reify_type(pTHX_ Sentinel sen, const SV *declarator, SV *name) {
+	HV *hints;
+	char *lookup;
 	SV *t;
 	int n;
+	SV *sv, **psv;
 	dSP;
 
 	ENTER;
@@ -520,7 +523,18 @@ static SV *reify_type(pTHX_ Sentinel sen, const SV *declarator, SV *name) {
 	PUSHs(name);
 	PUTBACK;
 
-	n = call_pv("Function::Parameters::find_or_create_isa_type_constraint", G_SCALAR);
+	if (!(hints = GvHV(PL_hintgv))) {
+		return FALSE;
+	}
+	if ((psv = hv_fetchs(hints, HINTK_TYPES, 0))) {
+		STRLEN n;
+		lookup = SvPV(*psv, n);
+	}
+	else {
+		lookup = (char*)"Function::Parameters::find_or_create_isa_type_constraint";
+	}
+
+	n = call_pv(lookup, G_SCALAR);
 	SPAGAIN;
 
 	assert(n == 1);
