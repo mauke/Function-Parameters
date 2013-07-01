@@ -512,7 +512,7 @@ static SV *reify_type(pTHX_ Sentinel sen, const SV *declarator, SV *name) {
 	char *lookup;
 	SV *t;
 	int n;
-	SV *sv, **psv;
+	SV **psv;
 	dSP;
 
 	ENTER;
