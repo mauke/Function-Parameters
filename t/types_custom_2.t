@@ -8,7 +8,6 @@ use Test::Fatal;
 use Function::Parameters {
 	fun           => 'function_strict',
 	method        => 'method_strict',
-	':typelookup' => 'type::lookup',
 };
 
 {
@@ -44,10 +43,12 @@ BEGIN {
 		TShortStr => MyTC->new('short string' => fun ($s) { length($s) < 10 }),
 		Any       => MyTC->new('any value'    => fun ($a) { 1 }),
 	);
-	sub type::lookup {
+	sub MyTC::lookup {
 		$Types{ $_[0] } or $Types{Any};
 	}
 }
+
+BEGIN { $^H{+Function::Parameters::HINTK_TYPES} = 'MyTC::lookup' };
 
 fun foo(TEvenNum $x, TShortStr $y) {
 	"$x/$y"

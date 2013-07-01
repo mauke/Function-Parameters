@@ -117,12 +117,6 @@ sub import {
 			: [$proto, $bare_arms[$bare++] || confess(qq{Don't know what to do with "$proto"})]
 		;
 		my ($name, $proto_type) = @$item;
-
-		if ($name eq ':typelookup') {
-			$^H{+HINTK_TYPES} = $proto_type;
-			next;
-		}
-
 		_assert_valid_identifier $name;
 
 		unless (ref $proto_type) {
