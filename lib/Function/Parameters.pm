@@ -249,16 +249,6 @@ sub info {
 	)
 }
 
-sub find_or_create_isa_type_constraint {
-	my ($constraint) = @_;
-	my $lookup = $^H{'Function::Parameters/types'} || do {
-		require Moose::Util::TypeConstraints;
-		"Moose::Util::TypeConstraints::find_or_create_isa_type_constraint";
-	};
-	no strict "refs";
-	goto \&$lookup;
-}
-
 'ok'
 
 __END__

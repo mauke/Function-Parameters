@@ -531,7 +531,8 @@ static SV *reify_type(pTHX_ Sentinel sen, const SV *declarator, SV *name) {
 		lookup = SvPV(*psv, n);
 	}
 	else {
-		lookup = (char*)"Function::Parameters::find_or_create_isa_type_constraint";
+		my_require(aTHX_ "Moose/Util/TypeConstraints.pm");
+		lookup = (char*)"Moose::Util::TypeConstraints::find_or_create_isa_type_constraint";
 	}
 
 	n = call_pv(lookup, G_SCALAR);
