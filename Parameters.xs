@@ -88,8 +88,6 @@ WARNINGS_ENABLE
 
 #define DEFSTRUCT(T) typedef struct T T; struct T
 
-#define UV_BITS (sizeof (UV) * CHAR_BIT)
-
 enum {
 	FLAG_NAME_OK      = 0x01,
 	FLAG_ANON_OK      = 0x02,
