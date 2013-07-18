@@ -85,6 +85,7 @@ WARNINGS_ENABLE
 #define HINTK_FLAGS_   MY_PKG "/flags:"
 #define HINTK_SHIFT_   MY_PKG "/shift:"
 #define HINTK_ATTRS_   MY_PKG "/attrs:"
+#define HINTK_REIFY_   MY_PKG "/reify:"
 
 #define DEFSTRUCT(T) typedef struct T T; struct T
 
@@ -103,6 +104,7 @@ enum {
 
 DEFSTRUCT(KWSpec) {
 	unsigned flags;
+	I32 reify_type;
 	SV *shift;
 	SV *attrs;
 };
@@ -219,15 +221,6 @@ static int my_sv_eq_pvn(pTHX_ SV *sv, const char *p, STRLEN n) {
 
 #include "padop_on_crack.c.inc"
 
-
-static void my_require(pTHX_ const char *file) {
-	SV *err;
-	require_pv(file);
-	err = ERRSV;
-	if (SvTRUE(err)) {
-		croak_sv(err);
-	}
-}
 
 enum {
 	MY_ATTR_LVALUE = 0x01,
@@ -506,12 +499,22 @@ static SV *parse_type(pTHX_ Sentinel sen, const SV *declarator) {
 	return t;
 }
 
-static SV *reify_type(pTHX_ Sentinel sen, const SV *declarator, SV *name) {
-	SV *t;
+static SV *reify_type(pTHX_ Sentinel sen, const SV *declarator, const KWSpec *spec, SV *name) {
+	AV *type_reifiers;
+	SV *t, *sv, **psv;
 	int n;
 	dSP;
 
-	my_require(aTHX_ "Moose/Util/TypeConstraints.pm");
+	type_reifiers = get_av(MY_PKG "::type_reifiers", 0);
+	assert(type_reifiers != NULL);
+
+	if (spec->reify_type < 0 || spec->reify_type > av_len(type_reifiers)) {
+		croak("In %"SVf": internal error: reify_type [%ld] out of range [%ld]", SVfARG(declarator), (long)spec->reify_type, (long)(av_len(type_reifiers) + 1));
+	}
+
+	psv = av_fetch(type_reifiers, spec->reify_type, 0);
+	assert(psv != NULL);
+	sv = *psv;
 
 	ENTER;
 	SAVETMPS;
@@ -521,7 +524,7 @@ static SV *reify_type(pTHX_ Sentinel sen, const SV *declarator, SV *name) {
 	PUSHs(name);
 	PUTBACK;
 
-	n = call_pv("Moose::Util::TypeConstraints::find_or_create_isa_type_constraint", G_SCALAR);
+	n = call_sv(sv, G_SCALAR);
 	SPAGAIN;
 
 	assert(n == 1);
@@ -801,7 +804,7 @@ static PADOFFSET parse_param(
 			}
 			*ptype = my_eval(aTHX_ sen, floor, expr);
 			if (!SvROK(*ptype)) {
-				*ptype = reify_type(aTHX_ sen, declarator, *ptype);
+				*ptype = reify_type(aTHX_ sen, declarator, spec, *ptype);
 			}
 			if (!sv_isobject(*ptype)) {
 				croak("In %"SVf": (%"SVf") doesn't look like a type object", SVfARG(declarator), SVfARG(*ptype));
@@ -810,7 +813,7 @@ static PADOFFSET parse_param(
 			c = lex_peek_unichar(0);
 		} else if (MY_UNI_IDFIRST(c)) {
 			*ptype = parse_type(aTHX_ sen, declarator);
-			*ptype = reify_type(aTHX_ sen, declarator, *ptype);
+			*ptype = reify_type(aTHX_ sen, declarator, spec, *ptype);
 
 			c = lex_peek_unichar(0);
 		}
@@ -1987,6 +1990,7 @@ static int kw_flags_enter(pTHX_ Sentinel sen, const char *kw_ptr, STRLEN kw_len,
 			SAVEDESTRUCTOR_X(sentinel_clear_void, sen);
 
 			spec->flags = 0;
+			spec->reify_type = 0;
 			spec->shift = sentinel_mortalize(sen, newSVpvs(""));
 			spec->attrs = sentinel_mortalize(sen, newSVpvs(""));
 
@@ -2009,6 +2013,9 @@ static int kw_flags_enter(pTHX_ Sentinel sen, const char *kw_ptr, STRLEN kw_len,
 
 			FETCH_HINTK_INTO(FLAGS_, kw_ptr, kw_len, psv);
 			spec->flags = SvIV(*psv);
+
+			FETCH_HINTK_INTO(REIFY_, kw_ptr, kw_len, psv);
+			spec->reify_type = SvIV(*psv);
 
 			FETCH_HINTK_INTO(SHIFT_, kw_ptr, kw_len, psv);
 			SvSetSV(spec->shift, *psv);
@@ -2075,6 +2082,7 @@ WARNINGS_ENABLE {
 	newCONSTSUB(stash, "HINTK_FLAGS_",   newSVpvs(HINTK_FLAGS_));
 	newCONSTSUB(stash, "HINTK_SHIFT_",   newSVpvs(HINTK_SHIFT_));
 	newCONSTSUB(stash, "HINTK_ATTRS_",   newSVpvs(HINTK_ATTRS_));
+	newCONSTSUB(stash, "HINTK_REIFY_",   newSVpvs(HINTK_REIFY_));
 	/**/
 	next_keyword_plugin = PL_keyword_plugin;
 	PL_keyword_plugin = my_keyword_plugin;

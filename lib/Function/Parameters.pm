@@ -52,6 +52,11 @@ sub _assert_valid_attributes {
 	}sx or confess qq{"$attrs" doesn't look like valid attributes};
 }
 
+sub _reify_type_default {
+	require Moose::Util::TypeConstraints;
+	Moose::Util::TypeConstraints::find_or_create_isa_type_constraint($_[0])
+}
+
 my @bare_arms = qw(function method);
 my %type_map = (
 	function    => {
@@ -60,6 +65,7 @@ my %type_map = (
 		check_argument_count => 0,
 		named_parameters     => 1,
 		types                => 1,
+		reify_type           => \&_reify_type_default,
 	},
 	method      => {
 		name                 => 'optional',
@@ -67,6 +73,7 @@ my %type_map = (
 		check_argument_count => 0,
 		named_parameters     => 1,
 		types                => 1,
+		reify_type           => \&_reify_type_default,
 		attrs                => ':method',
 		shift                => '$self',
 		invocant             => 1,
@@ -77,6 +84,7 @@ my %type_map = (
 		check_argument_count => 0,
 		named_parameters     => 1,
 		types                => 1,
+		reify_type           => \&_reify_type_default,
 		attributes           => ':method',
 		shift                => '$class',
 		invocant             => 1,
@@ -88,6 +96,8 @@ for my $k (keys %type_map) {
 		check_argument_count => 1,
 	};
 }
+
+our @type_reifiers = \&_reify_type_default;
 
 sub import {
 	my $class = shift;
@@ -143,10 +153,29 @@ sub import {
 			? !!delete $type{default_arguments}
 			: 1
 		;
+
 		$clean{check_argument_count} = !!delete $type{check_argument_count};
 		$clean{invocant} = !!delete $type{invocant};
 		$clean{named_parameters} = !!delete $type{named_parameters};
 		$clean{types} = !!delete $type{types};
+
+		if (my $rt = delete $type{reify_type}) {
+			ref $rt eq 'CODE' or confess qq{"$rt" doesn't look like a type reifier};
+
+			my $index;
+			for my $i (0 .. $#type_reifiers) {
+				if ($type_reifiers[$i] == $rt) {
+					$index = $i;
+					last;
+				}
+			}
+			unless (defined $index) {
+				$index = @type_reifiers;
+				push @type_reifiers, $rt;
+			}
+
+			$clean{reify_type} = $index;
+		}
 
 		%type and confess "Invalid keyword property: @{[keys %type]}";
 
@@ -169,6 +198,7 @@ sub import {
 		$^H{HINTK_FLAGS_ . $kw} = $flags;
 		$^H{HINTK_SHIFT_ . $kw} = $type->{shift};
 		$^H{HINTK_ATTRS_ . $kw} = $type->{attrs};
+		$^H{HINTK_REIFY_ . $kw} = $type->{reify_type} // 0;
 		$^H{+HINTK_KEYWORDS} .= "$kw ";
 	}
 }
@@ -615,6 +645,22 @@ automatically check that they have been passed all required arguments and no
 excess arguments. If this check fails, an exception will by thrown via
 L<C<Carp::croak>|Carp>.
 
+Currently this flag is overloaded to also enable type checks (see
+L</Experimental feature: Types> below).
+
+=item C<reify_type>
+
+Valid values: code references. The function specified here will be called to
+turn type annotations into constraint objects (see
+L</Experimental feature: Types> below).
+
+The default type reifier is equivalent to:
+
+ sub {
+     require Moose::Util::TypeConstraints;
+     Moose::Util::TypeConstraints::find_or_create_isa_type_constraint($_[0])
+ }
+
 =back
 
 The predefined type C<function> is equivalent to:
@@ -694,15 +740,17 @@ affects the file that is currently being compiled.
 =head2 Experimental feature: Types
 
 An experimental feature is now available: You can annotate parameters with
-L<Moose types|Moose::Manual::Types>. That is, before each parameter you can put
-a type specification consisting of identifiers (C<Foo>), unions (C<... | ...>),
-and parametric types (C<...[...]>). Example:
+types. That is, before each parameter you can put a type specification
+consisting of identifiers (C<Foo>), unions (C<... | ...>), and parametric types
+(C<...[...]>). Example:
 
   fun foo(Int $n, ArrayRef[String | CodeRef] $cb) { ... }
 
-If you do this, L<Moose> will be loaded automatically (if that hasn't happened
-yet). These specifications are parsed and validated using
-L<C<Moose::Util::TypeConstraints::find_or_parse_type_constraint>|Moose::Util::TypeConstraints/find_or_parse_type_constraint>.
+If you do this, the type reification function corresponding to the keyword will
+be called to turn the type (a string) into a constraint object. The default
+type reifier simply loads L<Moose> and forwards to
+L<C<Moose::Util::TypeConstraints::find_or_parse_type_constraint>|Moose::Util::TypeConstraints/find_or_parse_type_constraint>,
+which creates L<Moose types|Moose::Manual::Types>.
 
 If you are in "lax" mode, nothing further happens and the types are ignored. If
 you are in "strict" mode, C<Function::Parameters> generates code to make sure
