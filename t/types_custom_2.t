@@ -45,7 +45,6 @@ use Function::Parameters do {
 	+{
 		fun => {
 			check_argument_count => 1,
-			types => 1,
 			reify_type => sub { $Types{ $_[0] } || $Types{Any} },
 		},
 	}

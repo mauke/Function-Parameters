@@ -57,6 +57,11 @@ sub _reify_type_default {
 	Moose::Util::TypeConstraints::find_or_create_isa_type_constraint($_[0])
 }
 
+sub _delete_default {
+	my ($href, $key, $default) = @_;
+	exists $href->{$key} ? delete $href->{$key} : $default
+}
+
 my @bare_arms = qw(function method);
 my %type_map = (
 	function    => {
@@ -148,16 +153,12 @@ sub import {
 		$clean{attrs} = join ' ', map delete $type{$_} || (), qw(attributes attrs);
 		_assert_valid_attributes $clean{attrs} if $clean{attrs};
 		
-		$clean{default_arguments} =
-			exists $type{default_arguments}
-			? !!delete $type{default_arguments}
-			: 1
-		;
+		$clean{default_arguments} = _delete_default \%type, 'default_arguments', 1;
+		$clean{named_parameters}  = _delete_default \%type, 'named_parameters',  1;
+		$clean{types}             = _delete_default \%type, 'types',             1;
 
-		$clean{check_argument_count} = !!delete $type{check_argument_count};
-		$clean{invocant} = !!delete $type{invocant};
-		$clean{named_parameters} = !!delete $type{named_parameters};
-		$clean{types} = !!delete $type{types};
+		$clean{check_argument_count} = _delete_default \%type, 'check_argument_count', 0;
+		$clean{invocant}             = _delete_default \%type, 'invocant',             0;
 
 		if (my $rt = delete $type{reify_type}) {
 			ref $rt eq 'CODE' or confess qq{"$rt" doesn't look like a type reifier};

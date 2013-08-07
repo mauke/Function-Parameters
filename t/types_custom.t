@@ -2,10 +2,13 @@
 use warnings FATAL => 'all';
 use strict;
 
-use Test::More tests => 4;
+use Test::More tests => 8;
 use Test::Fatal;
 
 use Function::Parameters qw(:strict);
+use Function::Parameters {
+	def => { check_argument_count => 1 },
+};
 
 {
 	package MyTC;
@@ -47,3 +50,12 @@ is foo(42, "hello"), "42/hello";
 like exception { foo 41, "hello" },       qr{\bValidation failed for constraint 'even number' with value '41'};
 like exception { foo 42, "1234567890~" }, qr{\bValidation failed for constraint 'short string' with value '1234567890~'};
 like exception { foo 41, "1234567890~" }, qr{\bValidation failed for constraint 'even number' with value '41'};
+
+def foo2((TEvenNum) $x, (TShortStr) $y) {
+	"$x/$y"
+}
+
+is foo2(42, "hello"), "42/hello";
+like exception { foo2 41, "hello" },       qr{\bValidation failed for constraint 'even number' with value '41'};
+like exception { foo2 42, "1234567890~" }, qr{\bValidation failed for constraint 'short string' with value '1234567890~'};
+like exception { foo2 41, "1234567890~" }, qr{\bValidation failed for constraint 'even number' with value '41'};
