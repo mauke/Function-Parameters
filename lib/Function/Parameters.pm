@@ -653,7 +653,8 @@ L</Experimental feature: Types> below).
 
 Valid values: code references. The function specified here will be called to
 turn type annotations into constraint objects (see
-L</Experimental feature: Types> below).
+L</Experimental feature: Types> below). It will receive two arguments: a string
+containing the type description, and the name of the current package.
 
 The default type reifier is equivalent to:
 

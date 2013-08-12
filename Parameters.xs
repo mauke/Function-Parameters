@@ -520,8 +520,9 @@ static SV *reify_type(pTHX_ Sentinel sen, const SV *declarator, const KWSpec *sp
 	SAVETMPS;
 
 	PUSHMARK(SP);
-	EXTEND(SP, 1);
+	EXTEND(SP, 2);
 	PUSHs(name);
+	PUSHs(PL_curstname);
 	PUTBACK;
 
 	n = call_sv(sv, G_SCALAR);
