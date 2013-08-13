@@ -515,7 +515,7 @@ exchange the order of the arguments doesn't matter anymore. As with hash
 initialization, you can specify the same key multiple times and the last
 occurrence wins:
 
-  rectangle(height => 1, width => 2, height => 2, height => 5;
+  rectangle(height => 1, width => 2, height => 2, height => 5);
   # same as: rectangle(width => 2, height => 5);
 
 You can combine positional and named parameters as long as the positional
