@@ -1,5 +1,9 @@
 Revision history for Function-Parameters
 
+1.0201  2013-08-13
+        - custom (per-keyword) type reification
+        - actually use documented defaults for custom keywords
+
 1.0104  2013-06-16
         - support unicode in custom keywords
         - actually validate default attributes
