@@ -107,8 +107,11 @@ t/strict_3.fail
 t/strict_4.fail
 t/strict_5.fail
 t/types_custom.t
+t/types_custom_2.t
+t/types_custom_3.t
 t/types_moose.t
 t/types_moose_2.t
+t/types_moose_3.t
 t/types_moosex.t
 t/unicode.t
 t/unicode2.t
