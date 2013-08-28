@@ -22,7 +22,7 @@ my $line = __LINE__;
     my $line_confess = $line + 6;
     my $line_foo = $line + 10;
 
-    ::like($@, qr/^abc 123 at $file line $line_confess\.?\n\tFoo::foo\('abc', 123\) called at $file line $line_foo/);
+    ::like($@, qr/^abc 123 at $file line $line_confess\.?\n\tFoo::foo\((["'])abc\1, 123\) called at $file line $line_foo/);
 }
 
 SKIP: { skip "Sub::Name required", 1 unless eval { require Sub::Name };
