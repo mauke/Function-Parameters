@@ -1,5 +1,9 @@
 Revision history for Function-Parameters
 
+1.0202  2013-08-28
+        - make t/foreign/Fun/name.t less fragile to support newer Carp
+        - support older Moo without ->meta support
+
 1.0201  2013-08-13
         - custom (per-keyword) type reification
         - actually use documented defaults for custom keywords
