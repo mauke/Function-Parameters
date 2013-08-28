@@ -6,13 +6,15 @@ use warnings;
 our $VERSION = '0.04';
 
 # If Moo isn't loaded yet but Moose is, avoid pulling in Moo and fall back to Moose
-my $Moo;
+my ($Moo, $meta_make_immutable);
 BEGIN {
 	if ($INC{'Moose.pm'} && !$INC{'Moo.pm'}) {
 		$Moo = 'Moose';
+		$meta_make_immutable = sub { $_[0]->meta->make_immutable };
 	} else {
 		require Moo;
 		$Moo = 'Moo';
+		$meta_make_immutable = sub {};
 	}
 	$Moo->import;
 }
@@ -28,7 +30,7 @@ BEGIN {
 
 	has $_ => (is => 'ro') for qw(name type);
 
-	__PACKAGE__->meta->make_immutable;
+	__PACKAGE__->$meta_make_immutable;
 }
 
 my @pn_ro = glob '{positional,named}_{required,optional}';
@@ -62,7 +64,7 @@ sub args_max {
 	$r
 }
 
-__PACKAGE__->meta->make_immutable;
+__PACKAGE__->$meta_make_immutable;
 
 'ok'
 
