@@ -746,7 +746,7 @@ types. That is, before each parameter you can put a type specification
 consisting of identifiers (C<Foo>), unions (C<... | ...>), and parametric types
 (C<...[...]>). Example:
 
-  fun foo(Int $n, ArrayRef[String | CodeRef] $cb) { ... }
+  fun foo(Int $n, ArrayRef[Str | CodeRef] $cb) { ... }
 
 If you do this, the type reification function corresponding to the keyword will
 be called to turn the type (a string) into a constraint object. The default
