@@ -3,9 +3,9 @@ use strict;
 use warnings FATAL => 'all';
 
 use Test::More
-	eval { require Moose; 1 }
-	? (tests => 2)
-	: (skip_all => "Moose required for testing types")
+    eval { require Moose; 1 }
+    ? (tests    => 5)
+    : (skip_all => "Moose required for testing types")
 ;
 use Test::Fatal;
 
@@ -43,24 +43,45 @@ is exception
 #{
 #    eval { require MooseX::Declare } or skip "MooseX::Declare required for this test", 1;
 #
-#    lives_ok
-#    {
-#        eval q{
+    is exception
+    {
+        eval q{
 #            use MooseX::Declare;
 #            use Method::Signatures::Modifiers;
-#
-#            class Foo
-#            {
-#                method bar ( Int :$foo, Int :$bar )     # this is a signature
-#                {
-#                }
-#            }
-#
-#            1;
-#        } or die;
-#    }
-#    'survives comments between signature and open brace';
+
+            package Foo
+            {
+                method bar ( Int :$foo, Int :$bar )     # this is a signature
+                {
+                }
+            }
+
+            1;
+        } or die;
+    }, undef,
+    'survives comments between signature and open brace';
 #}
-#
-#
+
+
+#TODO: {
+#    local $TODO = "closing paren in comment: rt.cpan.org 81364";
+
+    is exception
+    {
+#        # When this fails, it produces 'Variable "$bar" is not imported'
+#        # This is expected to fail, don't bother the user.
+#        no warnings;
+        eval q{
+            fun special_comment (
+                $foo, # )
+                $bar
+            )
+            { 42 }
+            1;
+        } or die;
+    }, undef,
+    'closing paren in comment';
+    is eval q[special_comment("this", "that")], 42;
+#}
+
 #done_testing();

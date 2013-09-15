@@ -19,3 +19,4 @@ use Function::Parameters;
 is(foo(qw/affe zomtec/),   '($bar, $baz) is ("affe", "zomtec")');
 is($moo->(qw/korv wurst/), '($bar, $baz) is ("korv", "wurst")');
 
+1;

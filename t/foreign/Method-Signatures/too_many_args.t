@@ -16,7 +16,8 @@ fun one_named(:$foo) { return $foo; }
 fun one_named_one_positional($bar, :$foo) { return($foo, $bar) }
 
 note "too many arguments"; {
-	is_deeply [no_sig(42)], [42];
+    is_deeply [no_sig(42)], [42];
+
 
     ok !eval { no_args(42); 1 },                                   "no args";
     like $@, qr{Too many arguments};
@@ -36,8 +37,10 @@ note "with positionals"; {
     is one_named(foo => 23, foo => 42), 42;
 
 
+
     is_deeply [one_named_one_positional(23, foo => 42)], [42, 23];
     is_deeply [one_named_one_positional(23, foo => 42, foo => 23)], [23, 23];
+
 }
 
 

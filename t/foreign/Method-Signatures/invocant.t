@@ -5,7 +5,11 @@
 use strict;
 use warnings FATAL => 'all';
 
-use Test::More 'no_plan';
+use Test::More
+    eval { require Moose }
+    ? (tests => 6)
+    : (skip_all => "Moose required for testing types")
+;
 
 our $skip_no_invocants;
 
@@ -35,11 +39,11 @@ our $skip_no_invocants;
 
     eval q{
 
-        method no_invocant_class_type($arg) {
+        method no_invocant_class_type(Foo::Bar $arg) {
             $self->bar($arg);
         }
 
-        method no_invocant_named_param(:$arg) {
+        method no_invocant_named_param(Foo :$arg) {
             $self->bar($arg);
         }
 

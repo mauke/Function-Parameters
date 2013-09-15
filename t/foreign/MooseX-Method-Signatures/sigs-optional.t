@@ -5,8 +5,8 @@ use Test::More tests => 4;
 
 {
     package Optional;
-    use Function::Parameters;
-    method foo ($class: $arg) {
+    use Function::Parameters qw(:strict);
+    method foo ($class: $arg = undef) {
         $arg;
     }
 

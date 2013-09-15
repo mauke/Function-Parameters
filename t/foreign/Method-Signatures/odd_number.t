@@ -1,6 +1,5 @@
 #!perl
 
-package Foo;
 use warnings FATAL => 'all';
 use strict;
 
@@ -9,8 +8,10 @@ use Test::Fatal;
 
 use Function::Parameters qw(:strict);
 
-method foo(:$name, :$value) {
-    return $name, $value;
+package Foo {
+    method foo(:$name, :$value) {
+        return $name, $value;
+    }
 }
 
-like exception { Foo->foo(name => 42, value =>) }, qr/Not enough arguments/;
+like exception { Foo->foo(name => 42, value =>) }, qr/Not enough arguments.+ line 17/;

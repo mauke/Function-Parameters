@@ -8,7 +8,7 @@ use Test::Fatal;
     package Foo;
     use Function::Parameters qw(:strict);
 
-	method new($class:) { bless {}, $class }
+    method new($class:) { bless {}, $class }
     method foo ($bar) { $bar }
 }
 

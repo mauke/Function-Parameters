@@ -22,6 +22,17 @@ use attributes;
 
 
 {
+    package Foo;
+
+    use Test::More;
+    use Function::Parameters qw(:strict);
+
+    my $code = fun () : method {};
+    is_deeply( [attributes::get $code], ['method'] );
+}
+
+
+{
     package Things;
 
     use Function::Parameters qw(:strict);

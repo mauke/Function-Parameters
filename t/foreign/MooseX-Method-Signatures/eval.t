@@ -34,3 +34,5 @@ __DATA__
     method example2 { 2 }
 }
 1;
+
+

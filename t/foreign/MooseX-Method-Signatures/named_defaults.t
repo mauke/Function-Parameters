@@ -1,7 +1,6 @@
 #!perl
 use strict;
 use warnings FATAL => 'all';
-
 use Test::More;
 
 {
@@ -9,7 +8,7 @@ use Test::More;
 
     use Function::Parameters qw(:strict);
 
-	method new($class:) { bless {}, $class }
+    method new($class:) { bless {}, $class }
     method bar (:$baz = 42) { $baz }
 }
 

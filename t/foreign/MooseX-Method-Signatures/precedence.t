@@ -1,5 +1,6 @@
+#!perl
 use strict;
-use warnings;
+use warnings FATAL => 'all';
 use Test::More tests => 4;
 
 use Function::Parameters qw(:strict);

@@ -3,19 +3,19 @@ use warnings FATAL => 'all';
 use Test::More tests => 1;
 
 {
-	package TestClass;
+    package TestClass;
 
-	use Function::Parameters qw(:strict);
+    use Function::Parameters qw(:strict);
 
-	use Carp ();
+    use Carp ();
 
-	method callstack_inner($class:) {
-		return Carp::longmess("Callstack is");
-	}
+    method callstack_inner($class:) {
+        return Carp::longmess("Callstack is");
+    }
 
-	method callstack($class:) {
-		return $class->callstack_inner;
-	}
+    method callstack($class:) {
+        return $class->callstack_inner;
+    }
 }
 
 my $callstack = TestClass->callstack();

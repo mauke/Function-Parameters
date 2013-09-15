@@ -4,9 +4,9 @@ use strict;
 use warnings FATAL => 'all';
 
 use Test::More
-	eval { require Moose; 1 }
-	? ()
-	: (skip_all => "Moose required for testing types")
+    eval { require Moose; 1 }
+    ? ()
+    : (skip_all => "Moose required for testing types")
 ;
 use Test::More;
 use Test::Fatal;
@@ -38,10 +38,15 @@ our @TYPES =
     maybe_int       =>  'Maybe[Int]'        =>  [ 42, undef ]                   =>  'foo'                               ,
     paramized_aref  =>  'ArrayRef[Num]'     =>  [[ 6.5, 42, 1e23 ]]             =>  [[ 6.5, 42, 'thing' ]]              ,
     paramized_href  =>  'HashRef[Num]'      =>  { a => 6.5, b => 2, c => 1e23 } =>  { a => 6.5, b => 42, c => 'thing' } ,
+    paramized_nested=>  'HashRef[ArrayRef[Int]]'
+                                            =>  { foo=>[1..3], bar=>[1] }       =>  { foo=>['a'] }                               ,
 ##  ScalarRef[X] not implemented in Mouse, so this test is moved to typeload_moose.t
 ##  if Mouse starts supporting it, the test could be restored here
     paramized_sref  =>  'ScalarRef[Num]'    =>  \42                             =>  \'thing'                            ,
     int_or_aref     =>  'Int|ArrayRef[Int]' =>  [ 42 , [42 ] ]                  =>  'foo'                               ,
+    int_or_aref_or_undef
+                    =>  'Int|ArrayRef[Int]|Undef'
+                                            =>  [ 42 , [42 ], undef ]           =>  'foo'                               ,
 );
 
 
@@ -49,8 +54,13 @@ our $tester;
 {
     package TypeCheck::Class;
 
+    use strict;
+    use warnings;
+
     use Test::More;
     use Test::Fatal;
+
+    use Function::Parameters qw(:strict);
 
     method new ($class:) { bless {}, $class; }
 
@@ -67,7 +77,7 @@ our $tester;
 
         # make sure the declaration of the method doesn't throw a warning
         is eval qq{ method $method ($type \$bar) {} 42 }, 42;
-    	is $@, '';
+        is $@, '';
 
         # positive test--can we call it with a good value?
         my @vals = _list($goodval);
@@ -131,8 +141,9 @@ our $tester;
     $method = 'unknown_paramized_type';
     $type = 'Bmoogle[Int]';
     is eval qq{ method $method ($type \$bar) {} 42 }, undef;
-	like $@, qr/\QCould not locate the base type (Bmoogle)/;
+    like $@, qr/\QCould not locate the base type (Bmoogle)/;
     like exception { $tester->$method(42) }, qr/\QCan't locate object method "unknown_paramized_type" via package "TypeCheck::Class"/;
+
 }
 
 

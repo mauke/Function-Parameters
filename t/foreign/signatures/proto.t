@@ -41,3 +41,5 @@ BEGIN {
     #}
 }
 
+#eval 'sub foo ($bar) : proto { $bar }';
+#like($@, qr/proto attribute requires argument/);

@@ -6,6 +6,7 @@ use strict;
 use warnings FATAL => 'all';
 
 use Test::More;
+#use Test::Exception;
 
 {
     package Stuff;
@@ -18,22 +19,31 @@ use Test::More;
 
     ok !eval q[fun slurpy_first(@that, $this) { return $this, \@that; }];
     like $@, qr{\@that\b.+\$this\b};
-    TODO: {
-        #local $TODO = "error message incorrect inside an eval";
+#    TODO: {
+#        local $TODO = "error message incorrect inside an eval";
 
+#        like $@, qr{Stuff::};
         like $@, qr{\bslurpy_first\b};
-    }
+#    }
 
     ok !eval q[fun slurpy_middle($this, @that, $other) { return $this, \@that, $other }];
     like $@, qr{\@that\b.+\$other\b};
-    TODO: {
-        #local $TODO = "error message incorrect inside an eval";
+#    TODO: {
+#        local $TODO = "error message incorrect inside an eval";
 
+#        like $@, qr{Stuff::};
         like $@, qr{\bslurpy_middle\b};
-    }
+#    }
 
     ok !eval q[fun slurpy_positional(:@that) { return \@that; }];
     like $@, qr{\bnamed\b.+\@that\b.+\barray\b};
+
+#    TODO: {
+#        local $TODO = "error message incorrect inside an eval";
+
+#        like $@, qr{Stuff::};
+        like $@, qr{\bslurpy_positional\b};
+#    }
 
     ok !eval q[fun slurpy_two($this, @that, @other) { return $this, \@that, \@other }];
     like $@, qr{\@that\b.+\@other\b};

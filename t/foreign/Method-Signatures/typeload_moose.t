@@ -5,23 +5,37 @@ use warnings FATAL => 'all';
 use Dir::Self;
 use lib __DIR__ . '/lib';
 
-use Test::More
-	eval { require Moose; 1 }
-	? (tests => 2)
-	: (skip_all => "Moose required for testing types")
-;
+use Test::More;
+use Test::Fatal;
 
 
-require MooseLoadTest;
+SKIP:
+{
+    eval { require Moose } or skip "Moose required for testing Moose types", 1;
 
-my $foobar = Foo::Bar->new;
+    require MooseLoadTest;
 
-# can't check for type module not being loaded here, because Moose will drag it in
+    my $foobar = Foo::Bar->new;
+
+    # can't check for type module not being loaded here, because Moose will drag it in
 
 
-$foobar->check_int(42);
+    $foobar->check_int(42);
 
-# now we should have loaded Moose, not Mouse, to do our type checking
+    # now we should have loaded Moose to do our type checking
 
-is $INC{'Mouse/Util/TypeConstraints.pm'}, undef, "didn't load Mouse";
-like $INC{'Moose/Util/TypeConstraints.pm'}, qr{Moose/Util/TypeConstraints\.pm$}, 'loaded Moose';
+    like $INC{'Moose/Util/TypeConstraints.pm'}, qr{Moose/Util/TypeConstraints\.pm$}, 'loaded Moose';
+
+
+    # tests for ScalarRef[X] have to live here, because they only work with Moose
+
+    my $method = 'check_paramized_sref';
+    my $bad_ref = \'thing';
+    is exception { $foobar->$method(\42) }, undef, 'call with good value for paramized_sref passes';
+    like exception { $foobar->$method($bad_ref) },
+            qr/\bcheck_paramized_sref\b.+\$bar\b.+ScalarRef\[Num\]/,
+            'call with bad value for paramized_sref dies';
+}
+
+
+done_testing;
