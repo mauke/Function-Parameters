@@ -43,6 +43,7 @@ t/foreign/Method-Signatures/anon.t
 t/foreign/Method-Signatures/array_param.t
 t/foreign/Method-Signatures/at_underscore.t
 t/foreign/Method-Signatures/attributes.t
+t/foreign/Method-Signatures/begin.t
 t/foreign/Method-Signatures/caller.t
 t/foreign/Method-Signatures/comments.t
 t/foreign/Method-Signatures/debugger.t
