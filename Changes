@@ -1,5 +1,13 @@
 Revision history for Function-Parameters
 
+1.0301  2013-09-16
+        - support 'defaults' to base keywords on existing keyword types
+        - 'check_argument_count' no longer controls type checks
+        - new 'check_argument_types' property controls type checks
+        - new 'strict' property does what 'check_argument_count' used to
+        - new 'runtime' property lets you define functions at runtime
+        - some more tests
+
 1.0202  2013-08-28
         - make t/foreign/Fun/name.t less fragile to support newer Carp
         - support older Moo without ->meta support
