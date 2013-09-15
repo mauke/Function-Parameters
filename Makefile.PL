@@ -46,8 +46,8 @@ my %opt = (
 		'meta-spec' => { version => 2 },
 		resources => {
 			repository => {
-				url => 'git://git.shadowcat.co.uk/p5sagit/Function-Parameters',
-				web => 'http://git.shadowcat.co.uk/gitweb/gitweb.cgi?p=p5sagit/Function-Parameters.git',
+				url => 'git://github.com/mauke/Function-Parameters',
+				web => 'https://github.com/mauke//Function-Parameters',
 				type => 'git',
 			},
 		},
