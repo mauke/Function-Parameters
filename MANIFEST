@@ -88,6 +88,8 @@ t/invocant.t
 t/lexical.t
 t/lineno-torture.t
 t/lineno.t
+t/method_cache.t
+t/method_runtime.t
 t/name.t
 t/name_1.fail
 t/name_2.fail

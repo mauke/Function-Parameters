@@ -90,14 +90,15 @@ WARNINGS_ENABLE
 #define DEFSTRUCT(T) typedef struct T T; struct T
 
 enum {
-	FLAG_NAME_OK      = 0x01,
-	FLAG_ANON_OK      = 0x02,
-	FLAG_DEFAULT_ARGS = 0x04,
-	FLAG_CHECK_NARGS  = 0x08,
-	FLAG_INVOCANT     = 0x10,
-	FLAG_NAMED_PARAMS = 0x20,
-	FLAG_TYPES_OK     = 0x40,
-	FLAG_CHECK_TARGS  = 0x80
+	FLAG_NAME_OK      = 0x001,
+	FLAG_ANON_OK      = 0x002,
+	FLAG_DEFAULT_ARGS = 0x004,
+	FLAG_CHECK_NARGS  = 0x008,
+	FLAG_INVOCANT     = 0x010,
+	FLAG_NAMED_PARAMS = 0x020,
+	FLAG_TYPES_OK     = 0x040,
+	FLAG_CHECK_TARGS  = 0x080,
+	FLAG_RUNTIME      = 0x100
 };
 
 DEFSTRUCT(KWSpec) {
@@ -1411,7 +1412,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 	}
 
 	/* surprise predeclaration! */
-	if (saw_name) {
+	if (saw_name && !(spec->flags & FLAG_RUNTIME)) {
 		/* 'sub NAME (PROTO);' to make name/proto known to perl before it
 		   starts parsing the body */
 		const I32 sub_ix = start_subparse(FALSE, 0);
@@ -1915,6 +1916,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
 	/* it's go time. */
 	{
+		int runtime = spec->flags & FLAG_RUNTIME;
 		CV *cv;
 		OP *const attrs = op_guard_relinquish(attrs_sentinel);
 
@@ -1925,8 +1927,8 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
 		cv = newATTRSUB(
 			floor_ix,
-			saw_name ? newSVOP(OP_CONST, 0, SvREFCNT_inc_simple_NN(saw_name)) : NULL,
-			proto ? newSVOP(OP_CONST, 0, SvREFCNT_inc_simple_NN(proto)) : NULL,
+			saw_name && !runtime ? newSVOP(OP_CONST, 0, SvREFCNT_inc_simple_NN(saw_name)) : NULL,
+			proto                ? newSVOP(OP_CONST, 0, SvREFCNT_inc_simple_NN(proto))    : NULL,
 			attrs,
 			body
 		);
@@ -1936,7 +1938,25 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 		}
 
 		if (saw_name) {
-			*pop = newOP(OP_NULL, 0);
+			if (!runtime) {
+				*pop = newOP(OP_NULL, 0);
+			} else {
+				*pop = newUNOP(
+					OP_ENTERSUB, OPf_STACKED,
+					op_append_elem(
+						OP_LIST,
+						op_append_elem(
+							OP_LIST,
+							mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(saw_name)),
+							newUNOP(
+								OP_REFGEN, 0,
+								newSVOP(OP_ANONCODE, 0, (SV *)cv)
+							)
+						),
+						newCVREF(0, newGVOP(OP_GV, 0, gv_fetchpvs(MY_PKG "::_defun", 0, SVt_PVCV)))
+					)
+				);
+			}
 			return KEYWORD_PLUGIN_STMT;
 		}
 
@@ -2047,6 +2067,27 @@ static int my_keyword_plugin(pTHX_ char *keyword_ptr, STRLEN keyword_len, OP **o
 	return ret;
 }
 
+#ifndef SvREFCNT_dec_NN
+#define SvREFCNT_dec_NN(SV) SvREFCNT_dec(SV)
+#endif
+
+#ifndef assert_
+#ifdef DEBUGGING
+#define assert_(X) assert(X),
+#else
+#define assert_(X)
+#endif
+#endif
+
+#ifndef gv_method_changed
+#define gv_method_changed(GV) (              \
+	assert_(isGV_with_GP(GV))                \
+	GvREFCNT(GV) > 1                         \
+		? (void)PL_sub_generation++          \
+		: mro_method_changed_in(GvSTASH(GV)) \
+)
+#endif
+
 WARNINGS_RESET
 
 MODULE = Function::Parameters   PACKAGE = Function::Parameters   PREFIX = fp_
@@ -2054,7 +2095,7 @@ PROTOTYPES: ENABLE
 
 UV
 fp__cv_root(sv)
-	SV * sv
+	SV *sv
 	PREINIT:
 		CV *xcv;
 		HV *hv;
@@ -2064,6 +2105,32 @@ fp__cv_root(sv)
 		RETVAL = PTR2UV(xcv ? CvROOT(xcv) : NULL);
 	OUTPUT:
 		RETVAL
+
+void
+fp__defun(name, body)
+	SV *name
+	CV *body
+	PREINIT:
+		GV *gv;
+		CV *xcv;
+	CODE:
+		assert(SvTYPE(body) == SVt_PVCV);
+		gv = gv_fetchsv(name, GV_ADDMULTI, SVt_PVCV);
+		xcv = GvCV(gv);
+		if (xcv) {
+			if (!GvCVGEN(gv) && (CvROOT(xcv) || CvXSUB(xcv)) && ckWARN(WARN_REDEFINE)) {
+				warner(packWARN(WARN_REDEFINE), "Subroutine %"SVf" redefined", SVfARG(name));
+			}
+			SvREFCNT_dec_NN(xcv);
+		}
+		GvCVGEN(gv) = 0;
+		GvASSUMECV_on(gv);
+		if (GvSTASH(gv)) {
+			gv_method_changed(gv);
+		}
+		GvCV_set(gv, (CV *)SvREFCNT_inc_simple_NN(body));
+		CvGV_set(body, gv);
+		CvANON_off(body);
 
 BOOT:
 WARNINGS_ENABLE {
@@ -2077,6 +2144,7 @@ WARNINGS_ENABLE {
 	newCONSTSUB(stash, "FLAG_NAMED_PARAMS", newSViv(FLAG_NAMED_PARAMS));
 	newCONSTSUB(stash, "FLAG_TYPES_OK",     newSViv(FLAG_TYPES_OK));
 	newCONSTSUB(stash, "FLAG_CHECK_TARGS",  newSViv(FLAG_CHECK_TARGS));
+	newCONSTSUB(stash, "FLAG_RUNTIME",      newSViv(FLAG_RUNTIME));
 	newCONSTSUB(stash, "HINTK_KEYWORDS", newSVpvs(HINTK_KEYWORDS));
 	newCONSTSUB(stash, "HINTK_FLAGS_",   newSVpvs(HINTK_FLAGS_));
 	newCONSTSUB(stash, "HINTK_SHIFT_",   newSVpvs(HINTK_SHIFT_));

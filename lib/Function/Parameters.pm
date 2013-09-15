@@ -147,6 +147,7 @@ sub import {
 		$clean{types}             = _delete_default \%type, 'types',             1;
 
 		$clean{invocant}             = _delete_default \%type, 'invocant',             0;
+		$clean{runtime}              = _delete_default \%type, 'runtime',              0;
 		$clean{check_argument_count} = _delete_default \%type, 'check_argument_count', 0;
 		$clean{check_argument_types} = _delete_default \%type, 'check_argument_types', 0;
 		$clean{check_argument_count} = $clean{check_argument_types} = 1 if delete $type{strict};
@@ -188,6 +189,7 @@ sub import {
 		$flags |= FLAG_INVOCANT     if $type->{invocant};
 		$flags |= FLAG_NAMED_PARAMS if $type->{named_parameters};
 		$flags |= FLAG_TYPES_OK     if $type->{types};
+		$flags |= FLAG_RUNTIME      if $type->{runtime};
 		$^H{HINTK_FLAGS_ . $kw} = $flags;
 		$^H{HINTK_SHIFT_ . $kw} = $type->{shift};
 		$^H{HINTK_ATTRS_ . $kw} = $type->{attrs};
@@ -265,9 +267,9 @@ sub info {
 	my $info = $metadata{$key} or return undef;
 	require Function::Parameters::Info;
 	Function::Parameters::Info->new(
-		keyword => $info->{declarator},
+		keyword  => $info->{declarator},
 		invocant => _mkparam1($info->{invocant}),
-		slurpy => _mkparam1($info->{slurpy}),
+		slurpy   => _mkparam1($info->{slurpy}),
 		(map +("_$_" => _mkparams @{$info->{$_}}), glob '{positional,named}_{required,optional}')
 	)
 }
@@ -389,11 +391,12 @@ This is just a normal block of statements, as with L<C<sub>|perlsub>. No surpris
 =head3 Name
 
 If present, it specifies the name of the function being defined. As with
-L<C<sub>|perlsub>, if a name is present, the whole declaration is syntactically
-a statement and its effects are performed at compile time (i.e. at runtime you
-can call functions whose definitions only occur later in the file). If no name
-is present, the declaration is an expression that evaluates to a reference to
-the function in question. No surprises here either.
+L<C<sub>|perlsub>, if a name is present, by default the whole declaration is
+syntactically a statement and its effects are performed at compile time (i.e.
+at runtime you can call functions whose definitions only occur later in the
+file - but see the C<runtime> flag below). If no name is present, the
+declaration is an expression that evaluates to a reference to the function in
+question.
 
 =head3 Attributes
 
@@ -626,6 +629,21 @@ Valid values: C<optional> (default), C<required> (all functions defined with
 this keyword must have a name), and C<prohibited> (functions defined with this
 keyword must be anonymous).
 
+=item C<runtime>
+
+Valid values: booleans. If enabled, this keyword takes effect at runtime, not
+compile time:
+
+  use Function::Parameters { fun => { defaults => 'function_strict', runtime => 1 } };
+  say defined &foo ? "defined" : "not defined";  # not defined
+  fun foo() {}
+  say defined &foo ? "defined" : "not defined";  # defined
+
+C<&foo> is only defined after C<fun foo() {}> has been reached at runtime.
+
+B<CAVEAT:> A future version of this module may enable C<< runtime => 1 >> by
+default for methods.
+
 =item C<shift>
 
 Valid values: strings that look like scalar variables. This lets you specify a
@@ -694,6 +712,7 @@ The predefined type C<function> is equivalent to:
    default_arguments => 1,
    strict            => 0,
    invocant          => 0,
+   runtime           => 0,
  }
 
 These are all default values, so C<function> is also equivalent to C<{}>.
@@ -705,6 +724,7 @@ C<method> is equivalent to:
    attributes        => ':method',
    shift             => '$self',
    invocant          => 1,
+   # runtime         => 1,  ## possibly in a future version of this module
  }
 
 
@@ -811,6 +831,12 @@ generated code corresponds to:
   method bar($x, $y, @z) { ... }
   # ... turns into ...
   sub bar :method { my $self = shift; my ($x, $y, @z) = @_; sub bar; ... }
+
+=head1 BUGS AND INCOMPATIBILITIES
+
+A future version of this module may enable C<< runtime => 1 >> by default for
+methods. If this would break your code, please send me a note or file a bug on
+RT.
 
 =head1 SUPPORT AND DOCUMENTATION
 
