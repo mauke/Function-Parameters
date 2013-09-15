@@ -10,7 +10,7 @@ use Test::More
 use Test::Fatal;
 
 use Function::Parameters {
-	def => { check_argument_count => 1 },
+	def => { strict => 1 },
 };
 
 def foo(Int $n, CodeRef $f, $x) {

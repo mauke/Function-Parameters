@@ -10,8 +10,8 @@ use Test::More tests => 3;
 
     use Function::Parameters;
     use Function::Parameters {
-        action => { shift => '$monster', invocant => 1 },
-        constructor => { shift => '$species', invocant => 1 },
+        action => { defaults => 'method', shift => '$monster' },
+        constructor => { defaults => 'method', shift => '$species' },
         function => 'function',
     };
 

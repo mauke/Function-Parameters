@@ -7,12 +7,11 @@ use strict;
 
 use Function::Parameters {
 	fun => {
-		check_argument_count => 1,
-		default_arguments => 1,
+		strict => 1,
 	},
 
 	sad => {
-		check_argument_count => 0,
+		strict => 0,
 	},
 };
 

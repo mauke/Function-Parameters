@@ -7,7 +7,7 @@ use strict;
 
 use Function::Parameters {
 	fun => {
-		check_argument_count => 1,
+		defaults => 'function_strict',
 	},
 };
 

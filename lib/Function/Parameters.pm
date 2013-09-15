@@ -64,43 +64,30 @@ sub _delete_default {
 
 my @bare_arms = qw(function method);
 my %type_map = (
-	function    => {
-		name                 => 'optional',
-		default_arguments    => 1,
-		check_argument_count => 0,
-		named_parameters     => 1,
-		types                => 1,
-		reify_type           => \&_reify_type_default,
+	function           => {},  # all default settings
+	function_strict    => {
+		defaults   => 'function',
+		strict     => 1,
 	},
-	method      => {
-		name                 => 'optional',
-		default_arguments    => 1,
-		check_argument_count => 0,
-		named_parameters     => 1,
-		types                => 1,
-		reify_type           => \&_reify_type_default,
-		attrs                => ':method',
-		shift                => '$self',
-		invocant             => 1,
+	method             => {
+		defaults   => 'function',
+		attributes => ':method',
+		shift      => '$self',
+		invocant   => 1,
 	},
-	classmethod => {
-		name                 => 'optional',
-		default_arguments    => 1,
-		check_argument_count => 0,
-		named_parameters     => 1,
-		types                => 1,
-		reify_type           => \&_reify_type_default,
-		attributes           => ':method',
-		shift                => '$class',
-		invocant             => 1,
+	method_strict      => {
+		defaults   => 'method',
+		strict     => 1,
+	},
+	classmethod        => {
+		defaults   => 'method',
+		shift      => '$class',
+	},
+	classmethod_strict => {
+		defaults   => 'classmethod',
+		strict     => 1,
 	},
 );
-for my $k (keys %type_map) {
-	$type_map{$k . '_strict'} = {
-		%{$type_map{$k}},
-		check_argument_count => 1,
-	};
-}
 
 our @type_reifiers = \&_reify_type_default;
 
@@ -134,31 +121,35 @@ sub import {
 		my ($name, $proto_type) = @$item;
 		_assert_valid_identifier $name;
 
-		unless (ref $proto_type) {
-			# use '||' instead of 'or' to preserve $proto_type in the error message
-			$proto_type = $type_map{$proto_type}
-				|| confess qq["$proto_type" doesn't look like a valid type (one of ${\join ', ', sort keys %type_map})];
-		}
+		$proto_type = {defaults => $proto_type} unless ref $proto_type;
 
 		my %type = %$proto_type;
+		while (my $defaults = delete $type{defaults}) {
+			my $base = $type_map{$defaults}
+				or confess qq["$defaults" doesn't look like a valid type (one of ${\join ', ', sort keys %type_map})];
+			%type = (%$base, %type);
+		}
+
 		my %clean;
 
-		$clean{name} = delete $type{name} || 'optional';
+		$clean{name} = delete $type{name} // 'optional';
 		$clean{name} =~ /^(?:optional|required|prohibited)\z/
 			or confess qq["$clean{name}" doesn't look like a valid name attribute (one of optional, required, prohibited)];
 
-		$clean{shift} = delete $type{shift} || '';
+		$clean{shift} = delete $type{shift} // '';
 		_assert_valid_identifier $clean{shift}, 1 if $clean{shift};
 
-		$clean{attrs} = join ' ', map delete $type{$_} || (), qw(attributes attrs);
+		$clean{attrs} = join ' ', map delete $type{$_} // (), qw(attributes attrs);
 		_assert_valid_attributes $clean{attrs} if $clean{attrs};
 		
 		$clean{default_arguments} = _delete_default \%type, 'default_arguments', 1;
 		$clean{named_parameters}  = _delete_default \%type, 'named_parameters',  1;
 		$clean{types}             = _delete_default \%type, 'types',             1;
 
-		$clean{check_argument_count} = _delete_default \%type, 'check_argument_count', 0;
 		$clean{invocant}             = _delete_default \%type, 'invocant',             0;
+		$clean{check_argument_count} = _delete_default \%type, 'check_argument_count', 0;
+		$clean{check_argument_types} = _delete_default \%type, 'check_argument_types', 0;
+		$clean{check_argument_count} = $clean{check_argument_types} = 1 if delete $type{strict};
 
 		if (my $rt = delete $type{reify_type}) {
 			ref $rt eq 'CODE' or confess qq{"$rt" doesn't look like a type reifier};
@@ -191,11 +182,12 @@ sub import {
 			$type->{name} eq 'required'   ? FLAG_NAME_OK                :
 			                                FLAG_ANON_OK | FLAG_NAME_OK
 		;
-		$flags |= FLAG_DEFAULT_ARGS                   if $type->{default_arguments};
-		$flags |= FLAG_CHECK_NARGS | FLAG_CHECK_TARGS if $type->{check_argument_count};
-		$flags |= FLAG_INVOCANT                       if $type->{invocant};
-		$flags |= FLAG_NAMED_PARAMS                   if $type->{named_parameters};
-		$flags |= FLAG_TYPES_OK                       if $type->{types};
+		$flags |= FLAG_DEFAULT_ARGS if $type->{default_arguments};
+		$flags |= FLAG_CHECK_NARGS  if $type->{check_argument_count};
+		$flags |= FLAG_CHECK_TARGS  if $type->{check_argument_types};
+		$flags |= FLAG_INVOCANT     if $type->{invocant};
+		$flags |= FLAG_NAMED_PARAMS if $type->{named_parameters};
+		$flags |= FLAG_TYPES_OK     if $type->{types};
 		$^H{HINTK_FLAGS_ . $kw} = $flags;
 		$^H{HINTK_SHIFT_ . $kw} = $type->{shift};
 		$^H{HINTK_ATTRS_ . $kw} = $type->{attrs};
@@ -606,6 +598,28 @@ a reference to a hash with the following keys:
 
 =over
 
+=item C<defaults>
+
+Valid values: One of the predefined types C<function>, C<method>,
+C<classmethod>, C<function_strict>, C<method_strict>, C<classmethod_strict>.
+This will set the defaults for all other keys from the specified type, which is
+useful if you only want to override some properties:
+
+  use Function::Parameters { defmethod => { defaults => 'method', shift => '$this' } };
+
+This example defines a keyword called C<defmethod> that works like the standard
+C<method> keyword, but the implicit object variable is called C<$this> instead
+of C<$self>.
+
+Using the string types directly is equivalent to C<defaults> with no further
+customization:
+
+  use Function::Parameters {
+      foo => 'function',         # like: foo => { defaults => 'function' },
+      bar => 'function_strict',  # like: bar => { defaults => 'function_strict' },
+      baz => 'method_strict',    # like: baz => { defaults => 'method_strict' },
+  };
+
 =item C<name>
 
 Valid values: C<optional> (default), C<required> (all functions defined with
@@ -646,8 +660,16 @@ automatically check that they have been passed all required arguments and no
 excess arguments. If this check fails, an exception will by thrown via
 L<C<Carp::croak>|Carp>.
 
-Currently this flag is overloaded to also enable type checks (see
-L</Experimental feature: Types> below).
+=item C<check_argument_types>
+
+Valid values: booleans. If turned on, functions defined with this keyword will
+automatically check that the arguments they are passed pass the declared type
+constraints (if any). See L</Experimental feature: Types> below.
+
+=item C<strict>
+
+Valid values: booleans. This turns on both C<check_argument_count> and
+C<check_argument_types>.
 
 =item C<reify_type>
 
@@ -668,10 +690,10 @@ The default type reifier is equivalent to:
 The predefined type C<function> is equivalent to:
 
  {
-   name                 => 'optional',
-   invocant             => 0,
-   default_arguments    => 1,
-   check_argument_count => 0,
+   name              => 'optional',
+   default_arguments => 1,
+   strict            => 0,
+   invocant          => 0,
  }
 
 These are all default values, so C<function> is also equivalent to C<{}>.
@@ -679,29 +701,23 @@ These are all default values, so C<function> is also equivalent to C<{}>.
 C<method> is equivalent to:
 
  {
-   name                 => 'optional',
-   shift                => '$self',
-   invocant             => 1,
-   attributes           => ':method',
-   default_arguments    => 1,
-   check_argument_count => 0,
+   defaults          => 'function',
+   attributes        => ':method',
+   shift             => '$self',
+   invocant          => 1,
  }
 
 
 C<classmethod> is equivalent to:
 
  {
-   name                 => 'optional',
-   shift                => '$class',
-   invocant             => 1,
-   attributes           => ':method',
-   default_arguments    => 1,
-   check_argument_count => 0,
+   defaults          => 'method',
+   shift             => '$class',
  }
 
 C<function_strict>, C<method_strict>, and
 C<classmethod_strict> are like C<function>, C<method>, and
-C<classmethod>, respectively, but with C<< check_argument_count => 1 >>.
+C<classmethod>, respectively, but with C<< strict => 1 >>.
 
 =back
 

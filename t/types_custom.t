@@ -7,7 +7,7 @@ use Test::Fatal;
 
 use Function::Parameters qw(:strict);
 use Function::Parameters {
-	def => { check_argument_count => 1 },
+	def => { strict => 1 },
 };
 
 {

@@ -15,7 +15,7 @@ use Test::More tests => 8;
 
 use Function::Parameters {
 	fun => {
-		check_argument_count => 1,
+		strict => 1,
 		reify_type => sub {
 			my ($type, $package) = @_;
 			if ($package ne $type) {

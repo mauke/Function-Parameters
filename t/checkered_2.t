@@ -7,15 +7,13 @@ use strict;
 
 use Function::Parameters {
 	method => {
-		check_argument_count => 1,
-		shift => '$self',
-		attributes => ':method',
+		defaults => 'method',
+		strict => 1,
 	},
 
 	cathod => {
-		check_argument_count => 0,
-		shift => '$self',
-		attrs => ':method',
+		defaults => 'method',
+		strict => 0,
 	},
 
 	fun => 'function',
