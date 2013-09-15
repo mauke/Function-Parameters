@@ -4,7 +4,7 @@ use warnings FATAL => 'all';
 
 use Test::More;
 
-use Function::Parameters qw(:strict);;
+use Function::Parameters qw(:strict);
 
 {
     my $a;
