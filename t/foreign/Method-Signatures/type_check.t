@@ -4,7 +4,7 @@ use strict;
 use warnings FATAL => 'all';
 
 use Test::More
-    eval { require Moose; 1 }
+    eval { require Moose }
     ? ()
     : (skip_all => "Moose required for testing types")
 ;

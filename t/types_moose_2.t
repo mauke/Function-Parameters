@@ -3,7 +3,7 @@ use warnings FATAL => 'all';
 use strict;
 
 use Test::More
-	eval { require Moose::Util; 1 }
+	eval { require Moose::Util }
 	? (tests => 49)
 	: (skip_all => "Moose required for testing types")
 ;

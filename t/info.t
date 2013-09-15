@@ -3,7 +3,7 @@ use warnings FATAL => 'all';
 use strict;
 
 use Test::More
-	eval { require Moo; 1 }
+	eval { require Moo }
 	? (tests => 122)
 	: (skip_all => "Moo required for testing parameter introspection")
 ;
