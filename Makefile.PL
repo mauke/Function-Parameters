@@ -47,7 +47,7 @@ my %opt = (
 		resources => {
 			repository => {
 				url => 'git://github.com/mauke/Function-Parameters',
-				web => 'https://github.com/mauke//Function-Parameters',
+				web => 'https://github.com/mauke/Function-Parameters',
 				type => 'git',
 			},
 		},
