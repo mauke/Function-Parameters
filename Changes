@@ -1,5 +1,8 @@
 Revision history for Function-Parameters
 
+1.0401  2013-10-09
+        - enable type checks by default
+
 1.0301  2013-09-16
         - support 'defaults' to base keywords on existing keyword types
         - 'check_argument_count' no longer controls type checks
