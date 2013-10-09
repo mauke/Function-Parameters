@@ -149,7 +149,7 @@ sub import {
 		$clean{invocant}             = _delete_default \%type, 'invocant',             0;
 		$clean{runtime}              = _delete_default \%type, 'runtime',              0;
 		$clean{check_argument_count} = _delete_default \%type, 'check_argument_count', 0;
-		$clean{check_argument_types} = _delete_default \%type, 'check_argument_types', 0;
+		$clean{check_argument_types} = _delete_default \%type, 'check_argument_types', 1;
 		$clean{check_argument_count} = $clean{check_argument_types} = 1 if delete $type{strict};
 
 		if (my $rt = delete $type{reify_type}) {
@@ -680,9 +680,11 @@ L<C<Carp::croak>|Carp>.
 
 =item C<check_argument_types>
 
-Valid values: booleans. If turned on, functions defined with this keyword will
-automatically check that the arguments they are passed pass the declared type
-constraints (if any). See L</Experimental feature: Types> below.
+Valid values: booleans. This property is on by default; use
+C<< check_argument_types => 0 >> to turn it off. This controls whether
+functions defined with this keyword automatically check that the arguments they
+are passed pass the declared type constraints (if any). See
+L</Experimental feature: Types> below.
 
 =item C<strict>
 
