@@ -489,8 +489,7 @@ func_ops:
 		case OP_AND:
 			kid = cLOGOPo->op_first;
 			if (kid->op_type == OP_NOT
-				&& (kid->op_flags & OPf_KIDS)
-				&& !PL_madskills) {
+				&& (kid->op_flags & OPf_KIDS)) {
 				if (o->op_type == OP_AND) {
 					o->op_type = OP_OR;
 					o->op_ppaddr = PL_ppaddr[OP_OR];
