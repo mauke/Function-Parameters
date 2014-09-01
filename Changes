@@ -1,5 +1,9 @@
 Revision history for Function-Parameters
 
+1.0402  2014-09-01
+        - fix #92871: don't access dead stack frames on error
+        - fix #95803: don't dereference NULL
+
 1.0401  2013-10-09
         - enable type checks by default
 
