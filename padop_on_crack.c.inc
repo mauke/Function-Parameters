@@ -371,8 +371,8 @@ func_ops:
 		case OP_CONST:
 			sv = cSVOPo_sv;
 			if (cSVOPo->op_private & OPpCONST_STRICT) {
-				//no_bareword_allowed(o);
-				*((int *)NULL) += 1;
+				/* no_bareword_allowed(o); */
+				croak("%s: internal error: what even are birds", MY_PKG);
 			} else {
 				if (ckWARN(WARN_VOID)) {
 					/* don't warn on optimised away booleans, eg 
