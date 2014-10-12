@@ -1800,6 +1800,10 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                         keys = newLISTOP(OP_JOIN, 0, first, mid);
                         keys->op_targ = pad_alloc(OP_JOIN, SVs_PADTMP);
                         ((LISTOP *)keys)->op_last = last;
+#if HAVE_PERL_VERSION(5, 21, 2)
+                        mid->op_lastsib = 0;
+                        last->op_lastsib = 1;
+#endif
                     }
 
                     msg = mkconstsv(aTHX_ newSVpvf("In %"SVf": no such named parameter: ", SVfARG(declarator)));
