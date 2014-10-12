@@ -66,7 +66,7 @@ static void S_inplace_aassign(pTHX_ OP *o) {
             return;
     }
     else if (oright->op_type != OP_PADAV
-             || oright->op_targ != oleft->op_targ
+        || oright->op_targ != oleft->op_targ
     )
         return;
 
@@ -85,6 +85,111 @@ static void S_inplace_aassign(pTHX_ OP *o) {
     op_null(oleft);
 }
 
+#if HAVE_PERL_VERSION(5, 19, 4)
+
+/* varname(): return the name of a variable, optionally with a subscript.
+ * If gv is non-zero, use the name of that global, along with gvtype (one
+ * of "$", "@", "%"); otherwise use the name of the lexical at pad offset
+ * targ.  Depending on the value of the subscript_type flag, return:
+ */
+
+#define FUV_SUBSCRIPT_NONE	1	/* "@foo"          */
+#define FUV_SUBSCRIPT_ARRAY	2	/* "$foo[aindex]"  */
+#define FUV_SUBSCRIPT_HASH	3	/* "$foo{keyname}" */
+#define FUV_SUBSCRIPT_WITHIN	4	/* "within @foo"   */
+
+static SV *S_varname(pTHX_ const GV *const gv, const char gvtype, PADOFFSET targ, const SV *const keyname, I32 aindex, int subscript_type) {
+    SV * const name = sv_newmortal();
+    if (gv && isGV(gv)) {
+	char buffer[2];
+	buffer[0] = gvtype;
+	buffer[1] = 0;
+
+	/* as gv_fullname4(), but add literal '^' for $^FOO names  */
+
+	gv_fullname4(name, gv, buffer, 0);
+
+	if ((unsigned int)SvPVX(name)[1] <= 26) {
+	    buffer[0] = '^';
+	    buffer[1] = SvPVX(name)[1] + 'A' - 1;
+
+	    /* Swap the 1 unprintable control character for the 2 byte pretty
+	       version - ie substr($name, 1, 1) = $buffer; */
+	    sv_insert(name, 1, 1, buffer, 2);
+	}
+    }
+    else {
+	CV * const cv = gv ? ((CV *)gv) : find_runcv(NULL);
+	SV *sv;
+	AV *av;
+
+	assert(!cv || SvTYPE(cv) == SVt_PVCV || SvTYPE(cv) == SVt_PVFM);
+
+	if (!cv || !CvPADLIST(cv))
+	    return NULL;
+	av = *PadlistARRAY(CvPADLIST(cv));
+	sv = *av_fetch(av, targ, FALSE);
+	sv_setsv_flags(name, sv, 0);
+    }
+
+    if (subscript_type == FUV_SUBSCRIPT_HASH) {
+	SV * const sv = newSV(0);
+	*SvPVX(name) = '$';
+	Perl_sv_catpvf(aTHX_ name, "{%s}",
+	    pv_pretty(sv, SvPVX_const(keyname), SvCUR(keyname), 32, NULL, NULL,
+		    PERL_PV_PRETTY_DUMP | PERL_PV_ESCAPE_UNI_DETECT ));
+	SvREFCNT_dec_NN(sv);
+    }
+    else if (subscript_type == FUV_SUBSCRIPT_ARRAY) {
+	*SvPVX(name) = '$';
+	Perl_sv_catpvf(aTHX_ name, "[%"IVdf"]", (IV)aindex);
+    }
+    else if (subscript_type == FUV_SUBSCRIPT_WITHIN) {
+	/* We know that name has no magic, so can use 0 instead of SV_GMAGIC */
+	Perl_sv_insert_flags(aTHX_ name, 0, 0,  STR_WITH_LEN("within "), 0);
+    }
+
+    return name;
+}
+
+static SV *S_op_varname(pTHX_ const OP *o) {
+    assert(o);
+    assert(o->op_type == OP_PADAV || o->op_type == OP_RV2AV ||
+           o->op_type == OP_PADHV || o->op_type == OP_RV2HV);
+    {
+        const char funny  = o->op_type == OP_PADAV
+                         || o->op_type == OP_RV2AV ? '@' : '%';
+        if (o->op_type == OP_RV2AV || o->op_type == OP_RV2HV) {
+            GV *gv;
+            if (cUNOPo->op_first->op_type != OP_GV
+             || !(gv = cGVOPx_gv(cUNOPo->op_first)))
+                return NULL;
+            return S_varname(aTHX_ gv, funny, 0, NULL, 0, 1);
+        }
+        return
+            S_varname(aTHX_ MUTABLE_GV(PL_compcv), funny, o->op_targ, NULL, 0, 1);
+    }
+}
+
+static void
+S_op_pretty(pTHX_ const OP *o, SV **retsv, const char **retpv) {
+    /* or not so pretty :-) */
+    if (o->op_type == OP_CONST) {
+	*retsv = cSVOPo_sv;
+	if (SvPOK(*retsv)) {
+	    SV *sv = *retsv;
+	    *retsv = sv_newmortal();
+	    pv_pretty(*retsv, SvPVX_const(sv), SvCUR(sv), 32, NULL, NULL,
+		      PERL_PV_PRETTY_DUMP |PERL_PV_ESCAPE_UNI_DETECT);
+	}
+	else if (!SvOK(*retsv))
+	    *retpv = "undef";
+    }
+    else *retpv = "...";
+}
+
+#endif
+
 static OP *S_scalarvoid(pTHX_ OP *);
 
 static OP *S_scalar(pTHX_ OP *o) {
@@ -93,8 +198,8 @@ static OP *S_scalar(pTHX_ OP *o) {
 
     /* assumes no premature commitment */
     if (!o || (PL_parser && PL_parser->error_count)
-        || (o->op_flags & OPf_WANT)
-        || o->op_type == OP_RETURN)
+         || (o->op_flags & OPf_WANT)
+         || o->op_type == OP_RETURN)
     {
         return o;
     }
@@ -147,6 +252,48 @@ do_kids:
         case OP_SORT:
             Perl_ck_warner(aTHX_ packWARN(WARN_VOID), "Useless use of sort in scalar context");
             break;
+#if HAVE_PERL_VERSION(5, 19, 4)
+        case OP_KVHSLICE:
+        case OP_KVASLICE:
+        {
+            /* Warn about scalar context */
+            const char lbrack = o->op_type == OP_KVHSLICE ? '{' : '[';
+            const char rbrack = o->op_type == OP_KVHSLICE ? '}' : ']';
+            SV *name;
+            SV *keysv = NULL;
+            const char *key = NULL;
+
+            /* This warning can be nonsensical when there is a syntax error. */
+            if (PL_parser && PL_parser->error_count)
+                break;
+
+            if (!ckWARN(WARN_SYNTAX)) break;
+
+            kid = cLISTOPo->op_first;
+            kid = kid->op_sibling; /* get past pushmark */
+            assert(kid->op_sibling);
+            name = S_op_varname(aTHX_ kid->op_sibling);
+            if (!name) /* XS module fiddling with the op tree */
+                break;
+            S_op_pretty(aTHX_ kid, &keysv, &key);
+            assert(SvPOK(name));
+            sv_chop(name,SvPVX(name)+1);
+            if (key)
+      /* diag_listed_as: %%s[%s] in scalar context better written as $%s[%s] */
+                Perl_warner(aTHX_ packWARN(WARN_SYNTAX),
+                           "%%%"SVf"%c%s%c in scalar context better written "
+                           "as $%"SVf"%c%s%c",
+                            SVfARG(name), lbrack, key, rbrack, SVfARG(name),
+                            lbrack, key, rbrack);
+            else
+      /* diag_listed_as: %%s[%s] in scalar context better written as $%s[%s] */
+                Perl_warner(aTHX_ packWARN(WARN_SYNTAX),
+                           "%%%"SVf"%c%"SVf"%c in scalar context better "
+                           "written as $%"SVf"%c%"SVf"%c",
+                            SVfARG(name), lbrack, keysv, rbrack,
+                            SVfARG(name), lbrack, keysv, rbrack);
+        }
+#endif
     }
     return o;
 }
@@ -185,36 +332,25 @@ static OP *S_scalarvoid(pTHX_ OP *o) {
             return o;
     }
 
-    if (
-        o->op_type == OP_NEXTSTATE ||
-        o->op_type == OP_DBSTATE || (
-            o->op_type == OP_NULL && (
-                o->op_targ == OP_NEXTSTATE ||
-                o->op_targ == OP_DBSTATE
-            )
-        )
-    ) {
-        PL_curcop = (COP*)o;        /* for warning below */
-    }
+    if (o->op_type == OP_NEXTSTATE
+        || o->op_type == OP_DBSTATE
+        || (o->op_type == OP_NULL && (o->op_targ == OP_NEXTSTATE
+                                      || o->op_targ == OP_DBSTATE)))
+        PL_curcop = (COP*)o;            /* for warning below */
 
     /* assumes no premature commitment */
     want = o->op_flags & OPf_WANT;
-    if (
-        (want && want != OPf_WANT_SCALAR) ||
-        (PL_parser && PL_parser->error_count) ||
-        o->op_type == OP_RETURN ||
-        o->op_type == OP_REQUIRE ||
-        o->op_type == OP_LEAVEWHEN
-    ) {
+    if ((want && want != OPf_WANT_SCALAR)
+         || (PL_parser && PL_parser->error_count)
+         || o->op_type == OP_RETURN || o->op_type == OP_REQUIRE || o->op_type == OP_LEAVEWHEN)
+    {
         return o;
     }
 
-    if (
-        (o->op_private & OPpTARGET_MY) &&
-        (PL_opargs[o->op_type] & OA_TARGLEX)
-        /* OPp share the meaning */
-    ) {
-        return S_scalar(aTHX_ o);           /* As if inside SASSIGN */
+    if ((o->op_private & OPpTARGET_MY)
+        && (PL_opargs[o->op_type] & OA_TARGLEX))/* OPp share the meaning */
+    {
+        return S_scalar(aTHX_ o);               /* As if inside SASSIGN */
     }
 
     o->op_flags = (o->op_flags & ~OPf_WANT) | OPf_WANT_VOID;
@@ -256,8 +392,10 @@ static OP *S_scalarvoid(pTHX_ OP *o) {
         case OP_AELEMFAST:
         IF_HAVE_PERL_5_16(case OP_AELEMFAST_LEX:, )
         case OP_ASLICE:
+        IF_HAVE_PERL_5_19_4(case OP_KVASLICE:, )
         case OP_HELEM:
         case OP_HSLICE:
+        IF_HAVE_PERL_5_19_4(case OP_KVHSLICE:, )
         case OP_UNPACK:
         case OP_PACK:
         case OP_JOIN:
@@ -365,29 +503,16 @@ func_ops:
                     else if (SvNIOK(sv) && (SvNV(sv) == 0.0 || SvNV(sv) == 1.0))
                         useless = NULL;
                     else if (SvPOK(sv)) {
-                        /* perl4's way of mixing documentation and code
-                           (before the invention of POD) was based on a
-                           trick to mix nroff and perl code. The trick was
-                           built upon these three nroff macros being used in
-                           void context. The pink camel has the details in
-                           the script wrapman near page 319. */
-                        const char * const maybe_macro = SvPVX_const(sv);
-                        if (strnEQ(maybe_macro, "di", 2) ||
-                            strnEQ(maybe_macro, "ds", 2) ||
-                            strnEQ(maybe_macro, "ig", 2))
-                            useless = NULL;
-                        else {
-                            SV * const dsv = newSVpvs("");
-                            useless_sv
-                                = Perl_newSVpvf(aTHX_
-                                                "a constant (%s)",
-                                                pv_pretty(dsv, maybe_macro,
-                                                          SvCUR(sv), 32, NULL, NULL,
-                                                          PERL_PV_PRETTY_DUMP
-                                                          | PERL_PV_ESCAPE_NOCLEAR
-                                                          | PERL_PV_ESCAPE_UNI_DETECT ));
-                            SvREFCNT_dec_NN(dsv);
-                        }
+                        SV * const dsv = newSVpvs("");
+                        useless_sv
+                            = Perl_newSVpvf(aTHX_
+                                            "a constant (%s)",
+                                            pv_pretty(dsv, SvPVX_const(sv),
+                                                      SvCUR(sv), 32, NULL, NULL,
+                                                      PERL_PV_PRETTY_DUMP
+                                                      | PERL_PV_ESCAPE_NOCLEAR
+                                                      | PERL_PV_ESCAPE_UNI_DETECT));
+                        SvREFCNT_dec_NN(dsv);
                     }
                     else if (SvOK(sv)) {
                         useless_sv = Perl_newSVpvf(aTHX_ "a constant (%"SVf")", sv);

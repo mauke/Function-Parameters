@@ -21,7 +21,7 @@ static U32 S_intro_my(pTHX) {
     for (i = PL_min_intro_pending; i <= PL_max_intro_pending; i++) {
         SV *const sv = svp[i];
 
-        if (sv && sv != &PL_sv_undef && !SvFAKE(sv)
+        if (sv && IF_HAVE_PERL_5_19_3(PadnameLEN(sv), sv != &PL_sv_undef) && !SvFAKE(sv)
             && COP_SEQ_RANGE_LOW(sv) == PERL_PADSEQ_INTRO)
         {
             COP_SEQ_RANGE_HIGH_set(sv, PERL_PADSEQ_INTRO); /* Don't know scope end yet. */

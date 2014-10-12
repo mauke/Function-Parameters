@@ -16,7 +16,7 @@ static OP *S_pad_leavemy(pTHX) {
     if (PL_min_intro_pending && PL_comppad_name_fill < PL_min_intro_pending) {
         for (off = PL_max_intro_pending; off >= PL_min_intro_pending; off--) {
             const SV * const sv = svp[off];
-            if (sv && sv != &PL_sv_undef && !SvFAKE(sv))
+            if (sv && IF_HAVE_PERL_5_19_3(PadnameLEN(sv), sv != &PL_sv_undef) && !SvFAKE(sv))
                 Perl_ck_warner_d(aTHX_ packWARN(WARN_INTERNAL),
                                  "%"SVf" never introduced",
                                  SVfARG(sv));
@@ -24,8 +24,8 @@ static OP *S_pad_leavemy(pTHX) {
     }
     /* "Deintroduce" my variables that are leaving with this scope. */
     for (off = AvFILLp(PL_comppad_name); off > PL_comppad_name_fill; off--) {
-        const SV * const sv = svp[off];
-        if (sv && sv != &PL_sv_undef && !SvFAKE(sv)
+        SV * const sv = svp[off];
+        if (sv && IF_HAVE_PERL_5_19_3(PadnameLEN(sv), sv != &PL_sv_undef) && !SvFAKE(sv)
             && COP_SEQ_RANGE_HIGH(sv) == PERL_PADSEQ_INTRO)
         {
             COP_SEQ_RANGE_HIGH_set(sv, PL_cop_seqmax);

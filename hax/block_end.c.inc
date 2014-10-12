@@ -16,7 +16,9 @@ static OP *S_block_end(pTHX_ I32 floor, OP *seq) {
     CALL_BLOCK_HOOKS(bhk_pre_end, &retval);
 
     LEAVE_SCOPE(floor);
+#if !HAVE_PERL_VERSION(5, 19, 3)
     CopHINTS_set(&PL_compiling, PL_hints);
+#endif
     if (needblockscope)
         PL_hints |= HINT_BLOCK_SCOPE; /* propagate out */
 

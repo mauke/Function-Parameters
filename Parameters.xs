@@ -62,6 +62,18 @@ WARNINGS_ENABLE
  #define IF_HAVE_PERL_5_16(YES, NO) NO
 #endif
 
+#if HAVE_PERL_VERSION(5, 19, 3)
+ #define IF_HAVE_PERL_5_19_3(YES, NO) YES
+#else
+ #define IF_HAVE_PERL_5_19_3(YES, NO) NO
+#endif
+
+#if HAVE_PERL_VERSION(5, 19, 4)
+ #define IF_HAVE_PERL_5_19_4(YES, NO) YES
+#else
+ #define IF_HAVE_PERL_5_19_4(YES, NO) NO
+#endif
+
 
 #define MY_PKG "Function::Parameters"
 
