@@ -37,7 +37,10 @@ my %opt = (
         'warnings' => 0,
     },
 
-    depend => { Makefile => '$(VERSION_FROM)' },
+    depend => {
+        Makefile    => '$(VERSION_FROM)',
+        '$(OBJECT)' => join(' ', glob 'hax/*.c.inc'),
+    },
     test   => { TESTS    => 't/*.t t/foreign/*.t t/foreign/*/*.t' },
     dist   => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean  => { FILES    => 'Function-Parameters-*' },

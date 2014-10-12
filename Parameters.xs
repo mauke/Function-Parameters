@@ -204,12 +204,19 @@ static int my_sv_eq_pvn(pTHX_ SV *sv, const char *p, STRLEN n) {
 }
 
 
-#include "padop_on_crack.c.inc"
+#include "hax/pad_alloc.c.inc"        /* 5.14 */
+#include "hax/pad_add_name_sv.c.inc"  /* 5.14 */
+#include "hax/pad_add_name_pvs.c.inc" /* 5.14 */
+
+#include "hax/newDEFSVOP.c.inc"
+#include "hax/intro_my.c.inc"
+#include "hax/block_start.c.inc"
+#include "hax/block_end.c.inc"
 
 
 enum {
-    MY_ATTR_LVALUE = 0x01,
-    MY_ATTR_METHOD = 0x02,
+    MY_ATTR_LVALUE  = 0x01,
+    MY_ATTR_METHOD  = 0x02,
     MY_ATTR_SPECIAL = 0x04
 };
 
@@ -910,7 +917,7 @@ static OP *mktypecheck(pTHX_ const SV *declarator, int nr, SV *name, PADOFFSET p
         args = op_append_elem(
             OP_LIST, args,
             padoff == NOT_IN_PAD
-                ? S_newDEFSVOP(aTHX)
+                ? newDEFSVOP()
                 : my_var(aTHX_ 0, padoff)
         );
         args = op_append_elem(OP_LIST, args, newUNOP(OP_METHOD, 0, mkconstpvs("get_message")));
@@ -936,7 +943,7 @@ static OP *mktypecheck(pTHX_ const SV *declarator, int nr, SV *name, PADOFFSET p
         args = op_append_elem(
             OP_LIST, args,
             padoff == NOT_IN_PAD
-                ? S_newDEFSVOP(aTHX)
+                ? newDEFSVOP()
                 : my_var(aTHX_ 0, padoff)
         );
         args = op_append_elem(OP_LIST, args, newUNOP(OP_METHOD, 0, mkconstpvs("check")));
@@ -1151,7 +1158,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
     SAVEFREESV(PL_compcv);
 
     /* create outer block: '{' */
-    save_ix = S_block_start(aTHX_ TRUE);
+    save_ix = block_start(TRUE);
 
     /* initialize synthetic optree */
     Newx(prelude_sentinel, 1, OpGuard);
@@ -1184,7 +1191,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
             padoff = parse_param(aTHX_ sen, declarator, spec, param_spec, &flags, &name, init_sentinel, &type);
 
-            S_intro_my(aTHX);
+            intro_my();
 
             sigil = SvPV_nolen(name)[0];
 
@@ -1909,7 +1916,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
         SvREFCNT_inc_simple_void(PL_compcv);
 
         /* close outer block: '}' */
-        S_block_end(aTHX_ save_ix, body);
+        block_end(save_ix, body);
 
         cv = newATTRSUB(
             floor_ix,
