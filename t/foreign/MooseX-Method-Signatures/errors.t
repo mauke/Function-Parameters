@@ -15,7 +15,7 @@ ok($@, "Got an error");
 #    if Eval::Closure->VERSION > 0.06;
 
 like($@,
-     qr/^Global symbol "\$op" requires explicit package name at .*?\bInvalidCase01.pm line 8\b/,
+     qr/^Global symbol "\$op" requires explicit package name .*?\bInvalidCase01.pm line 8\b/,
      "Sane error message for syntax error");
 
 #}
