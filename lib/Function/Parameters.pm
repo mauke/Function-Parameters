@@ -459,9 +459,9 @@ passed in:
 =item 3. Optional positional parameters
 
 Parameters can be marked as optional by putting an equals sign (C<=>) and an
-expression (the "default argument") after them. If no corresponding argument is
-passed in by the caller, the default argument will be used to initialize the
-parameter:
+(optional) expression (the "default argument") after them. If no corresponding
+argument is passed in by the caller, the default argument will be used to
+initialize the parameter:
 
   fun scale($base, $factor = 2) {
     return $base * $factor;
@@ -469,6 +469,10 @@ parameter:
  
   say scale(3, 5);  # "15"
   say scale(3);     # "6"
+
+Using just a C<=> with no expression after is equivalent to specifying
+C<= undef>, i.e. the corresponding parameter is optional and has a default
+value of C<undef>.
 
 The default argument is I<not> cached. Every time a function is called with
 some optional arguments missing, the corresponding default arguments are
@@ -529,7 +533,8 @@ parameters come first:
 =item 5. Optional named parameters
 
 As with positional parameters, you can make named parameters optional by
-specifying a default argument after an equals sign (C<=>):
+specifying a default argument (or nothing, which is equivalent to C<undef>)
+after an equals sign (C<=>):
 
   fun rectangle(:$width, :$height, :$color = "chartreuse") {
     ...

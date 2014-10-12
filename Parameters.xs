@@ -762,6 +762,92 @@ static SV *my_eval(pTHX_ Sentinel sen, I32 floor, OP *op) {
     return sv;
 }
 
+static OP *my_var_g(pTHX_ I32 type, I32 flags, PADOFFSET padoff) {
+    OP *var = newOP(type, flags);
+    var->op_targ = padoff;
+    return var;
+}
+
+static OP *my_var(pTHX_ I32 flags, PADOFFSET padoff) {
+    return my_var_g(aTHX_ OP_PADSV, flags, padoff);
+}
+
+static OP *mkhvelem(pTHX_ PADOFFSET h, OP *k) {
+    OP *hv = my_var_g(aTHX_ OP_PADHV, OPf_REF, h);
+    return newBINOP(OP_HELEM, 0, hv, k);
+}
+
+static OP *mkconstsv(pTHX_ SV *sv) {
+    return newSVOP(OP_CONST, 0, sv);
+}
+
+static OP *mkconstiv(pTHX_ IV i) {
+    return mkconstsv(aTHX_ newSViv(i));
+}
+
+static OP *mkconstpv(pTHX_ const char *p, size_t n) {
+    return mkconstsv(aTHX_ newSVpv(p, n));
+}
+
+#define mkconstpvs(S) mkconstpv(aTHX_ "" S "", sizeof S - 1)
+
+static OP *mktypecheck(pTHX_ const SV *declarator, int nr, SV *name, PADOFFSET padoff, SV *type) {
+    /* $type->check($value) or Carp::croak "...: " . $type->get_message($value) */
+    OP *chk, *err, *msg, *xcroak;
+
+    err = mkconstsv(aTHX_ newSVpvf("In %"SVf": parameter %d (%"SVf"): ", SVfARG(declarator), nr, SVfARG(name)));
+    {
+        OP *args = NULL;
+
+        args = op_append_elem(OP_LIST, args, mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(type)));
+        args = op_append_elem(
+            OP_LIST, args,
+            padoff == NOT_IN_PAD
+                ? newDEFSVOP()
+                : my_var(aTHX_ 0, padoff)
+        );
+        args = op_append_elem(OP_LIST, args, newUNOP(OP_METHOD, 0, mkconstpvs("get_message")));
+
+        msg = args;
+        msg->op_type = OP_ENTERSUB;
+        msg->op_ppaddr = PL_ppaddr[OP_ENTERSUB];
+        msg->op_flags |= OPf_STACKED;
+    }
+
+    msg = newBINOP(OP_CONCAT, 0, err, msg);
+
+    xcroak = newCVREF(
+        OPf_WANT_SCALAR,
+        newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV))
+    );
+    xcroak = newUNOP(OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, msg, xcroak));
+
+    {
+        OP *args = NULL;
+
+        args = op_append_elem(OP_LIST, args, mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(type)));
+        args = op_append_elem(
+            OP_LIST, args,
+            padoff == NOT_IN_PAD
+                ? newDEFSVOP()
+                : my_var(aTHX_ 0, padoff)
+        );
+        args = op_append_elem(OP_LIST, args, newUNOP(OP_METHOD, 0, mkconstpvs("check")));
+
+        chk = args;
+        chk->op_type = OP_ENTERSUB;
+        chk->op_ppaddr = PL_ppaddr[OP_ENTERSUB];
+        chk->op_flags |= OPf_STACKED;
+    }
+
+    chk = newLOGOP(OP_OR, 0, chk, xcroak);
+    return chk;
+}
+
+static OP *mktypecheckp(pTHX_ const SV *declarator, int nr, const Param *param) {
+    return mktypecheck(aTHX_ declarator, nr, param->name, param->padoff, param->type);
+}
+
 enum {
     PARAM_INVOCANT = 0x01,
     PARAM_NAMED    = 0x02
@@ -868,16 +954,20 @@ static PADOFFSET parse_param(
         lex_read_unichar(0);
         lex_read_space(0);
 
-
-        if (!param_spec->invocant.name && SvTRUE(spec->shift)) {
-            param_spec->invocant.name = spec->shift;
-            param_spec->invocant.padoff = pad_add_name_sv(param_spec->invocant.name, 0, NULL, NULL);
-        }
-
-        op_guard_update(ginit, parse_termexpr(0));
-
-        lex_read_space(0);
         c = lex_peek_unichar(0);
+        if (c == ',' || c == ')') {
+            op_guard_update(ginit, mkconstsv(&PL_sv_undef));
+        } else {
+            if (!param_spec->invocant.name && SvTRUE(spec->shift)) {
+                param_spec->invocant.name = spec->shift;
+                param_spec->invocant.padoff = pad_add_name_sv(param_spec->invocant.name, 0, NULL, NULL);
+            }
+
+            op_guard_update(ginit, parse_termexpr(0));
+
+            lex_read_space(0);
+            c = lex_peek_unichar(0);
+        }
     }
 
     if (c == ':') {
@@ -895,92 +985,6 @@ static PADOFFSET parse_param(
     }
 
     return pad_add_name_sv(*pname, IF_HAVE_PERL_5_16(padadd_NO_DUP_CHECK, 0), NULL, NULL);
-}
-
-static OP *my_var_g(pTHX_ I32 type, I32 flags, PADOFFSET padoff) {
-    OP *var = newOP(type, flags);
-    var->op_targ = padoff;
-    return var;
-}
-
-static OP *my_var(pTHX_ I32 flags, PADOFFSET padoff) {
-    return my_var_g(aTHX_ OP_PADSV, flags, padoff);
-}
-
-static OP *mkhvelem(pTHX_ PADOFFSET h, OP *k) {
-    OP *hv = my_var_g(aTHX_ OP_PADHV, OPf_REF, h);
-    return newBINOP(OP_HELEM, 0, hv, k);
-}
-
-static OP *mkconstsv(pTHX_ SV *sv) {
-    return newSVOP(OP_CONST, 0, sv);
-}
-
-static OP *mkconstiv(pTHX_ IV i) {
-    return mkconstsv(aTHX_ newSViv(i));
-}
-
-static OP *mkconstpv(pTHX_ const char *p, size_t n) {
-    return mkconstsv(aTHX_ newSVpv(p, n));
-}
-
-#define mkconstpvs(S) mkconstpv(aTHX_ "" S "", sizeof S - 1)
-
-static OP *mktypecheck(pTHX_ const SV *declarator, int nr, SV *name, PADOFFSET padoff, SV *type) {
-    /* $type->check($value) or Carp::croak "...: " . $type->get_message($value) */
-    OP *chk, *err, *msg, *xcroak;
-
-    err = mkconstsv(aTHX_ newSVpvf("In %"SVf": parameter %d (%"SVf"): ", SVfARG(declarator), nr, SVfARG(name)));
-    {
-        OP *args = NULL;
-
-        args = op_append_elem(OP_LIST, args, mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(type)));
-        args = op_append_elem(
-            OP_LIST, args,
-            padoff == NOT_IN_PAD
-                ? newDEFSVOP()
-                : my_var(aTHX_ 0, padoff)
-        );
-        args = op_append_elem(OP_LIST, args, newUNOP(OP_METHOD, 0, mkconstpvs("get_message")));
-
-        msg = args;
-        msg->op_type = OP_ENTERSUB;
-        msg->op_ppaddr = PL_ppaddr[OP_ENTERSUB];
-        msg->op_flags |= OPf_STACKED;
-    }
-
-    msg = newBINOP(OP_CONCAT, 0, err, msg);
-
-    xcroak = newCVREF(
-        OPf_WANT_SCALAR,
-        newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV))
-    );
-    xcroak = newUNOP(OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, msg, xcroak));
-
-    {
-        OP *args = NULL;
-
-        args = op_append_elem(OP_LIST, args, mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(type)));
-        args = op_append_elem(
-            OP_LIST, args,
-            padoff == NOT_IN_PAD
-                ? newDEFSVOP()
-                : my_var(aTHX_ 0, padoff)
-        );
-        args = op_append_elem(OP_LIST, args, newUNOP(OP_METHOD, 0, mkconstpvs("check")));
-
-        chk = args;
-        chk->op_type = OP_ENTERSUB;
-        chk->op_ppaddr = PL_ppaddr[OP_ENTERSUB];
-        chk->op_flags |= OPf_STACKED;
-    }
-
-    chk = newLOGOP(OP_OR, 0, chk, xcroak);
-    return chk;
-}
-
-static OP *mktypecheckp(pTHX_ const SV *declarator, int nr, const Param *param) {
-    return mktypecheck(aTHX_ declarator, nr, param->name, param->padoff, param->type);
 }
 
 static void register_info(pTHX_ UV key, SV *declarator, const KWSpec *kws, const ParamSpec *ps) {
