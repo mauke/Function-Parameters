@@ -317,21 +317,6 @@ static OP *S_scalarvoid(pTHX_ OP *o) {
 
     PERL_ARGS_ASSERT_SCALARVOID;
 
-    /* trailing mad null ops don't count as "there" for void processing */
-    if (PL_madskills &&
-        o->op_type != OP_NULL &&
-        o->op_sibling &&
-        o->op_sibling->op_type == OP_NULL)
-    {
-        OP *sib;
-        for (sib = o->op_sibling;
-                sib && sib->op_type == OP_NULL;
-                sib = sib->op_sibling) ;
-
-        if (!sib)
-            return o;
-    }
-
     if (o->op_type == OP_NEXTSTATE
         || o->op_type == OP_DBSTATE
         || (o->op_type == OP_NULL && (o->op_targ == OP_NEXTSTATE
@@ -594,8 +579,7 @@ func_ops:
         case OP_AND:
             kid = cLOGOPo->op_first;
             if (kid->op_type == OP_NOT
-                && (kid->op_flags & OPf_KIDS)
-                && !PL_madskills) {
+                && (kid->op_flags & OPf_KIDS)) {
                 if (o->op_type == OP_AND) {
                     o->op_type = OP_OR;
                     o->op_ppaddr = PL_ppaddr[OP_OR];

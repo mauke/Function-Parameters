@@ -52,6 +52,9 @@ See http://dev.perl.org/licenses/ for more information.
 
 WARNINGS_ENABLE
 
+#ifdef PERL_MAD
+#error "MADness is not supported."
+#endif
 
 #define HAVE_PERL_VERSION(R, V, S) \
     (PERL_REVISION > (R) || (PERL_REVISION == (R) && (PERL_VERSION > (V) || (PERL_VERSION == (V) && (PERL_SUBVERSION >= (S))))))
