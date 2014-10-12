@@ -1,5 +1,10 @@
 Revision history for Function-Parameters
 
+1.0403  2014-10-12
+        - general overhaul for 5.18 and 5.20 support
+        - be more flexible about strict 'vars' error message in tests
+          (#99100)
+
 1.0402  2014-09-01
         - fix #92871: don't access dead stack frames on error
         - fix #95803: don't dereference NULL
