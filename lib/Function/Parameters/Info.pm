@@ -8,60 +8,60 @@ our $VERSION = '1.0402';
 # If Moo isn't loaded yet but Moose is, avoid pulling in Moo and fall back to Moose
 my ($Moo, $meta_make_immutable);
 BEGIN {
-	if ($INC{'Moose.pm'} && !$INC{'Moo.pm'}) {
-		$Moo = 'Moose';
-		$meta_make_immutable = sub { $_[0]->meta->make_immutable };
-	} else {
-		require Moo;
-		$Moo = 'Moo';
-		$meta_make_immutable = sub {};
-	}
-	$Moo->import;
+    if ($INC{'Moose.pm'} && !$INC{'Moo.pm'}) {
+        $Moo = 'Moose';
+        $meta_make_immutable = sub { $_[0]->meta->make_immutable };
+    } else {
+        require Moo;
+        $Moo = 'Moo';
+        $meta_make_immutable = sub {};
+    }
+    $Moo->import;
 }
 
 {
-	package Function::Parameters::Param;
+    package Function::Parameters::Param;
 
-	BEGIN { $Moo->import; }
-	use overload
-		fallback => 1,
-		'""'     => sub { $_[0]->name },
-	;
+    BEGIN { $Moo->import; }
+    use overload
+        fallback => 1,
+        '""'     => sub { $_[0]->name },
+    ;
 
-	has $_ => (is => 'ro') for qw(name type);
+    has $_ => (is => 'ro') for qw(name type);
 
-	__PACKAGE__->$meta_make_immutable;
+    __PACKAGE__->$meta_make_immutable;
 }
 
 my @pn_ro = glob '{positional,named}_{required,optional}';
 
 for my $attr (qw[keyword invocant slurpy], map "_$_", @pn_ro) {
-	has $attr => (
-		is => 'ro',
-	);
+    has $attr => (
+        is => 'ro',
+    );
 }
 
 for my $gen (join "\n", map "sub $_ { \@{\$_[0]->_$_} }", @pn_ro) {
-	eval "$gen\n1" or die $@;
+    eval "$gen\n1" or die $@;
 }
 
 sub args_min {
-	my $self = shift;
-	my $r = 0;
-	$r++ if defined $self->invocant;
-	$r += $self->positional_required;
-	$r += $self->named_required * 2;
-	$r
+    my $self = shift;
+    my $r = 0;
+    $r++ if defined $self->invocant;
+    $r += $self->positional_required;
+    $r += $self->named_required * 2;
+    $r
 }
 
 sub args_max {
-	my $self = shift;
-	return 0 + 'Inf' if defined $self->slurpy || $self->named_required || $self->named_optional;
-	my $r = 0;
-	$r++ if defined $self->invocant;
-	$r += $self->positional_required;
-	$r += $self->positional_optional;
-	$r
+    my $self = shift;
+    return 0 + 'Inf' if defined $self->slurpy || $self->named_required || $self->named_optional;
+    my $r = 0;
+    $r++ if defined $self->invocant;
+    $r += $self->positional_required;
+    $r += $self->positional_optional;
+    $r
 }
 
 __PACKAGE__->$meta_make_immutable;

@@ -7,271 +7,271 @@ use Carp qw(confess);
 
 use XSLoader;
 BEGIN {
-	our $VERSION = '1.0402';
-	XSLoader::load;
+    our $VERSION = '1.0402';
+    XSLoader::load;
 }
 
 sub _assert_valid_identifier {
-	my ($name, $with_dollar) = @_;
-	my $bonus = $with_dollar ? '\$' : '';
-	$name =~ /^${bonus}[^\W\d]\w*\z/
-		or confess qq{"$name" doesn't look like a valid identifier};
+    my ($name, $with_dollar) = @_;
+    my $bonus = $with_dollar ? '\$' : '';
+    $name =~ /^${bonus}[^\W\d]\w*\z/
+        or confess qq{"$name" doesn't look like a valid identifier};
 }
 
 sub _assert_valid_attributes {
-	my ($attrs) = @_;
-	$attrs =~ m{
-		^ \s*+
-		: \s*+
-		(?&ident) (?! [^\s:(] ) (?&param)?+ \s*+
-		(?:
-			(?: : \s*+ )?
-			(?&ident) (?! [^\s:(] ) (?&param)?+ \s*+
-		)*+
-		\z
+    my ($attrs) = @_;
+    $attrs =~ m{
+        ^ \s*+
+        : \s*+
+        (?&ident) (?! [^\s:(] ) (?&param)?+ \s*+
+        (?:
+            (?: : \s*+ )?
+            (?&ident) (?! [^\s:(] ) (?&param)?+ \s*+
+        )*+
+        \z
 
-		(?(DEFINE)
-			(?<ident>
-				[^\W\d]
-				\w*+
-			)
-			(?<param>
-				\(
-				[^()\\]*+
-				(?:
-					(?:
-						\\ .
-					|
-						(?&param)
-					)
-					[^()\\]*+
-				)*+
-				\)
-			)
-		)
-	}sx or confess qq{"$attrs" doesn't look like valid attributes};
+        (?(DEFINE)
+            (?<ident>
+                [^\W\d]
+                \w*+
+            )
+            (?<param>
+                \(
+                [^()\\]*+
+                (?:
+                    (?:
+                        \\ .
+                    |
+                        (?&param)
+                    )
+                    [^()\\]*+
+                )*+
+                \)
+            )
+        )
+    }sx or confess qq{"$attrs" doesn't look like valid attributes};
 }
 
 sub _reify_type_default {
-	require Moose::Util::TypeConstraints;
-	Moose::Util::TypeConstraints::find_or_create_isa_type_constraint($_[0])
+    require Moose::Util::TypeConstraints;
+    Moose::Util::TypeConstraints::find_or_create_isa_type_constraint($_[0])
 }
 
 sub _delete_default {
-	my ($href, $key, $default) = @_;
-	exists $href->{$key} ? delete $href->{$key} : $default
+    my ($href, $key, $default) = @_;
+    exists $href->{$key} ? delete $href->{$key} : $default
 }
 
 my @bare_arms = qw(function method);
 my %type_map = (
-	function           => {},  # all default settings
-	function_strict    => {
-		defaults   => 'function',
-		strict     => 1,
-	},
-	method             => {
-		defaults   => 'function',
-		attributes => ':method',
-		shift      => '$self',
-		invocant   => 1,
-	},
-	method_strict      => {
-		defaults   => 'method',
-		strict     => 1,
-	},
-	classmethod        => {
-		defaults   => 'method',
-		shift      => '$class',
-	},
-	classmethod_strict => {
-		defaults   => 'classmethod',
-		strict     => 1,
-	},
+    function           => {},  # all default settings
+    function_strict    => {
+        defaults   => 'function',
+        strict     => 1,
+    },
+    method             => {
+        defaults   => 'function',
+        attributes => ':method',
+        shift      => '$self',
+        invocant   => 1,
+    },
+    method_strict      => {
+        defaults   => 'method',
+        strict     => 1,
+    },
+    classmethod        => {
+        defaults   => 'method',
+        shift      => '$class',
+    },
+    classmethod_strict => {
+        defaults   => 'classmethod',
+        strict     => 1,
+    },
 );
 
 our @type_reifiers = \&_reify_type_default;
 
 sub import {
-	my $class = shift;
+    my $class = shift;
 
-	if (!@_) {
-		@_ = {
-			fun => 'function',
-			method => 'method',
-		};
-	}
-	if (@_ == 1 && $_[0] eq ':strict') {
-		@_ = {
-			fun => 'function_strict',
-			method => 'method_strict',
-		};
-	}
-	if (@_ == 1 && ref($_[0]) eq 'HASH') {
-		@_ = map [$_, $_[0]{$_}], keys %{$_[0]};
-	}
+    if (!@_) {
+        @_ = {
+            fun => 'function',
+            method => 'method',
+        };
+    }
+    if (@_ == 1 && $_[0] eq ':strict') {
+        @_ = {
+            fun => 'function_strict',
+            method => 'method_strict',
+        };
+    }
+    if (@_ == 1 && ref($_[0]) eq 'HASH') {
+        @_ = map [$_, $_[0]{$_}], keys %{$_[0]};
+    }
 
-	my %spec;
+    my %spec;
 
-	my $bare = 0;
-	for my $proto (@_) {
-		my $item = ref $proto
-			? $proto
-			: [$proto, $bare_arms[$bare++] || confess(qq{Don't know what to do with "$proto"})]
-		;
-		my ($name, $proto_type) = @$item;
-		_assert_valid_identifier $name;
+    my $bare = 0;
+    for my $proto (@_) {
+        my $item = ref $proto
+            ? $proto
+            : [$proto, $bare_arms[$bare++] || confess(qq{Don't know what to do with "$proto"})]
+        ;
+        my ($name, $proto_type) = @$item;
+        _assert_valid_identifier $name;
 
-		$proto_type = {defaults => $proto_type} unless ref $proto_type;
+        $proto_type = {defaults => $proto_type} unless ref $proto_type;
 
-		my %type = %$proto_type;
-		while (my $defaults = delete $type{defaults}) {
-			my $base = $type_map{$defaults}
-				or confess qq["$defaults" doesn't look like a valid type (one of ${\join ', ', sort keys %type_map})];
-			%type = (%$base, %type);
-		}
+        my %type = %$proto_type;
+        while (my $defaults = delete $type{defaults}) {
+            my $base = $type_map{$defaults}
+                or confess qq["$defaults" doesn't look like a valid type (one of ${\join ', ', sort keys %type_map})];
+            %type = (%$base, %type);
+        }
 
-		my %clean;
+        my %clean;
 
-		$clean{name} = delete $type{name} // 'optional';
-		$clean{name} =~ /^(?:optional|required|prohibited)\z/
-			or confess qq["$clean{name}" doesn't look like a valid name attribute (one of optional, required, prohibited)];
+        $clean{name} = delete $type{name} // 'optional';
+        $clean{name} =~ /^(?:optional|required|prohibited)\z/
+            or confess qq["$clean{name}" doesn't look like a valid name attribute (one of optional, required, prohibited)];
 
-		$clean{shift} = delete $type{shift} // '';
-		_assert_valid_identifier $clean{shift}, 1 if $clean{shift};
+        $clean{shift} = delete $type{shift} // '';
+        _assert_valid_identifier $clean{shift}, 1 if $clean{shift};
 
-		$clean{attrs} = join ' ', map delete $type{$_} // (), qw(attributes attrs);
-		_assert_valid_attributes $clean{attrs} if $clean{attrs};
-		
-		$clean{default_arguments} = _delete_default \%type, 'default_arguments', 1;
-		$clean{named_parameters}  = _delete_default \%type, 'named_parameters',  1;
-		$clean{types}             = _delete_default \%type, 'types',             1;
+        $clean{attrs} = join ' ', map delete $type{$_} // (), qw(attributes attrs);
+        _assert_valid_attributes $clean{attrs} if $clean{attrs};
 
-		$clean{invocant}             = _delete_default \%type, 'invocant',             0;
-		$clean{runtime}              = _delete_default \%type, 'runtime',              0;
-		$clean{check_argument_count} = _delete_default \%type, 'check_argument_count', 0;
-		$clean{check_argument_types} = _delete_default \%type, 'check_argument_types', 1;
-		$clean{check_argument_count} = $clean{check_argument_types} = 1 if delete $type{strict};
+        $clean{default_arguments} = _delete_default \%type, 'default_arguments', 1;
+        $clean{named_parameters}  = _delete_default \%type, 'named_parameters',  1;
+        $clean{types}             = _delete_default \%type, 'types',             1;
 
-		if (my $rt = delete $type{reify_type}) {
-			ref $rt eq 'CODE' or confess qq{"$rt" doesn't look like a type reifier};
+        $clean{invocant}             = _delete_default \%type, 'invocant',             0;
+        $clean{runtime}              = _delete_default \%type, 'runtime',              0;
+        $clean{check_argument_count} = _delete_default \%type, 'check_argument_count', 0;
+        $clean{check_argument_types} = _delete_default \%type, 'check_argument_types', 1;
+        $clean{check_argument_count} = $clean{check_argument_types} = 1 if delete $type{strict};
 
-			my $index;
-			for my $i (0 .. $#type_reifiers) {
-				if ($type_reifiers[$i] == $rt) {
-					$index = $i;
-					last;
-				}
-			}
-			unless (defined $index) {
-				$index = @type_reifiers;
-				push @type_reifiers, $rt;
-			}
+        if (my $rt = delete $type{reify_type}) {
+            ref $rt eq 'CODE' or confess qq{"$rt" doesn't look like a type reifier};
 
-			$clean{reify_type} = $index;
-		}
+            my $index;
+            for my $i (0 .. $#type_reifiers) {
+                if ($type_reifiers[$i] == $rt) {
+                    $index = $i;
+                    last;
+                }
+            }
+            unless (defined $index) {
+                $index = @type_reifiers;
+                push @type_reifiers, $rt;
+            }
 
-		%type and confess "Invalid keyword property: @{[keys %type]}";
+            $clean{reify_type} = $index;
+        }
 
-		$spec{$name} = \%clean;
-	}
-	
-	for my $kw (keys %spec) {
-		my $type = $spec{$kw};
+        %type and confess "Invalid keyword property: @{[keys %type]}";
 
-		my $flags =
-			$type->{name} eq 'prohibited' ? FLAG_ANON_OK                :
-			$type->{name} eq 'required'   ? FLAG_NAME_OK                :
-			                                FLAG_ANON_OK | FLAG_NAME_OK
-		;
-		$flags |= FLAG_DEFAULT_ARGS if $type->{default_arguments};
-		$flags |= FLAG_CHECK_NARGS  if $type->{check_argument_count};
-		$flags |= FLAG_CHECK_TARGS  if $type->{check_argument_types};
-		$flags |= FLAG_INVOCANT     if $type->{invocant};
-		$flags |= FLAG_NAMED_PARAMS if $type->{named_parameters};
-		$flags |= FLAG_TYPES_OK     if $type->{types};
-		$flags |= FLAG_RUNTIME      if $type->{runtime};
-		$^H{HINTK_FLAGS_ . $kw} = $flags;
-		$^H{HINTK_SHIFT_ . $kw} = $type->{shift};
-		$^H{HINTK_ATTRS_ . $kw} = $type->{attrs};
-		$^H{HINTK_REIFY_ . $kw} = $type->{reify_type} // 0;
-		$^H{+HINTK_KEYWORDS} .= "$kw ";
-	}
+        $spec{$name} = \%clean;
+    }
+
+    for my $kw (keys %spec) {
+        my $type = $spec{$kw};
+
+        my $flags =
+            $type->{name} eq 'prohibited' ? FLAG_ANON_OK                :
+            $type->{name} eq 'required'   ? FLAG_NAME_OK                :
+                                            FLAG_ANON_OK | FLAG_NAME_OK
+        ;
+        $flags |= FLAG_DEFAULT_ARGS if $type->{default_arguments};
+        $flags |= FLAG_CHECK_NARGS  if $type->{check_argument_count};
+        $flags |= FLAG_CHECK_TARGS  if $type->{check_argument_types};
+        $flags |= FLAG_INVOCANT     if $type->{invocant};
+        $flags |= FLAG_NAMED_PARAMS if $type->{named_parameters};
+        $flags |= FLAG_TYPES_OK     if $type->{types};
+        $flags |= FLAG_RUNTIME      if $type->{runtime};
+        $^H{HINTK_FLAGS_ . $kw} = $flags;
+        $^H{HINTK_SHIFT_ . $kw} = $type->{shift};
+        $^H{HINTK_ATTRS_ . $kw} = $type->{attrs};
+        $^H{HINTK_REIFY_ . $kw} = $type->{reify_type} // 0;
+        $^H{+HINTK_KEYWORDS} .= "$kw ";
+    }
 }
 
 sub unimport {
-	my $class = shift;
+    my $class = shift;
 
-	if (!@_) {
-		delete $^H{+HINTK_KEYWORDS};
-		return;
-	}
+    if (!@_) {
+        delete $^H{+HINTK_KEYWORDS};
+        return;
+    }
 
-	for my $kw (@_) {
-		$^H{+HINTK_KEYWORDS} =~ s/(?<![^ ])\Q$kw\E //g;
-	}
+    for my $kw (@_) {
+        $^H{+HINTK_KEYWORDS} =~ s/(?<![^ ])\Q$kw\E //g;
+    }
 }
 
 
 our %metadata;
 
 sub _register_info {
-	my (
-		$key,
-		$declarator,
-		$invocant,
-		$invocant_type,
-		$positional_required,
-		$positional_optional,
-		$named_required,
-		$named_optional,
-		$slurpy,
-		$slurpy_type,
-	) = @_;
+    my (
+        $key,
+        $declarator,
+        $invocant,
+        $invocant_type,
+        $positional_required,
+        $positional_optional,
+        $named_required,
+        $named_optional,
+        $slurpy,
+        $slurpy_type,
+    ) = @_;
 
-	my $info = {
-		declarator => $declarator,
-		invocant => defined $invocant ? [$invocant, $invocant_type] : undef,
-		slurpy   => defined $slurpy   ? [$slurpy  , $slurpy_type  ] : undef,
-		positional_required => $positional_required,
-		positional_optional => $positional_optional,
-		named_required => $named_required,
-		named_optional => $named_optional,
-	};
+    my $info = {
+        declarator => $declarator,
+        invocant => defined $invocant ? [$invocant, $invocant_type] : undef,
+        slurpy   => defined $slurpy   ? [$slurpy  , $slurpy_type  ] : undef,
+        positional_required => $positional_required,
+        positional_optional => $positional_optional,
+        named_required => $named_required,
+        named_optional => $named_optional,
+    };
 
-	$metadata{$key} = $info;
+    $metadata{$key} = $info;
 }
 
 sub _mkparam1 {
-	my ($pair) = @_;
-	my ($v, $t) = @{$pair || []} or return undef;
-	Function::Parameters::Param->new(
-		name => $v,
-		type => $t,
-	)
+    my ($pair) = @_;
+    my ($v, $t) = @{$pair || []} or return undef;
+    Function::Parameters::Param->new(
+        name => $v,
+        type => $t,
+    )
 }
 
 sub _mkparams {
-	my @r;
-	while (my ($v, $t) = splice @_, 0, 2) {
-		push @r, Function::Parameters::Param->new(
-			name => $v,
-			type => $t,
-		);
-	}
-	\@r
+    my @r;
+    while (my ($v, $t) = splice @_, 0, 2) {
+        push @r, Function::Parameters::Param->new(
+            name => $v,
+            type => $t,
+        );
+    }
+    \@r
 }
 
 sub info {
-	my ($func) = @_;
-	my $key = _cv_root $func or return undef;
-	my $info = $metadata{$key} or return undef;
-	require Function::Parameters::Info;
-	Function::Parameters::Info->new(
-		keyword  => $info->{declarator},
-		invocant => _mkparam1($info->{invocant}),
-		slurpy   => _mkparam1($info->{slurpy}),
-		(map +("_$_" => _mkparams @{$info->{$_}}), glob '{positional,named}_{required,optional}')
-	)
+    my ($func) = @_;
+    my $key = _cv_root $func or return undef;
+    my $info = $metadata{$key} or return undef;
+    require Function::Parameters::Info;
+    Function::Parameters::Info->new(
+        keyword  => $info->{declarator},
+        invocant => _mkparam1($info->{invocant}),
+        slurpy   => _mkparam1($info->{slurpy}),
+        (map +("_$_" => _mkparams @{$info->{$_}}), glob '{positional,named}_{required,optional}')
+    )
 }
 
 'ok'
