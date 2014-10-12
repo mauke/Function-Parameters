@@ -62,22 +62,6 @@ WARNINGS_ENABLE
  #define IF_HAVE_PERL_5_16(YES, NO) NO
 #endif
 
-#if 0
- #if HAVE_PERL_VERSION(5, 17, 6)
-  #error "internal error: missing definition of KEY_my (your perl is too new)"
- #elif HAVE_PERL_VERSION(5, 15, 8)
-  #define S_KEY_my 134
- #elif HAVE_PERL_VERSION(5, 15, 6)
-  #define S_KEY_my 133
- #elif HAVE_PERL_VERSION(5, 15, 5)
-  #define S_KEY_my 132
- #elif HAVE_PERL_VERSION(5, 13, 0)
-  #define S_KEY_my 131
- #else
-  #error "internal error: missing definition of KEY_my (your perl is too old)"
- #endif
-#endif
-
 
 #define MY_PKG "Function::Parameters"
 
