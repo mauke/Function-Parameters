@@ -204,6 +204,10 @@ static int my_sv_eq_pvn(pTHX_ SV *sv, const char *p, STRLEN n) {
 }
 
 
+#ifndef SvREFCNT_dec_NN
+#define SvREFCNT_dec_NN(SV) SvREFCNT_dec(SV)
+#endif
+
 #include "hax/pad_alloc.c.inc"        /* 5.14 */
 #include "hax/pad_add_name_sv.c.inc"  /* 5.14 */
 #include "hax/pad_add_name_pvs.c.inc" /* 5.14 */
@@ -2061,10 +2065,6 @@ static int my_keyword_plugin(pTHX_ char *keyword_ptr, STRLEN keyword_len, OP **o
 
     return ret;
 }
-
-#ifndef SvREFCNT_dec_NN
-#define SvREFCNT_dec_NN(SV) SvREFCNT_dec(SV)
-#endif
 
 #ifndef assert_
 #ifdef DEBUGGING

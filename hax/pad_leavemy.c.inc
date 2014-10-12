@@ -4,9 +4,10 @@
 
 #define pad_leavemy() S_pad_leavemy(aTHX)
 
-static void S_pad_leavemy(pTHX) {
+static OP *S_pad_leavemy(pTHX) {
     dVAR;
     I32 off;
+    OP *o = NULL;
     SV * const * const svp = AvARRAY(PL_comppad_name);
 
     PL_pad_reset_pending = FALSE;
@@ -34,6 +35,14 @@ static void S_pad_leavemy(pTHX) {
                                    (unsigned long)COP_SEQ_RANGE_LOW(sv),
                                    (unsigned long)COP_SEQ_RANGE_HIGH(sv))
             );
+#if HAVE_PERL_VERSION(5, 17, 4)
+            if (!PadnameIsSTATE(sv) && !PadnameIsOUR(sv)
+                 && *PadnamePV(sv) == '&' && PadnameLEN(sv) > 1) {
+                OP *kid = newOP(OP_INTROCV, 0);
+                kid->op_targ = off;
+                o = op_prepend_elem(OP_LINESEQ, kid, o);
+            }
+#endif
         }
     }
     PL_cop_seqmax++;
@@ -41,6 +50,7 @@ static void S_pad_leavemy(pTHX) {
         PL_cop_seqmax++;
     DEBUG_Xv(PerlIO_printf(Perl_debug_log,
                            "Pad leavemy: seq = %ld\n", (long)PL_cop_seqmax));
+    return o;
 }
 
 #endif

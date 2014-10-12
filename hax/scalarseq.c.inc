@@ -12,6 +12,8 @@ static void S_inplace_aassign(pTHX_ OP *o) {
     OP *oright;
     OP *oleft, *oleft_pushmark;
 
+    /* PERL_ARGS_ASSERT_INPLACE_AASSIGN; */
+
     assert((o->op_flags & OPf_WANT) == OPf_WANT_VOID);
 
     assert(cUNOPo->op_first->op_type == OP_NULL);
@@ -59,7 +61,7 @@ static void S_inplace_aassign(pTHX_ OP *o) {
             || cUNOPx(oright)->op_first->op_type != OP_GV
             || cUNOPx(oleft )->op_first->op_type != OP_GV
             || cGVOPx_gv(cUNOPx(oleft)->op_first) !=
-            cGVOPx_gv(cUNOPx(oright)->op_first)
+               cGVOPx_gv(cUNOPx(oright)->op_first)
         )
             return;
     }
@@ -152,8 +154,8 @@ do_kids:
 static OP *S_scalarkids(pTHX_ OP *o) {
     if (o && o->op_flags & OPf_KIDS) {
         OP *kid;
-    for (kid = cLISTOPo->op_first; kid; kid = kid->op_sibling)
-        S_scalar(aTHX_ kid);
+        for (kid = cLISTOPo->op_first; kid; kid = kid->op_sibling)
+            S_scalar(aTHX_ kid);
     }
     return o;
 }
@@ -161,12 +163,27 @@ static OP *S_scalarkids(pTHX_ OP *o) {
 static OP *S_scalarvoid(pTHX_ OP *o) {
     dVAR;
     OP *kid;
+    SV *useless_sv = NULL;
     const char *useless = NULL;
-    U32 useless_is_utf8 = 0;
     SV *sv;
     U8 want;
 
     PERL_ARGS_ASSERT_SCALARVOID;
+
+    /* trailing mad null ops don't count as "there" for void processing */
+    if (PL_madskills &&
+        o->op_type != OP_NULL &&
+        o->op_sibling &&
+        o->op_sibling->op_type == OP_NULL)
+    {
+        OP *sib;
+        for (sib = o->op_sibling;
+                sib && sib->op_type == OP_NULL;
+                sib = sib->op_sibling) ;
+
+        if (!sib)
+            return o;
+    }
 
     if (
         o->op_type == OP_NEXTSTATE ||
@@ -296,10 +313,11 @@ func_ops:
             kid = cLISTOPo->op_first;
             if (kid && kid->op_type == OP_PUSHRE
 #ifdef USE_ITHREADS
-                && !((PMOP*)kid)->op_pmreplrootu.op_pmtargetoff)
+                && !((PMOP*)kid)->op_pmreplrootu.op_pmtargetoff
 #else
-                && !((PMOP*)kid)->op_pmreplrootu.op_pmtargetgv)
+                && !((PMOP*)kid)->op_pmreplrootu.op_pmtargetgv
 #endif
+            )
                     useless = OP_DESC(o);
             break;
 
@@ -360,19 +378,19 @@ func_ops:
                             useless = NULL;
                         else {
                             SV * const dsv = newSVpvs("");
-                            SV* msv = sv_2mortal(Perl_newSVpvf(aTHX_
-                                                               "a constant (%s)",
-                                                               pv_pretty(dsv, maybe_macro, SvCUR(sv), 32, NULL, NULL,
-                                                                         PERL_PV_PRETTY_DUMP | PERL_PV_ESCAPE_NOCLEAR | PERL_PV_ESCAPE_UNI_DETECT )));
-                            SvREFCNT_dec(dsv);
-                            useless = SvPV_nolen(msv);
-                            useless_is_utf8 = SvUTF8(msv);
+                            useless_sv
+                                = Perl_newSVpvf(aTHX_
+                                                "a constant (%s)",
+                                                pv_pretty(dsv, maybe_macro,
+                                                          SvCUR(sv), 32, NULL, NULL,
+                                                          PERL_PV_PRETTY_DUMP
+                                                          | PERL_PV_ESCAPE_NOCLEAR
+                                                          | PERL_PV_ESCAPE_UNI_DETECT ));
+                            SvREFCNT_dec_NN(dsv);
                         }
                     }
                     else if (SvOK(sv)) {
-                        SV* msv = sv_2mortal(Perl_newSVpvf(aTHX_
-                                                           "a constant (%"SVf")", sv));
-                        useless = SvPV_nolen(msv);
+                        useless_sv = Perl_newSVpvf(aTHX_ "a constant (%"SVf")", sv);
                     }
                     else
                         useless = "a constant (undef)";
@@ -499,10 +517,18 @@ func_ops:
         case OP_SCALAR:
             return S_scalar(aTHX_ o);
     }
-    if (useless)
-        Perl_ck_warner(aTHX_ packWARN(WARN_VOID), "Useless use of %"SVf" in void context",
-                       newSVpvn_flags(useless, strlen(useless),
-                                      SVs_TEMP | ( useless_is_utf8 ? SVf_UTF8 : 0 )));
+
+    if (useless_sv) {
+        /* mortalise it, in case warnings are fatal.  */
+        Perl_ck_warner(aTHX_ packWARN(WARN_VOID),
+                       "Useless use of %"SVf" in void context",
+                       sv_2mortal(useless_sv));
+    }
+    else if (useless) {
+        Perl_ck_warner(aTHX_ packWARN(WARN_VOID),
+                       "Useless use of %s in void context",
+                       useless);
+    }
     return o;
 }
 

@@ -11,6 +11,7 @@ static OP *S_block_end(pTHX_ I32 floor, OP *seq) {
     dVAR;
     const int needblockscope = PL_hints & HINT_BLOCK_SCOPE;
     OP *retval = scalarseq(seq);
+    OP *o;
 
     CALL_BLOCK_HOOKS(bhk_pre_end, &retval);
 
@@ -18,7 +19,21 @@ static OP *S_block_end(pTHX_ I32 floor, OP *seq) {
     CopHINTS_set(&PL_compiling, PL_hints);
     if (needblockscope)
         PL_hints |= HINT_BLOCK_SCOPE; /* propagate out */
-    pad_leavemy();
+
+    o = pad_leavemy();
+    if (o) {
+#if HAVE_PERL_VERSION(5, 17, 4)
+        OP *kid = o->op_flags & OPf_KIDS ? cLISTOPo->op_first : o;
+        OP *const last = o->op_flags & OPf_KIDS ? cLISTOPo->op_last : o;
+        for (;; kid = kid->op_sibling) {
+            OP *newkid = newOP(OP_CLONECV, 0);
+            newkid->op_targ = kid->op_targ;
+            o = op_append_elem(OP_LINESEQ, o, newkid);
+            if (kid == last) break;
+        }
+        retval = op_prepend_elem(OP_LINESEQ, o, retval);
+#endif
+    }
 
     CALL_BLOCK_HOOKS(bhk_post_end, &retval);
 
