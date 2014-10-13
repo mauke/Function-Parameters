@@ -1,5 +1,10 @@
 Revision history for Function-Parameters
 
+1.0501  2014-10-13
+        - support :prototype(...) for setting the prototype
+        - allow fun foo($x =, $y =) (empty default arg equivalent to
+          specifying undef)
+
 1.0404  2014-10-13
         - fix segfault on 'fun foo(A[[' (malformed type)
 
