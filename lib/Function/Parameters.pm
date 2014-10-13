@@ -417,6 +417,10 @@ L<parameter list|/"Parameter list">. To specify a prototype, put it as the
 first attribute (e.g. C<fun foo :(&$$)>). This is syntactically unambiguous
 because normal L<attributes|/Attributes> need a name after the colon.
 
+You can also use an attribute named C<prototype> (e.g.
+C<fun foo :prototype(&$$)>). In that case it does not have to be the first
+attribute. This syntax is also compatible with C<sub> in perl 5.20 and newer.
+
 =head3 Parameter list
 
 The parameter list is a list of variables enclosed in parentheses, except it's

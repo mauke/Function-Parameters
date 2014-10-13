@@ -350,7 +350,7 @@ static void my_check_prototype(pTHX_ Sentinel sen, const SV *declarator, SV *pro
     STRLEN len;
 
     /* strip spaces */
-    start = SvPV(proto, len);
+    start = SvPVbyte_force(proto, len);
     end = start + len;
 
     for (w = r = start; r < end; r++) {
@@ -1399,9 +1399,19 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                     if (!(sv = my_scan_parens_tail(aTHX_ sen, TRUE))) {
                         croak("In %"SVf": unterminated attribute parameter in attribute list", SVfARG(declarator));
                     }
-                    sv_catpvs(attr, "(");
-                    sv_catsv(attr, sv);
-                    sv_catpvs(attr, ")");
+
+                    if (sv_eq_pvs(attr, "prototype")) {
+                        if (proto) {
+                            croak("In %"SVf": Can't redefine prototype (%"SVf") using attribute prototype(%"SVf")", SVfARG(declarator), SVfARG(proto), SVfARG(sv));
+                        }
+                        proto = sv;
+                        my_check_prototype(aTHX_ sen, declarator, proto);
+                        attr = NULL;
+                    } else {
+                        sv_catpvs(attr, "(");
+                        sv_catsv(attr, sv);
+                        sv_catpvs(attr, ")");
+                    }
 
                     lex_read_space(0);
                     c = lex_peek_unichar(0);
