@@ -454,13 +454,15 @@ static void my_check_prototype(pTHX_ Sentinel sen, const SV *declarator, SV *pro
     }
 }
 
-static SV *parse_type(pTHX_ Sentinel, const SV *);
+static SV *parse_type(pTHX_ Sentinel, const SV *, char);
 
-static SV *parse_type_paramd(pTHX_ Sentinel sen, const SV *declarator) {
+static SV *parse_type_paramd(pTHX_ Sentinel sen, const SV *declarator, char prev) {
     I32 c;
     SV *t;
 
-    t = my_scan_word(aTHX_ sen, TRUE);
+    if (!(t = my_scan_word(aTHX_ sen, TRUE))) {
+        croak("In %"SVf": missing type name after '%c'", SVfARG(declarator), prev);
+    }
     lex_read_space(0);
 
     c = lex_peek_unichar(0);
@@ -471,7 +473,7 @@ static SV *parse_type_paramd(pTHX_ Sentinel sen, const SV *declarator) {
         lex_read_space(0);
         my_sv_cat_c(aTHX_ t, c);
 
-        u = parse_type(aTHX_ sen, declarator);
+        u = parse_type(aTHX_ sen, declarator, '[');
         sv_catsv(t, u);
 
         c = lex_peek_unichar(0);
@@ -487,11 +489,11 @@ static SV *parse_type_paramd(pTHX_ Sentinel sen, const SV *declarator) {
     return t;
 }
 
-static SV *parse_type(pTHX_ Sentinel sen, const SV *declarator) {
+static SV *parse_type(pTHX_ Sentinel sen, const SV *declarator, char prev) {
     I32 c;
     SV *t;
 
-    t = parse_type_paramd(aTHX_ sen, declarator);
+    t = parse_type_paramd(aTHX_ sen, declarator, prev);
 
     c = lex_peek_unichar(0);
     while (c == '|') {
@@ -501,7 +503,7 @@ static SV *parse_type(pTHX_ Sentinel sen, const SV *declarator) {
         lex_read_space(0);
 
         my_sv_cat_c(aTHX_ t, c);
-        u = parse_type_paramd(aTHX_ sen, declarator);
+        u = parse_type_paramd(aTHX_ sen, declarator, '|');
         sv_catsv(t, u);
 
         c = lex_peek_unichar(0);
@@ -824,7 +826,7 @@ static PADOFFSET parse_param(
 
             c = lex_peek_unichar(0);
         } else if (MY_UNI_IDFIRST(c)) {
-            *ptype = parse_type(aTHX_ sen, declarator);
+            *ptype = parse_type(aTHX_ sen, declarator, ',');
             *ptype = reify_type(aTHX_ sen, declarator, spec, *ptype);
 
             c = lex_peek_unichar(0);
