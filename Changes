@@ -1,5 +1,8 @@
 Revision history for Function-Parameters
 
+1.0404  2014-10-13
+        - fix segfault on 'fun foo(A[[' (malformed type)
+
 1.0403  2014-10-12
         - general overhaul for 5.18 and 5.20 support
         - be more flexible about strict 'vars' error message in tests
