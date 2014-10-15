@@ -1,5 +1,8 @@
 Revision history for Function-Parameters
 
+1.0502  2014-10-16
+        - fix bug that prevents building with threaded perls
+
 1.0501  2014-10-13
         - support :prototype(...) for setting the prototype
         - allow fun foo($x =, $y =) (empty default arg equivalent to
