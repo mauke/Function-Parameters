@@ -956,7 +956,7 @@ static PADOFFSET parse_param(
 
         c = lex_peek_unichar(0);
         if (c == ',' || c == ')') {
-            op_guard_update(ginit, mkconstsv(&PL_sv_undef));
+            op_guard_update(ginit, mkconstsv(aTHX_ &PL_sv_undef));
         } else {
             if (!param_spec->invocant.name && SvTRUE(spec->shift)) {
                 param_spec->invocant.name = spec->shift;
