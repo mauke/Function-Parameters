@@ -1,5 +1,9 @@
 Revision history for Function-Parameters
 
+1.0503  2014-10-17
+        - skip initializing parameters if the default argument is undef
+          (don't generate '$x = undef if @_ < 1' for 'fun ($x = undef)')
+
 1.0502  2014-10-16
         - fix bug that prevents building with threaded perls
 
