@@ -956,7 +956,7 @@ static PADOFFSET parse_param(
 
         c = lex_peek_unichar(0);
         if (c == ',' || c == ')') {
-            op_guard_update(ginit, mkconstsv(aTHX_ &PL_sv_undef));
+            op_guard_update(ginit, newOP(OP_UNDEF, 0));
         } else {
             if (!param_spec->invocant.name && SvTRUE(spec->shift)) {
                 param_spec->invocant.name = spec->shift;
@@ -1704,6 +1704,13 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                 ParamInit *cur = &param_spec->positional_optional.data[i];
                 OP *var, *cond;
 
+                {
+                    OP *const init = cur->init.op;
+                    if (!init || (init->op_type == OP_UNDEF && !(init->op_flags & OPf_KIDS))) {
+                        continue;
+                    }
+                }
+
                 cond = newBINOP(
                     OP_LT, 0,
                     newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
@@ -1776,22 +1783,29 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                 ParamInit *cur = &param_spec->named_optional.data[i];
                 size_t n;
                 char *p = SvPV(cur->param.name, n);
-                OP *var, *cond;
+                OP *var, *expr;
 
-                var = mkhvelem(aTHX_ param_spec->rest_hash, mkconstpv(aTHX_ p + 1, n - 1));
-                var = newUNOP(OP_DELETE, 0, var);
+                expr = mkhvelem(aTHX_ param_spec->rest_hash, mkconstpv(aTHX_ p + 1, n - 1));
+                expr = newUNOP(OP_DELETE, 0, expr);
 
-                cond = mkhvelem(aTHX_ param_spec->rest_hash, mkconstpv(aTHX_ p + 1, n - 1));
-                cond = newUNOP(OP_EXISTS, 0, cond);
+                {
+                    OP *const init = cur->init.op;
+                    if (!(init->op_type == OP_UNDEF && !(init->op_flags & OPf_KIDS))) {
+                        OP *cond;
 
-                cond = newCONDOP(0, cond, var, op_guard_relinquish(&cur->init));
+                        cond = mkhvelem(aTHX_ param_spec->rest_hash, mkconstpv(aTHX_ p + 1, n - 1));
+                        cond = newUNOP(OP_EXISTS, 0, cond);
+
+                        expr = newCONDOP(0, cond, expr, op_guard_relinquish(&cur->init));
+                    }
+                }
 
                 var = my_var(
                     aTHX_
                     OPf_MOD | (OPpLVAL_INTRO << 8),
                     cur->param.padoff
                 );
-                var = newASSIGNOP(OPf_STACKED, var, 0, cond);
+                var = newASSIGNOP(OPf_STACKED, var, 0, expr);
 
                 op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, var)));
             }
