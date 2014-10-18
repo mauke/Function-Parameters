@@ -1636,11 +1636,11 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                  *       => nop
                  *  2) named params
                  *   2.1) no slurpy
-                 *       => synthetic %{rest}
+                 *       => synthetic %{__rest}
                  *   2.2) slurpy is a hash
                  *       => put it in
                  *   2.3) slurpy is an array
-                 *       => synthetic %{rest}
+                 *       => synthetic %{__rest}
                  *          remember to declare array later
                  */
 
@@ -1657,7 +1657,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                     padoff = param_spec->slurpy.padoff;
                     type = OP_PADHV;
                 } else {
-                    padoff = param_spec->rest_hash = pad_add_name_pvs("%{rest}", 0, NULL, NULL);
+                    padoff = param_spec->rest_hash = pad_add_name_pvs("%{__rest}", 0, NULL, NULL);
                     type = OP_PADHV;
                 }
 
@@ -1812,7 +1812,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
             if (!param_spec->slurpy.name) {
                 if (spec->flags & FLAG_CHECK_NARGS) {
-                    /* croak if %{rest} */
+                    /* croak if %{__rest} */
                     OP *xcroak, *cond, *keys, *msg;
 
                     keys = newUNOP(OP_KEYS, 0, my_var_g(aTHX_ OP_PADHV, 0, param_spec->rest_hash));
