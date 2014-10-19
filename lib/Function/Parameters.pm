@@ -424,8 +424,16 @@ attribute. This syntax is also compatible with C<sub> in perl 5.20 and newer.
 =head3 Parameter list
 
 The parameter list is a list of variables enclosed in parentheses, except it's
-actually a bit more complicated than that. A parameter list can include the
-following 6 parts, all of which are optional:
+actually a bit more complicated than that.
+
+Instead of a full variable name (such as C<$foo> or C<@bar>) you can write just
+the sigil (C<$>, C<@>, or C<%>). This has the effect of creating an unnamed
+parameter, which is useful in functions that are called with a certain number
+of arguments but want to ignore one or more of them. This trick works for
+invocants, slurpies, and positional parameters (see below). You can't have
+unnamed named parameters for what I hope are obvious reasons.
+
+A parameter list can include the following 6 parts, all of which are optional:
 
 =over
 

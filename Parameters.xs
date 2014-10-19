@@ -942,7 +942,7 @@ static PADOFFSET parse_param(
     lex_read_space(0);
 
     if (!(name = my_scan_word(aTHX_ sen, FALSE))) {
-        croak("In %"SVf": missing identifier after '%c'", SVfARG(declarator), sigil);
+        name = sentinel_mortalize(sen, newSVpvs(""));
     }
     sv_insert(name, 0, 0, &sigil, 1);
     *pname = name;
@@ -984,7 +984,10 @@ static PADOFFSET parse_param(
         croak("In %"SVf": unexpected '%c' in parameter list (expecting ',')", SVfARG(declarator), (int)c);
     }
 
-    return pad_add_name_sv(*pname, IF_HAVE_PERL_5_16(padadd_NO_DUP_CHECK, 0), NULL, NULL);
+    return SvCUR(*pname) < 2
+        ? NOT_IN_PAD
+        : pad_add_name_sv(*pname, IF_HAVE_PERL_5_16(padadd_NO_DUP_CHECK, 0), NULL, NULL)
+    ;
 }
 
 static void register_info(pTHX_ UV key, SV *declarator, const KWSpec *kws, const ParamSpec *ps) {
@@ -1216,12 +1219,17 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
             padoff = parse_param(aTHX_ sen, declarator, spec, param_spec, &flags, &name, init_sentinel, &type);
 
-            intro_my();
+            if (padoff != NOT_IN_PAD) {
+                intro_my();
+            }
 
             sigil = SvPV_nolen(name)[0];
 
             /* internal consistency */
             if (flags & PARAM_NAMED) {
+                if (padoff == NOT_IN_PAD) {
+                    croak("In %"SVf": named parameter %"SVf" can't be unnamed", SVfARG(declarator), SVfARG(name));
+                }
                 if (flags & PARAM_INVOCANT) {
                     croak("In %"SVf": invocant %"SVf" can't be a named parameter", SVfARG(declarator), SVfARG(name));
                 }
@@ -1237,6 +1245,9 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                 }
             } else if (sigil != '$' && init_sentinel->op) {
                 croak("In %"SVf": %s %"SVf" can't have a default value", SVfARG(declarator), sigil == '@' ? "array" : "hash", SVfARG(name));
+            }
+            if (type && padoff == NOT_IN_PAD) {
+                croak("In %"SVf": unnamed parameter %"SVf" can't have a type", SVfARG(declarator), SVfARG(name));
             }
 
             /* external constraints */
@@ -1275,7 +1286,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                 croak("In %"SVf": default argument for %"SVf" not allowed here", SVfARG(declarator), SVfARG(name));
             }
 
-            if (ps_contains(aTHX_ param_spec, name)) {
+            if (padoff != NOT_IN_PAD && ps_contains(aTHX_ param_spec, name)) {
                 croak("In %"SVf": %"SVf" can't appear twice in the same parameter list", SVfARG(declarator), SVfARG(name));
             }
 
@@ -1579,21 +1590,26 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
             op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, var)));
         }
     } else {
-        /* my $invocant = shift; */
         if (param_spec->invocant.name) {
-            OP *var;
+            if (param_spec->invocant.padoff == NOT_IN_PAD) {
+                /* shift; */
+                op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, newOP(OP_SHIFT, 0))));
+            } else {
+                /* my $invocant = shift; */
+                OP *var;
 
-            var = my_var(
-                aTHX_
-                OPf_MOD | (OPpLVAL_INTRO << 8),
-                param_spec->invocant.padoff
-            );
-            var = newASSIGNOP(OPf_STACKED, var, 0, newOP(OP_SHIFT, 0));
+                var = my_var(
+                    aTHX_
+                    OPf_MOD | (OPpLVAL_INTRO << 8),
+                    param_spec->invocant.padoff
+                );
+                var = newASSIGNOP(OPf_STACKED, var, 0, newOP(OP_SHIFT, 0));
 
-            op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, var)));
+                op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, var)));
 
-            if (param_spec->invocant.type && (spec->flags & FLAG_CHECK_TARGS)) {
-                op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, mktypecheckp(aTHX_ declarator, 0, &param_spec->invocant))));
+                if (param_spec->invocant.type && (spec->flags & FLAG_CHECK_TARGS)) {
+                    op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, mktypecheckp(aTHX_ declarator, 0, &param_spec->invocant))));
+                }
             }
         }
 
@@ -1605,21 +1621,33 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
             lhs = NULL;
 
             for (i = 0, lim = param_spec->positional_required.used; i < lim; i++) {
-                OP *const var = my_var(
-                    aTHX_
-                    OPf_WANT_LIST | (OPpLVAL_INTRO << 8),
-                    param_spec->positional_required.data[i].padoff
+                const PADOFFSET padoff = param_spec->positional_required.data[i].padoff;
+                lhs = op_append_elem(
+                    OP_LIST,
+                    lhs,
+                    padoff == NOT_IN_PAD
+                        ? newOP(OP_UNDEF, 0)
+                        : my_var(
+                            aTHX_
+                            OPf_WANT_LIST | (OPpLVAL_INTRO << 8),
+                            padoff
+                        )
                 );
-                lhs = op_append_elem(OP_LIST, lhs, var);
             }
 
             for (i = 0, lim = param_spec->positional_optional.used; i < lim; i++) {
-                OP *const var = my_var(
-                    aTHX_
-                    OPf_WANT_LIST | (OPpLVAL_INTRO << 8),
-                    param_spec->positional_optional.data[i].param.padoff
+                const PADOFFSET padoff = param_spec->positional_optional.data[i].param.padoff;
+                lhs = op_append_elem(
+                    OP_LIST,
+                    lhs,
+                    padoff == NOT_IN_PAD
+                        ? newOP(OP_UNDEF, 0)
+                        : my_var(
+                            aTHX_
+                            OPf_WANT_LIST | (OPpLVAL_INTRO << 8),
+                            padoff
+                        )
                 );
-                lhs = op_append_elem(OP_LIST, lhs, var);
             }
 
             {
@@ -1646,18 +1674,18 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
                 slurpy_hash = param_spec->slurpy.name && SvPV_nolen(param_spec->slurpy.name)[0] == '%';
                 if (!count_named_params(param_spec)) {
-                    if (param_spec->slurpy.name) {
+                    if (param_spec->slurpy.name && param_spec->slurpy.padoff != NOT_IN_PAD) {
                         padoff = param_spec->slurpy.padoff;
                         type = slurpy_hash ? OP_PADHV : OP_PADAV;
                     } else {
                         padoff = NOT_IN_PAD;
                         type = OP_PADSV;
                     }
-                } else if (slurpy_hash) {
+                } else if (slurpy_hash && param_spec->slurpy.padoff != NOT_IN_PAD) {
                     padoff = param_spec->slurpy.padoff;
                     type = OP_PADHV;
                 } else {
-                    padoff = param_spec->rest_hash = pad_add_name_pvs("%{__rest}", 0, NULL, NULL);
+                    padoff = pad_add_name_pvs("%{__rest}", 0, NULL, NULL);
                     type = OP_PADHV;
                 }
 
@@ -1702,11 +1730,11 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
             req = param_spec->positional_required.used;
             for (i = 0, lim = param_spec->positional_optional.used; i < lim; i++) {
                 ParamInit *cur = &param_spec->positional_optional.data[i];
-                OP *var, *cond;
+                OP *cond, *init;
 
                 {
-                    OP *const init = cur->init.op;
-                    if (!init || (init->op_type == OP_UNDEF && !(init->op_flags & OPf_KIDS))) {
+                    OP *const init_op = cur->init.op;
+                    if (!init_op || (init_op->op_type == OP_UNDEF && !(init_op->op_flags & OPf_KIDS))) {
                         continue;
                     }
                 }
@@ -1717,18 +1745,14 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                     mkconstiv(aTHX_ req + i + 1)
                 );
 
-                var = my_var(aTHX_ 0, cur->param.padoff);
+                init = op_guard_relinquish(&cur->init);
+                if (cur->param.padoff != NOT_IN_PAD) {
+                    OP *var = my_var(aTHX_ 0, cur->param.padoff);
+                    init = newASSIGNOP(OPf_STACKED, var, 0, init);
+                }
 
-                nest = op_append_list(
-                    OP_LINESEQ, nest,
-                    newASSIGNOP(OPf_STACKED, var, 0, op_guard_relinquish(&cur->init))
-                );
-                nest = newCONDOP(
-                    0,
-                    cond,
-                    nest,
-                    NULL
-                );
+                nest = op_append_list(OP_LINESEQ, nest, init);
+                nest = newCONDOP(0, cond, nest, NULL);
             }
 
             op_guard_update(prelude_sentinel, op_append_list(
@@ -1748,6 +1772,8 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                 size_t n;
                 char *p = SvPV(cur->name, n);
                 OP *var, *cond;
+
+                assert(cur->padoff != NOT_IN_PAD);
 
                 cond = mkhvelem(aTHX_ param_spec->rest_hash, mkconstpv(aTHX_ p + 1, n - 1));
 
@@ -1862,20 +1888,28 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                     op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, clear)));
                 }
             } else if (param_spec->slurpy.padoff != param_spec->rest_hash) {
-                OP *var, *clear;
+                OP *clear;
 
-                assert(SvPV_nolen(param_spec->slurpy.name)[0] == '@');
+                assert(param_spec->rest_hash != NOT_IN_PAD);
+                if (SvPV_nolen(param_spec->slurpy.name)[0] == '%') {
+                    assert(param_spec->slurpy.padoff == NOT_IN_PAD);
+                } else {
 
-                var = my_var_g(
-                    aTHX_
-                    OP_PADAV,
-                    OPf_MOD | (OPpLVAL_INTRO << 8),
-                    param_spec->slurpy.padoff
-                );
+                    assert(SvPV_nolen(param_spec->slurpy.name)[0] == '@');
 
-                var = newASSIGNOP(OPf_STACKED, var, 0, my_var_g(aTHX_ OP_PADHV, 0, param_spec->rest_hash));
+                    if (param_spec->slurpy.padoff != NOT_IN_PAD) {
+                        OP *var = my_var_g(
+                            aTHX_
+                            OP_PADAV,
+                            OPf_MOD | (OPpLVAL_INTRO << 8),
+                            param_spec->slurpy.padoff
+                        );
 
-                op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, var)));
+                        var = newASSIGNOP(OPf_STACKED, var, 0, my_var_g(aTHX_ OP_PADHV, 0, param_spec->rest_hash));
+
+                        op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, var)));
+                    }
+                }
 
                 clear = newASSIGNOP(
                     OPf_STACKED,
@@ -1896,6 +1930,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                 Param *cur = &param_spec->positional_required.data[i];
 
                 if (cur->type) {
+                    assert(cur->padoff != NOT_IN_PAD);
                     op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, mktypecheckp(aTHX_ declarator, base + i, cur))));
                 }
             }
@@ -1905,6 +1940,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                 Param *cur = &param_spec->positional_optional.data[i].param;
 
                 if (cur->type) {
+                    assert(cur->padoff != NOT_IN_PAD);
                     op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, mktypecheckp(aTHX_ declarator, base + i, cur))));
                 }
             }
@@ -1914,6 +1950,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                 Param *cur = &param_spec->named_required.data[i];
 
                 if (cur->type) {
+                    assert(cur->padoff != NOT_IN_PAD);
                     op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, mktypecheckp(aTHX_ declarator, base + i, cur))));
                 }
             }
@@ -1923,6 +1960,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                 Param *cur = &param_spec->named_optional.data[i].param;
 
                 if (cur->type) {
+                    assert(cur->padoff != NOT_IN_PAD);
                     op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, mktypecheckp(aTHX_ declarator, base + i, cur))));
                 }
             }
@@ -1931,6 +1969,8 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
             if (param_spec->slurpy.type) {
                 /* $type->valid($_) or croak $type->get_message($_) for @rest / values %rest */
                 OP *check, *list, *loop;
+
+                assert(param_spec->slurpy.padoff != NOT_IN_PAD);
 
                 check = mktypecheck(aTHX_ declarator, base, param_spec->slurpy.name, NOT_IN_PAD, param_spec->slurpy.type);
 
