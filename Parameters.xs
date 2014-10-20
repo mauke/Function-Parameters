@@ -1284,6 +1284,10 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                 continue;
             }
 
+            if (!(flags & PARAM_NAMED) && !init_sentinel->op && param_spec->positional_optional.used) {
+                croak("In %"SVf": required parameter %"SVf" can't appear after optional parameter %"SVf"", SVfARG(declarator), SVfARG(name), SVfARG(param_spec->positional_optional.data[0].param.name));
+            }
+
             if (init_sentinel->op && !(spec->flags & FLAG_DEFAULT_ARGS)) {
                 croak("In %"SVf": default argument for %"SVf" not allowed here", SVfARG(declarator), SVfARG(name));
             }
@@ -1318,7 +1322,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                     param_spec->named_required.used++;
                 }
             } else {
-                if (init_sentinel->op || param_spec->positional_optional.used) {
+                if (init_sentinel->op) {
                     ParamInit *pi = piv_extend(&param_spec->positional_optional);
                     pi->param.name = name;
                     pi->param.padoff = padoff;
@@ -1327,6 +1331,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                     param_spec->positional_optional.used++;
                 } else {
                     Param *p = pv_extend(&param_spec->positional_required);
+                    assert(param_spec->positional_optional.used == 0);
                     p->name = name;
                     p->padoff = padoff;
                     p->type = type;
@@ -1736,7 +1741,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
                 {
                     OP *const init_op = cur->init.op;
-                    if (!init_op || (init_op->op_type == OP_UNDEF && !(init_op->op_flags & OPf_KIDS))) {
+                    if (init_op->op_type == OP_UNDEF && !(init_op->op_flags & OPf_KIDS)) {
                         continue;
                     }
                 }

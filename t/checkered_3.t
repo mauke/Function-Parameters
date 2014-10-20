@@ -22,7 +22,7 @@ fun foo_2($x, $y) { [@_] }
 fun foo_3($x, $y, $z) { [@_] }
 fun foo_0_1($x = 'D0') { [$x] }
 fun foo_0_2($x = 'D0', $y = 'D1') { [$x, $y] }
-fun foo_0_3($x = 'D0', $y, $z = 'D2') { [$x, $y, $z] }
+fun foo_0_3($x = 'D0', $y = undef, $z = 'D2') { [$x, $y, $z] }
 fun foo_1_2($x, $y = 'D1') { [$x, $y] }
 fun foo_1_3($x, $y = 'D1', $z = 'D2') { [$x, $y, $z] }
 fun foo_2_3($x, $y, $z = 'D2') { [$x, $y, $z] }

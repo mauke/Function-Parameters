@@ -554,15 +554,13 @@ is eval("t038(456, 789, 987)"), undef;
 like $@, qr/\AToo many arguments for /;
 is $a, 123;
 
-TODO: {
-    local $TODO = "disallow implicit optional parameters";
+eval "#line 8 foo\nsub t030 (\$a = 222, \$b) { }";
+#is $@, "Mandatory parameter follows optional parameter at foo line 8\.\n";
+is $@, "In sub t030: required parameter \$b can't appear after optional parameter \$a at foo line 8.\n";
 
-    eval "#line 8 foo\nsub t030 (\$a = 222, \$b) { }";
-    is $@, "Mandatory parameter follows optional parameter at foo line 8\.\n";
-
-    eval "#line 8 foo\nsub t031 (\$a = 222, \$b = 333, \$c, \$d) { }";
-    is $@, "Mandatory parameter follows optional parameter at foo line 8\.\n";
-}
+eval "#line 8 foo\nsub t031 (\$a = 222, \$b = 333, \$c, \$d) { }";
+#is $@, "Mandatory parameter follows optional parameter at foo line 8\.\n";
+is $@, "In sub t031: required parameter \$c can't appear after optional parameter \$a at foo line 8.\n";
 
 sub t034 (@abc) { join("/", @abc).";".scalar(@abc) }
 is prototype(\&t034), undef;

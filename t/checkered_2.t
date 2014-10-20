@@ -34,7 +34,7 @@ method foo_2($x, $y) { [@_] }
 method foo_3($x, $y, $z) { [@_] }
 method foo_0_1($x = 'D0') { [$x] }
 method foo_0_2($x = 'D0', $y = 'D1') { [$x, $y] }
-method foo_0_3($x = 'D0', $y, $z = 'D2') { [$x, $y, $z] }
+method foo_0_3($x = 'D0', $y = undef, $z = 'D2') { [$x, $y, $z] }
 method foo_1_2($x, $y = 'D1') { [$x, $y] }
 method foo_1_3($x, $y = 'D1', $z = 'D2') { [$x, $y, $z] }
 method foo_2_3($x, $y, $z = 'D2') { [$x, $y, $z] }
