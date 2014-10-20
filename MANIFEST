@@ -103,6 +103,7 @@ t/foreign/MooseX-Method-Signatures/type_alias.t
 t/foreign/MooseX-Method-Signatures/types.t
 t/foreign/MooseX-Method-Signatures/undef_method_arg.t
 t/foreign/MooseX-Method-Signatures/undef_method_arg2.t
+t/foreign/perl/signatures.t
 t/foreign/signatures/anon.t
 t/foreign/signatures/basic.t
 t/foreign/signatures/eval.t
