@@ -29,7 +29,7 @@ use Test::More;
     }
 
     is( Foo->foo( arg => 42 ), 42 );
-    like exception { foo() }, qr/Not enough arguments/;
+    like exception { foo() }, qr/Too few arguments/;
 
 
     # Compile time errors need internal refactoring before I can get file, line and method

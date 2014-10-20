@@ -19,7 +19,7 @@ use Test::More;
 
     is( Stuff->whatever(23),    23 );
 
-    like exception { Stuff->whatever() }, qr/Not enough arguments/;
+    like exception { Stuff->whatever() }, qr/Too few arguments/;
 
     method some_optional($that, $this = 22) {
         return $that + $this
@@ -27,7 +27,7 @@ use Test::More;
 
     is( Stuff->some_optional(18), 18 + 22 );
 
-    like exception { Stuff->some_optional() }, qr/Not enough arguments/;
+    like exception { Stuff->some_optional() }, qr/Too few arguments/;
 }
 
 

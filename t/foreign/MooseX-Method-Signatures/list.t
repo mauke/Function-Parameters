@@ -23,8 +23,8 @@ my $o = bless {} => 'Foo';
 
     for my $meth_name (keys %meths) {
         my $meth = $meths{$meth_name};
-        like(exception { $o->$meth() }, qr/Not enough arguments/, "$meth_name dies without args");
-        like(exception { $o->$meth('foo') }, qr/Not enough arguments/, "$meth_name dies with one arg");
+        like(exception { $o->$meth() }, qr/Too few arguments/, "$meth_name dies without args");
+        like(exception { $o->$meth('foo') }, qr/Too few arguments/, "$meth_name dies with one arg");
 
         is(exception {
             is($o->$meth('foo', 'bar'), q{}, "$meth_name - empty \@rest list");

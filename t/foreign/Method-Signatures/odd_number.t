@@ -14,4 +14,4 @@ package Foo {
     }
 }
 
-like exception { Foo->foo(name => 42, value =>) }, qr/Not enough arguments.+ line 17/;
+like exception { Foo->foo(name => 42, value =>) }, qr/Too few arguments.+ line 17/;

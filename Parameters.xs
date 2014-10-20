@@ -1488,7 +1488,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
         if (amin > 0) {
             OP *chk, *cond, *err, *xcroak;
 
-            err = mkconstsv(aTHX_ newSVpvf("Not enough arguments for %"SVf" (expected %d, got ", SVfARG(declarator), amin));
+            err = mkconstsv(aTHX_ newSVpvf("Too few arguments for %"SVf" (expected %d, got ", SVfARG(declarator), amin));
             err = newBINOP(
                 OP_CONCAT, 0,
                 err,

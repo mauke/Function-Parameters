@@ -22,9 +22,9 @@ compile_fail 'method (:$ni:) {}', qr/\binvocant\b.+\$ni\b.+\bnamed\b/;
 
 fun name_1(:$n1) { [$n1, @_] }
 
-like exception { name_1 }, qr/Not enough arguments/;
-like exception { name_1 'n1' }, qr/Not enough arguments/;
-like exception { name_1 'asdf' }, qr/Not enough arguments/;
+like exception { name_1 }, qr/Too few arguments/;
+like exception { name_1 'n1' }, qr/Too few arguments/;
+like exception { name_1 'asdf' }, qr/Too few arguments/;
 like exception { name_1 n1 => 0, huh => 1 }, qr/\bnamed\b.+\bhuh\b/;
 is_deeply name_1(n1 => undef), [undef, n1 => undef];
 is_deeply name_1(n1 => 'a'), ['a', n1 => 'a'];
@@ -45,10 +45,10 @@ is_deeply name_0_1(n1 => 'a', n1 => undef), [undef, n1 => 'a', n1 => undef];
 
 fun pos_1_name_1($p1, :$n1) { [$p1, $n1, @_] }
 
-like exception { pos_1_name_1 }, qr/Not enough arguments/;
-like exception { pos_1_name_1 42 }, qr/Not enough arguments/;
-like exception { pos_1_name_1 42, 'n1' }, qr/Not enough arguments/;
-like exception { pos_1_name_1 42, 'asdf' }, qr/Not enough arguments/;
+like exception { pos_1_name_1 }, qr/Too few arguments/;
+like exception { pos_1_name_1 42 }, qr/Too few arguments/;
+like exception { pos_1_name_1 42, 'n1' }, qr/Too few arguments/;
+like exception { pos_1_name_1 42, 'asdf' }, qr/Too few arguments/;
 like exception { pos_1_name_1 42, n1 => 0, huh => 1 }, qr/\bnamed\b.+\bhuh\b/;
 is_deeply pos_1_name_1(42, n1 => undef), [42, undef, 42, n1 => undef];
 is_deeply pos_1_name_1(42, n1 => 'a'), [42, 'a', 42, n1 => 'a'];
@@ -61,7 +61,7 @@ compile_fail 'fun pos_0_1_name_1($p1 = "e", :$n1) { [$p1, $n1, @_] }', qr/\bopti
 
 fun pos_1_name_0_1($p1, :$n1 = 'd') { [$p1, $n1, @_] }
 
-like exception { pos_1_name_0_1 }, qr/Not enough arguments/;
+like exception { pos_1_name_0_1 }, qr/Too few arguments/;
 is_deeply pos_1_name_0_1(42), [42, 'd', 42];
 like exception { pos_1_name_0_1 42, 'n1' }, qr/Odd number/;
 like exception { pos_1_name_0_1 42, 'asdf' }, qr/Odd number/;
@@ -87,9 +87,9 @@ is_deeply pos_0_1_name_0_1(42, n1 => 'a', n1 => undef), [42, undef, 42, n1 => 'a
 
 fun name_1_slurp(:$n1, @rest) { [$n1, \@rest, @_] }
 
-like exception { name_1_slurp }, qr/Not enough arguments/;
-like exception { name_1_slurp 'n1' }, qr/Not enough arguments/;
-like exception { name_1_slurp 'asdf' }, qr/Not enough arguments/;
+like exception { name_1_slurp }, qr/Too few arguments/;
+like exception { name_1_slurp 'n1' }, qr/Too few arguments/;
+like exception { name_1_slurp 'asdf' }, qr/Too few arguments/;
 like exception { name_1_slurp huh => 1 }, qr/missing named\b.+\bn1\b/;
 is_deeply name_1_slurp(n1 => 'a'), ['a', [], n1 => 'a'];
 like exception { name_1_slurp n1 => 'a', 'n1' }, qr/Odd number/;
@@ -111,16 +111,16 @@ is_deeply name_0_1_slurp(foo => 'bar', n1 => 'a', foo => 'quux'), ['a', [foo => 
 
 fun name_2(:$n1, :$n2) { [$n1, $n2, @_] }
 
-like exception { name_2 }, qr/Not enough arguments/;
-like exception { name_2 'n1' }, qr/Not enough arguments/;
-like exception { name_2 'asdf' }, qr/Not enough arguments/;
-like exception { name_2 huh => 1 }, qr/Not enough arguments/;
-like exception { name_2 n1 => 'a' }, qr/Not enough arguments/;
+like exception { name_2 }, qr/Too few arguments/;
+like exception { name_2 'n1' }, qr/Too few arguments/;
+like exception { name_2 'asdf' }, qr/Too few arguments/;
+like exception { name_2 huh => 1 }, qr/Too few arguments/;
+like exception { name_2 n1 => 'a' }, qr/Too few arguments/;
 like exception { name_2 n1 => 'a', n1 => 'b' }, qr/missing named\b.+\bn2\b/;
-like exception { name_2 n2 => 'a' }, qr/Not enough arguments/;
+like exception { name_2 n2 => 'a' }, qr/Too few arguments/;
 like exception { name_2 n2 => 'a', n2 => 'b' }, qr/missing named\b.+\bn1\b/;
-like exception { name_2 n1 => 'a', 'n2' }, qr/Not enough arguments/;
-like exception { name_2 n1 => 'a', 'asdf' }, qr/Not enough arguments/;
+like exception { name_2 n1 => 'a', 'n2' }, qr/Too few arguments/;
+like exception { name_2 n1 => 'a', 'asdf' }, qr/Too few arguments/;
 like exception { name_2 n2 => 'b', n1 => 'a', huh => 1 }, qr/\bnamed\b.+\bhuh\b/;
 is_deeply name_2(n2 => 42, n1 => undef), [undef, 42, n2 => 42, n1 => undef];
 is_deeply name_2(n2 => 42, n1 => 'a'), ['a', 42, n2 => 42, n1 => 'a'];
@@ -134,9 +134,9 @@ is_deeply name_2(n1 => 'a', n2 => 42, n1 => undef), [undef, 42, n1 => 'a', n2 =>
 
 fun name_1_2(:$n1, :$n2 = 'f') { [$n1, $n2, @_] }
 
-like exception { name_1_2 }, qr/Not enough arguments/;
-like exception { name_1_2 'n1' }, qr/Not enough arguments/;
-like exception { name_1_2 'asdf' }, qr/Not enough arguments/;
+like exception { name_1_2 }, qr/Too few arguments/;
+like exception { name_1_2 'n1' }, qr/Too few arguments/;
+like exception { name_1_2 'asdf' }, qr/Too few arguments/;
 like exception { name_1_2 n1 => 0, huh => 1 }, qr/\bnamed\b.+\bhuh\b/;
 is_deeply name_1_2(n1 => 'a'), ['a', 'f', n1 => 'a'];
 is_deeply name_1_2(n1 => 'a', n1 => 'b'), ['b', 'f', n1 => 'a', n1 => 'b'];
@@ -180,7 +180,7 @@ is_deeply name_0_2(n1 => 'a', n2 => 42, n1 => undef), [undef, 42, n1 => 'a', n2 
 
 fun pos_1_2_name_0_3_slurp($p1, $p2 = 'E', :$n1 = undef, :$n2 = 'A', :$n3 = 'F', @rest) { [$p1, $p2, $n1, $n2, $n3, {@rest}, @_] }
 
-like exception { pos_1_2_name_0_3_slurp }, qr/Not enough/;
+like exception { pos_1_2_name_0_3_slurp }, qr/Too few/;
 is_deeply pos_1_2_name_0_3_slurp('a'), ['a', 'E', undef, 'A', 'F', {}, 'a'];
 is_deeply pos_1_2_name_0_3_slurp('a', 'b'), ['a', 'b', undef, 'A', 'F', {}, 'a', 'b'];
 like exception { pos_1_2_name_0_3_slurp 'a', 'b', 'c' }, qr/Odd number/;

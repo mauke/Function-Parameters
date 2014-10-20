@@ -43,10 +43,10 @@ is $o->get_y, "B";
 is $o->get_z, "C";
 
 is eval { $o->get_z(42) }, undef;
-like $@, qr/many arguments/;
+like $@, qr/Too many arguments/;
 
 is eval { $o->set_z }, undef;
-like $@, qr/enough arguments/;
+like $@, qr/Too few arguments/;
 
 is eval q{fun ($self:) {}}, undef;
 like $@, qr/invocant/;
