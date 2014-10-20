@@ -939,6 +939,12 @@ static PADOFFSET parse_param(
     sigil = c;
 
     lex_read_unichar(0);
+
+    c = lex_peek_unichar(0);
+    if (c == '#') {
+        croak("In %"SVf": unexpected '%c#' in parameter list (expecting an identifier)", SVfARG(declarator), sigil);
+    }
+
     lex_read_space(0);
 
     if (!(name = my_scan_word(aTHX_ sen, FALSE))) {

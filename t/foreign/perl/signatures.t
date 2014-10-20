@@ -1089,29 +1089,23 @@ is $a, 123;
 eval "#line 8 foo\nsub t088 (\$ #foo\na) { }";
 is $@, "";
 
-TODO: {
-    local $TODO = 'disallow $# to start a comment';
-    eval "#line 8 foo\nsub t089 (\$#foo\na) { }";
-    like $@, qr/\AParse error at foo line 8\.\n/;
-}
+eval "#line 8 foo\nsub t089 (\$#foo\na) { }";
+#like $@, qr/\AParse error at foo line 8\.\n/;
+like $@, qr/unexpected '\$#'/;
 
 eval "#line 8 foo\nsub t090 (\@ #foo\na) { }";
 is $@, "";
 
-TODO: {
-    local $TODO = 'disallow $# to start a comment';
-    eval "#line 8 foo\nsub t091 (\@#foo\na) { }";
-    like $@, qr/\AParse error at foo line 8\.\n/;
-}
+eval "#line 8 foo\nsub t091 (\@#foo\na) { }";
+#like $@, qr/\AParse error at foo line 8\.\n/;
+like $@, qr/unexpected '\@#'/;
 
 eval "#line 8 foo\nsub t092 (\% #foo\na) { }";
 is $@, "";
 
-TODO: {
-    local $TODO = 'disallow $# to start a comment';
-    eval "#line 8 foo\nsub t093 (\%#foo\na) { }";
-    like $@, qr/\AParse error at foo line 8\.\n/;
-}
+eval "#line 8 foo\nsub t093 (\%#foo\na) { }";
+#like $@, qr/\AParse error at foo line 8\.\n/;
+like $@, qr/unexpected '%#'/;
 
 eval "#line 8 foo\nsub t094 (123) { }";
 #like $@, qr/\AParse error at foo line 8\.\n/;
