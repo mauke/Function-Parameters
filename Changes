@@ -1,5 +1,14 @@
 Revision history for Function-Parameters
 
+1.0601  2014-10-20
+        - allow nameless parameters for arguments that should be ignored
+        - fix string comparison bug (":lvaluefoobar" treated as ":lvalue", etc)
+        - explicitly disallow $_/@_/%_ as parameters
+        - change "Not enough" to "Too few" in error message to match perl
+        - don't parse $#foo as a sigil plus comment
+        - remove implicitly optional parameters ("fun foo($x = 42, $y)" used to
+          be equivalent to "fun foo($x = 42, $y = undef)")
+
 1.0503  2014-10-17
         - skip initializing parameters if the default argument is undef
           (don't generate '$x = undef if @_ < 1' for 'fun ($x = undef)')
