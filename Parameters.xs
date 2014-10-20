@@ -210,12 +210,12 @@ static void free_op_void(pTHX_ void *vp) {
     op_free(p);
 }
 
-#define sv_eq_pvs(SV, S) my_sv_eq_pvn(aTHX_ SV, "" S "", sizeof (S) - 1)
+#define sv_eq_pvs(SV, S) my_sv_eq_pvn(aTHX_ SV, "" S "", sizeof S - 1)
 
 static int my_sv_eq_pvn(pTHX_ SV *sv, const char *p, STRLEN n) {
     STRLEN sv_len;
     const char *sv_p = SvPV(sv, sv_len);
-    return memcmp(sv_p, p, n) == 0;
+    return sv_len == n && memcmp(sv_p, p, n) == 0;
 }
 
 
