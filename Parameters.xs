@@ -943,6 +943,8 @@ static PADOFFSET parse_param(
 
     if (!(name = my_scan_word(aTHX_ sen, FALSE))) {
         name = sentinel_mortalize(sen, newSVpvs(""));
+    } else if (sv_eq_pvs(name, "_")) {
+        croak("In %"SVf": Can't use global %c_ as a parameter", SVfARG(declarator), sigil);
     }
     sv_insert(name, 0, 0, &sigil, 1);
     *pname = name;

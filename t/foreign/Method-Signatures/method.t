@@ -27,9 +27,9 @@ use Test::More 'no_plan';
         return($self, @_);
     }
 
-    method echo(@_) {
-        return($self, @_);
-    }
+#    method echo(@_) {
+#        return($self, @_);
+#    }
 
     method caller($height = 0) {
         return (CORE::caller($height))[0..2];
@@ -65,7 +65,7 @@ for my $method (qw(empty_proto)) {
     like $@, qr{\QToo many arguments};
 }
 
-is_deeply [$obj->echo(1,2,3)], [$obj,1,2,3], "echo";
+#is_deeply [$obj->echo(1,2,3)], [$obj,1,2,3], "echo";
 
 is_deeply [$obj->caller], [__PACKAGE__, $0, __LINE__], 'caller works';
 

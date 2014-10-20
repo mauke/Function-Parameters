@@ -137,7 +137,10 @@ sub import {
             or confess qq["$clean{name}" doesn't look like a valid name attribute (one of optional, required, prohibited)];
 
         $clean{shift} = delete $type{shift} // '';
-        _assert_valid_identifier $clean{shift}, 1 if $clean{shift};
+        if ($clean{shift}) {
+            _assert_valid_identifier $clean{shift}, 1;
+            $clean{shift} eq '$_' and confess q[Using "$_" as a parameter is not supported];
+        }
 
         $clean{attrs} = join ' ', map delete $type{$_} // (), qw(attributes attrs);
         _assert_valid_attributes $clean{attrs} if $clean{attrs};
