@@ -1121,7 +1121,7 @@ like $@, qr/unexpected '1'/;
 
 eval "#line 8 foo\nsub t097 (\$a { }) { }";
 #like $@, qr/\AParse error at foo line 8\.\n/;
-like $@, qr/unexpected '{'/;
+like $@, qr/unexpected '\{'/;
 
 eval "#line 8 foo\nsub t098 (\$a; \$b) { }";
 #like $@, qr/\AParse error at foo line 8\.\n/;
