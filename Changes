@@ -1,5 +1,8 @@
 Revision history for Function-Parameters
 
+1.0602  2014-10-21
+        - fix warnings under perl5.21 (causes harmless test failure)
+
 1.0601  2014-10-20
         - allow nameless parameters for arguments that should be ignored
         - fix string comparison bug (":lvaluefoobar" treated as ":lvalue", etc)
