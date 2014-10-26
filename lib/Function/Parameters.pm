@@ -385,11 +385,27 @@ Example:
   #         (1) (6)
     my $f = fun { ... };
 
-In the following section I'm going to describe all parts in order from simplest to most complex.
+In the following section I'm going to describe all parts in order from simplest
+to most complex.
 
 =head3 Body
 
-This is just a normal block of statements, as with L<C<sub>|perlsub>. No surprises here.
+This is just a normal block of statements, as with L<C<sub>|perlsub>. No
+surprises here, except the function name (along with its prototype, if any) is
+already in scope in its body. This is not the case with C<sub>:
+
+  sub foo ($$) {
+  # foo 1, 2;  # a syntax error: 'foo' is not known to be a function yet
+    foo(42);   # OK: calls 'foo' with one argument despite prototype
+  }
+
+On the other hand:
+
+  use Function::Parameters;
+  fun foo :prototype($$) {
+    foo 1, 2;  # OK: 'foo' and its prototype are in scope
+  # foo(42);   # error: Not enough arguments for main::foo at X line Y, near "42)"
+  }
 
 =head3 Name
 
