@@ -236,6 +236,7 @@ static int my_sv_eq_pvn(pTHX_ SV *sv, const char *p, STRLEN n) {
 #include "hax/block_start.c.inc"
 #include "hax/block_end.c.inc"
 
+#include "hax/op_convert_list.c.inc"  /* < 5.22 */
 
 enum {
     MY_ATTR_LVALUE  = 0x01,
@@ -810,12 +811,11 @@ static OP *mktypecheck(pTHX_ const SV *declarator, int nr, SV *name, PADOFFSET p
                 ? newDEFSVOP()
                 : my_var(aTHX_ 0, padoff)
         );
-        args = op_append_elem(OP_LIST, args, newMETHOP(OP_METHOD, 0, mkconstpvs("get_message")));
 
-        msg = args;
-        msg->op_type = OP_ENTERSUB;
-        msg->op_ppaddr = PL_ppaddr[OP_ENTERSUB];
-        msg->op_flags |= OPf_STACKED;
+        msg = op_convert_list(
+            OP_ENTERSUB, OPf_STACKED,
+            op_append_elem(OP_LIST, args, newMETHOP(OP_METHOD, 0, mkconstpvs("get_message")))
+        );
     }
 
     msg = newBINOP(OP_CONCAT, 0, err, msg);
@@ -836,12 +836,11 @@ static OP *mktypecheck(pTHX_ const SV *declarator, int nr, SV *name, PADOFFSET p
                 ? newDEFSVOP()
                 : my_var(aTHX_ 0, padoff)
         );
-        args = op_append_elem(OP_LIST, args, newMETHOP(OP_METHOD, 0, mkconstpvs("check")));
 
-        chk = args;
-        chk->op_type = OP_ENTERSUB;
-        chk->op_ppaddr = PL_ppaddr[OP_ENTERSUB];
-        chk->op_flags |= OPf_STACKED;
+        chk = op_convert_list(
+            OP_ENTERSUB, OPf_STACKED,
+            op_append_elem(OP_LIST, args, newMETHOP(OP_METHOD, 0, mkconstpvs("check")))
+        );
     }
 
     chk = newLOGOP(OP_OR, 0, chk, xcroak);
