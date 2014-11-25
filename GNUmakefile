@@ -1,4 +1,5 @@
 export RELEASE_TESTING=1
+export HARNESS_OPTIONS=c
 
 include ./Makefile
 
