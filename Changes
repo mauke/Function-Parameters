@@ -1,5 +1,9 @@
 Revision history for Function-Parameters
 
+1.0603  2014-11-25
+        - some documentation changes
+        - compatibility with perl development versions
+
 1.0602  2014-10-21
         - fix warnings under perl5.21 (causes harmless test failure)
 
