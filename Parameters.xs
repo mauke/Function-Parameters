@@ -2026,7 +2026,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
         SvREFCNT_inc_simple_void(PL_compcv);
 
         /* close outer block: '}' */
-        block_end(save_ix, body);
+        body = block_end(save_ix, body);
 
         cv = newATTRSUB(
             floor_ix,
