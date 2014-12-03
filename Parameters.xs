@@ -21,12 +21,12 @@ See http://dev.perl.org/licenses/ for more information.
 
 #ifdef DEVEL
  #define WARNINGS_RESET PRAGMA_GCC(diagnostic pop)
- #define WARNINGS_ENABLEW(X) PRAGMA_GCC(diagnostic warning #X)
+ #define WARNINGS_ENABLEW(X) PRAGMA_GCC(diagnostic error #X)
  #define WARNINGS_ENABLE \
     WARNINGS_ENABLEW(-Wall) \
     WARNINGS_ENABLEW(-Wextra) \
     WARNINGS_ENABLEW(-Wundef) \
-    /* WARNINGS_ENABLEW(-Wshadow) :-( */ \
+    WARNINGS_ENABLEW(-Wshadow) \
     WARNINGS_ENABLEW(-Wbad-function-cast) \
     WARNINGS_ENABLEW(-Wcast-align) \
     WARNINGS_ENABLEW(-Wwrite-strings) \
@@ -48,9 +48,6 @@ See http://dev.perl.org/licenses/ for more information.
 #include "XSUB.h"
 
 #include <string.h>
-
-
-WARNINGS_ENABLE
 
 #ifdef PERL_MAD
 #error "MADness is not supported."
@@ -77,8 +74,27 @@ WARNINGS_ENABLE
  #define IF_HAVE_PERL_5_19_4(YES, NO) NO
 #endif
 
+#ifndef SvREFCNT_dec_NN
+#define SvREFCNT_dec_NN(SV) SvREFCNT_dec(SV)
+#endif
+
 
 #define MY_PKG "Function::Parameters"
+
+
+#include "hax/pad_alloc.c.inc"        /* 5.14 */
+#include "hax/pad_add_name_sv.c.inc"  /* 5.14 */
+#include "hax/pad_add_name_pvs.c.inc" /* 5.14 */
+
+#include "hax/newDEFSVOP.c.inc"
+#include "hax/intro_my.c.inc"
+#include "hax/block_start.c.inc"
+#include "hax/block_end.c.inc"
+
+#include "hax/op_convert_list.c.inc"  /* < 5.22 */
+
+
+WARNINGS_ENABLE
 
 #define HINTK_KEYWORDS MY_PKG "/keywords"
 #define HINTK_FLAGS_   MY_PKG "/flags:"
@@ -219,24 +235,9 @@ static int my_sv_eq_pvn(pTHX_ SV *sv, const char *p, STRLEN n) {
 }
 
 
-#ifndef SvREFCNT_dec_NN
-#define SvREFCNT_dec_NN(SV) SvREFCNT_dec(SV)
-#endif
-
 #ifndef newMETHOP
 #define newMETHOP newUNOP
 #endif
-
-#include "hax/pad_alloc.c.inc"        /* 5.14 */
-#include "hax/pad_add_name_sv.c.inc"  /* 5.14 */
-#include "hax/pad_add_name_pvs.c.inc" /* 5.14 */
-
-#include "hax/newDEFSVOP.c.inc"
-#include "hax/intro_my.c.inc"
-#include "hax/block_start.c.inc"
-#include "hax/block_end.c.inc"
-
-#include "hax/op_convert_list.c.inc"  /* < 5.22 */
 
 enum {
     MY_ATTR_LVALUE  = 0x01,
