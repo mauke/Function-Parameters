@@ -1,6 +1,12 @@
 use strict;
 use warnings;
 use ExtUtils::MakeMaker;
+use Getopt::Long;
+
+my $Do_fsanitize;
+GetOptions(
+    "fsanitize!" => \$Do_fsanitize
+);
 
 sub merge_key_into {
     my ($href, $target, $source) = @_;
@@ -78,3 +84,14 @@ if ($mm_version < 6.51_03) {
 }
 
 WriteMakefile %opt;
+
+sub MY::postamble {
+    my $make = '';
+
+    $make .= <<'END' if $Do_fsanitize;
+CCFLAGS   := $(CCFLAGS) -DDEVEL -fsanitize=address -fsanitize=undefined
+OTHERLDFLAGS := $(OTHERLDFLAGS) -fsanitize=address -fsanitize=undefined
+
+END
+
+}

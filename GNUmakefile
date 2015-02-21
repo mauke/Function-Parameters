@@ -3,9 +3,6 @@ export HARNESS_OPTIONS=c
 
 include ./Makefile
 
-CCFLAGS   := $(CCFLAGS) -DDEVEL -fsanitize=address -fsanitize=undefined
-OTHERLDFLAGS := $(OTHERLDFLAGS) -fsanitize=address -fsanitize=undefined
-
 .PHONY: multitest
 multitest:
 	f=''; k=''; \
