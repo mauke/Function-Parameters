@@ -33,7 +33,12 @@ BEGIN {
     __PACKAGE__->$meta_make_immutable;
 }
 
-my @pn_ro = glob '{positional,named}_{required,optional}';
+my @pn_ro = qw(
+    positional_required
+    positional_optional
+    named_required
+    named_optional
+);
 
 for my $attr (qw[keyword invocant slurpy], map "_$_", @pn_ro) {
     has $attr => (
@@ -41,9 +46,10 @@ for my $attr (qw[keyword invocant slurpy], map "_$_", @pn_ro) {
     );
 }
 
-for my $gen (join "\n", map "sub $_ { \@{\$_[0]->_$_} }", @pn_ro) {
-    eval "$gen\n1" or die $@;
-}
+sub positional_required { @{$_[0]->_positional_required } }
+sub positional_optional { @{$_[0]->_positional_optional } }
+sub named_required      { @{$_[0]->_named_required } }
+sub named_optional      { @{$_[0]->_named_optional } }
 
 sub args_min {
     my $self = shift;
