@@ -66,29 +66,32 @@ sub _delete_default {
 
 my @bare_arms = qw(function method);
 my %type_map = (
-    function           => {},  # all default settings
+    function_lax       => {},  # all default settings
     function_strict    => {
-        defaults   => 'function',
+        defaults   => 'function_lax',
         strict     => 1,
     },
-    method             => {
-        defaults   => 'function',
+    function           => { defaults => 'function_lax' },
+    method_lax         => {
+        defaults   => 'function_lax',
         attributes => ':method',
         shift      => '$self',
         invocant   => 1,
     },
     method_strict      => {
-        defaults   => 'method',
+        defaults   => 'method_lax',
         strict     => 1,
     },
-    classmethod        => {
-        defaults   => 'method',
+    method             => { defaults => 'method_lax' },
+    classmethod_lax    => {
+        defaults   => 'method_lax',
         shift      => '$class',
     },
     classmethod_strict => {
-        defaults   => 'classmethod',
+        defaults   => 'classmethod_lax',
         strict     => 1,
     },
+    classmethod        => { defaults => 'classmethod_lax' },
 );
 
 our @type_reifiers = \&_reify_type_default;
@@ -98,18 +101,26 @@ sub import {
 
     if (!@_) {
         @_ = {
-            fun => 'function',
+            fun    => 'function',
             method => 'method',
         };
     }
-    if (@_ == 1 && $_[0] eq ':strict') {
-        @_ = {
-            fun => 'function_strict',
-            method => 'method_strict',
-        };
-    }
-    if (@_ == 1 && ref($_[0]) eq 'HASH') {
-        @_ = map [$_, $_[0]{$_}], keys %{$_[0]};
+    if (@_ == 1) {
+        if ($_[0] eq ':strict') {
+            @_ = {
+                fun    => 'function_strict',
+                method => 'method_strict',
+            };
+        } elsif ($_[0] eq ':lax') {
+            @_ = {
+                fun    => 'function_lax',
+                method => 'method_lax',
+            };
+        }
+
+        if (ref($_[0]) eq 'HASH') {
+            @_ = map [$_, $_[0]{$_}], keys %{$_[0]};
+        }
     }
 
     my %spec;
@@ -634,15 +645,17 @@ arguments are silently ignored.
 
 Provides completely custom keywords as described by their types. A "type" is
 either a string (one of the predefined types C<function>, C<method>,
-C<classmethod>, C<function_strict>, C<method_strict>, C<classmethod_strict>) or
-a reference to a hash with the following keys:
+C<classmethod>, C<function_strict>, C<method_strict>, C<classmethod_strict>,
+C<function_lax>, C<method_lax>, C<classmethod_lax>) or a reference to a hash
+with the following keys:
 
 =over
 
 =item C<defaults>
 
 Valid values: One of the predefined types C<function>, C<method>,
-C<classmethod>, C<function_strict>, C<method_strict>, C<classmethod_strict>.
+C<classmethod>, C<function_strict>, C<method_strict>, C<classmethod_strict>,
+C<function_lax>, C<method_lax>, C<classmethod_lax>.
 This will set the defaults for all other keys from the specified type, which is
 useful if you only want to override some properties:
 
@@ -745,7 +758,7 @@ The default type reifier is equivalent to:
 
 =back
 
-The predefined type C<function> is equivalent to:
+The predefined type C<function_lax> is equivalent to:
 
  {
    name              => 'optional',
@@ -755,12 +768,12 @@ The predefined type C<function> is equivalent to:
    runtime           => 0,
  }
 
-These are all default values, so C<function> is also equivalent to C<{}>.
+These are all default values, so C<function_lax> is also equivalent to C<{}>.
 
-C<method> is equivalent to:
+C<method_lax> is equivalent to:
 
  {
-   defaults          => 'function',
+   defaults          => 'function_lax',
    attributes        => ':method',
    shift             => '$self',
    invocant          => 1,
@@ -768,24 +781,30 @@ C<method> is equivalent to:
  }
 
 
-C<classmethod> is equivalent to:
+C<classmethod_lax> is equivalent to:
 
  {
-   defaults          => 'method',
+   defaults          => 'method_lax',
    shift             => '$class',
  }
 
-C<function_strict>, C<method_strict>, and
-C<classmethod_strict> are like C<function>, C<method>, and
-C<classmethod>, respectively, but with C<< strict => 1 >>.
+C<function_strict>, C<method_strict>, and C<classmethod_strict> are like
+C<function_lax>, C<method_lax>, and C<classmethod_lax>, respectively, but with
+C<< strict => 1 >>.
+
+C<function>, C<method> and C<classmethod> are equivalent to C<function_lax>,
+C<method_lax> and C<classmethod_lax>, respectively.
 
 =back
 
-Plain C<use Function::Parameters> is equivalent to
-C<< use Function::Parameters { fun => 'function', method => 'method' } >>.
-
 C<use Function::Parameters qw(:strict)> is equivalent to
 C<< use Function::Parameters { fun => 'function_strict', method => 'method_strict' } >>.
+
+C<use Function::Parameters qw(:lax)> is equivalent to
+C<< use Function::Parameters { fun => 'function_lax', method => 'method_lax' } >>.
+
+Plain C<use Function::Parameters> is equivalent to
+C<< use Function::Parameters { fun => 'function', method => 'method' } >>.
 
 =head2 Introspection
 
@@ -875,8 +894,10 @@ generated code corresponds to:
 =head1 BUGS AND INCOMPATIBILITIES
 
 A future version of this module may enable C<< runtime => 1 >> by default for
-methods. If this would break your code, please send me a note or file a bug on
-RT.
+methods.
+If this would break your code, please send me a note or file a bug on RT.
+
+A future version of this module may default to strict mode instead of lax.
 
 =head1 SUPPORT AND DOCUMENTATION
 

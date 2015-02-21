@@ -5,7 +5,10 @@ use Test::More tests => 108;
 use warnings FATAL => 'all';
 use strict;
 
-use Function::Parameters qw(:strict);
+use Function::Parameters {
+	fun => 'function_strict',
+	sad => 'function_lax',
+};
 
 fun error_like($re, $body, $name = undef) {
 	local $@;
@@ -113,10 +116,8 @@ is_deeply foo_1_('a', 'b', 'c'), ['a', 'b', 'c'];
 is_deeply foo_1_('a', 'b', 'c', 'd'), ['a', 'b', 'c', 'd'];
 
 
-use Function::Parameters qw(:lax);
-
-fun puppy($eyes) { [@_] }
-fun frog($will, $never) { $will * 3 + (pop) - $never }
+sad puppy($eyes) { [@_] }
+sad frog($will, $never) { $will * 3 + (pop) - $never }
 
 is_deeply puppy, [];
 is_deeply puppy('a'), ['a'];
