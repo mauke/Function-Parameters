@@ -1,0 +1,9 @@
+language: perl
+perl:
+    - "5.20"
+    - "5.18"
+    - "5.16"
+    - "5.14"
+script:
+    - perl Makefile.PL
+    - make -f TravisMakefile test
