@@ -113,7 +113,9 @@ enum {
     FLAG_NAMED_PARAMS = 0x020,
     FLAG_TYPES_OK     = 0x040,
     FLAG_CHECK_TARGS  = 0x080,
-    FLAG_RUNTIME      = 0x100
+    FLAG_RUNTIME      = 0x100,
+    FLAG_MSC_QUESTION_MARK_MEANS_OPTIONAL = 0x200,
+    FLAG_MSC_NAMED_OPTIONAL_BY_DEFAULT    = 0x400
 };
 
 DEFSTRUCT(KWSpec) {
@@ -979,6 +981,21 @@ static PADOFFSET parse_param(
 
             lex_read_space(0);
             c = lex_peek_unichar(0);
+        }
+    } else if (c == '?' && spec->flags & FLAG_MSC_QUESTION_MARK_MEANS_OPTIONAL) {
+        lex_read_unichar(0);
+        lex_read_space(0);
+
+        op_guard_update(ginit, newOP(OP_UNDEF, 0));
+        c = lex_peek_unichar(0);
+    } else if (*pflags & PARAM_NAMED && spec->flags & FLAG_MSC_NAMED_OPTIONAL_BY_DEFAULT) {
+        if (c == '!') {
+            lex_read_unichar(0);
+            lex_read_space(0);
+
+            c = lex_peek_unichar(0);
+        } else {
+            op_guard_update(ginit, newOP(OP_UNDEF, 0));
         }
     }
 
@@ -2246,6 +2263,8 @@ WARNINGS_ENABLE {
     newCONSTSUB(stash, "FLAG_TYPES_OK",     newSViv(FLAG_TYPES_OK));
     newCONSTSUB(stash, "FLAG_CHECK_TARGS",  newSViv(FLAG_CHECK_TARGS));
     newCONSTSUB(stash, "FLAG_RUNTIME",      newSViv(FLAG_RUNTIME));
+    newCONSTSUB(stash, "FLAG_MSC_QUESTION_MARK_MEANS_OPTIONAL", newSViv(FLAG_MSC_QUESTION_MARK_MEANS_OPTIONAL));
+    newCONSTSUB(stash, "FLAG_MSC_NAMED_OPTIONAL_BY_DEFAULT",    newSViv(FLAG_MSC_NAMED_OPTIONAL_BY_DEFAULT));
     newCONSTSUB(stash, "HINTK_KEYWORDS", newSVpvs(HINTK_KEYWORDS));
     newCONSTSUB(stash, "HINTK_FLAGS_",   newSVpvs(HINTK_FLAGS_));
     newCONSTSUB(stash, "HINTK_SHIFT_",   newSVpvs(HINTK_SHIFT_));
