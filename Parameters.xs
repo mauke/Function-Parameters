@@ -964,6 +964,14 @@ static PADOFFSET parse_param(
     lex_read_space(0);
     c = lex_peek_unichar(0);
 
+    if (c == '?' && spec->flags & FLAG_MSC_QUESTION_MARK_MEANS_OPTIONAL) {
+        lex_read_unichar(0);
+        lex_read_space(0);
+
+        op_guard_update(ginit, newOP(OP_UNDEF, 0));
+        c = lex_peek_unichar(0);
+    }
+
     if (c == '=') {
         lex_read_unichar(0);
         lex_read_space(0);
@@ -982,12 +990,6 @@ static PADOFFSET parse_param(
             lex_read_space(0);
             c = lex_peek_unichar(0);
         }
-    } else if (c == '?' && spec->flags & FLAG_MSC_QUESTION_MARK_MEANS_OPTIONAL) {
-        lex_read_unichar(0);
-        lex_read_space(0);
-
-        op_guard_update(ginit, newOP(OP_UNDEF, 0));
-        c = lex_peek_unichar(0);
     } else if (*pflags & PARAM_NAMED && spec->flags & FLAG_MSC_NAMED_OPTIONAL_BY_DEFAULT) {
         if (c == '!') {
             lex_read_unichar(0);

@@ -16,6 +16,6 @@ method foo(:$name, :$value) {
 }
 
 like exception { Foo->foo(name => 42, value =>) },
-  qr/Too few arguments for method foo/;
+  qr/Odd number of paired arguments for method foo/;
 
 done_testing;
