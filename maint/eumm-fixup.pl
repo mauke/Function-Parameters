@@ -1,10 +1,15 @@
+use strict;
+use warnings;
+
+sub {
+    my ($opt) = @_;
+
+    $opt->{postamble}{text} = <<'EOT';
 export RELEASE_TESTING=1
 export HARNESS_OPTIONS=c
 
-include ./Makefile
-
-CCFLAGS   := $(CCFLAGS) -DDEVEL -fsanitize=address -fsanitize=undefined
-OTHERLDFLAGS := $(OTHERLDFLAGS) -fsanitize=address -fsanitize=undefined
+CCFLAGS += -DDEVEL -fsanitize=address -fsanitize=undefined
+OTHERLDFLAGS +=    -fsanitize=address -fsanitize=undefined
 
 .PHONY: multitest
 multitest:
@@ -20,3 +25,5 @@ multitest:
 	done; \
 	[ -z "$$k" ] || { echo "OK:    $$k" >&2; } ; \
 	[ -z "$$f" ] || { echo "Failed:$$f" >&2; exit 1; }
+EOT
+}
