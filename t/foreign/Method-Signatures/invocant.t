@@ -4,12 +4,9 @@
 
 use strict;
 use warnings FATAL => 'all';
+use lib 't/lib';
 
-use Test::More
-    eval { require Moose }
-    ? (tests => 6)
-    : (skip_all => "Moose required for testing types")
-;
+use Test::More 'no_plan';
 
 our $skip_no_invocants;
 
@@ -17,7 +14,7 @@ our $skip_no_invocants;
     package Stuff;
 
     use Test::More;
-    use Function::Parameters qw(:strict);
+    use Method::Signatures;
 
     sub new { bless {}, __PACKAGE__ }
 
@@ -34,6 +31,10 @@ our $skip_no_invocants;
     }
 
     method without_space($class:$arg) {
+        $class->bar($arg);
+    }
+
+    method with_space_before_invocant( $class: $arg) {
         $class->bar($arg);
     }
 
@@ -62,9 +63,10 @@ our $skip_no_invocants;
 }
 
 
-is( Stuff->invocant,                0 );
-is( Stuff->with_arg(42),            42 );
-is( Stuff->without_space(42),       42 );
+is( Stuff->invocant,                            0 );
+is( Stuff->with_arg(42),                        42 );
+is( Stuff->without_space(42),                   42 );
+is( Stuff->with_space_before_invocant(42),      42 );
 
 my $stuff = Stuff->new;
 is( $stuff->no_invocant_class_type(Foo::Bar->new),     'Foo::Bar' );

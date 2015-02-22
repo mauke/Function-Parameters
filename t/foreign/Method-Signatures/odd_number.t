@@ -1,17 +1,21 @@
 #!perl
 
-use warnings FATAL => 'all';
-use strict;
+package Foo;
 
-use Test::More tests => 1;
+use strict;
+use warnings;
+use lib 't/lib';
+
+use Test::More;
 use Test::Fatal;
 
-use Function::Parameters qw(:strict);
+use Method::Signatures;
 
-package Foo {
-    method foo(:$name, :$value) {
-        return $name, $value;
-    }
+method foo(:$name, :$value) {
+    return $name, $value;
 }
 
-like exception { Foo->foo(name => 42, value =>) }, qr/Too few arguments.+ line 17/;
+like exception { Foo->foo(name => 42, value =>) },
+  qr/Too few arguments for method foo/;
+
+done_testing;

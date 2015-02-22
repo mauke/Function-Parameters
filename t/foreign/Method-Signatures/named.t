@@ -1,6 +1,7 @@
 #!perl
 use warnings FATAL => 'all';
 use strict;
+use lib 't/lib';
 
 use Test::More;
 
@@ -9,7 +10,7 @@ use Test::More;
 
     use Test::More;
     use Test::Fatal;;
-    use Function::Parameters qw(:strict);
+    use Method::Signatures;
 
     method formalize($text, :$justify = "left", :$case = undef) {
         my %params;

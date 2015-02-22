@@ -1,11 +1,14 @@
-#!perl
-use warnings FATAL => 'all';
+#!perl -w
+
 use strict;
+use warnings FATAL => 'all';
+use lib 't/lib';
+
 use Test::More 'no_plan';
 
 {
     package Foo;
-    use Function::Parameters qw(:strict);
+    use Method::Signatures;
 
     method new (%args) {
         return bless {%args}, $self;
@@ -27,16 +30,16 @@ use Test::More 'no_plan';
         return($self, @_);
     }
 
-#    method echo(@_) {
-#        return($self, @_);
-#    }
+    method echo(@args) {
+        return($self, @args);
+    }
 
     method caller($height = 0) {
         return (CORE::caller($height))[0..2];
     }
 
 #line 39
-    method warn($foo = undef) {
+    method warn($foo=) {
         my $warning = '';
         local $SIG{__WARN__} = sub { $warning = join '', @_; };
         CORE::warn "Testing warn";
@@ -58,14 +61,22 @@ is $obj->get("bar"), 23;
 $obj->set(foo => 99);
 is $obj->get("foo"), 99;
 
-is_deeply [$obj->no_proto], [$obj];
-for my $method (qw(empty_proto)) {
+for my $method (qw(no_proto empty_proto)) {
     is_deeply [$obj->$method], [$obj];
-    ok !eval { $obj->$method(23); 1 };
-    like $@, qr{\QToo many arguments};
+
+    TODO: {
+        local $TODO;
+        $TODO = 'no signature should be the same as the empty signature'
+          if $method eq 'no_proto';
+        ok !eval { $obj->$method(23); 1 };
+    }
+    TODO: {
+        local $TODO = 'wrong number of arguments reported for methods';
+        like $@, qr{Too many arguments for method \Q$method \(expected 0, got 1\)};
+    }
 }
 
-#is_deeply [$obj->echo(1,2,3)], [$obj,1,2,3], "echo";
+is_deeply [$obj->echo(1,2,3)], [$obj,1,2,3], "echo";
 
 is_deeply [$obj->caller], [__PACKAGE__, $0, __LINE__], 'caller works';
 

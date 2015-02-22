@@ -1,7 +1,9 @@
 #!perl
+
 use strict;
 use warnings FATAL => 'all';
 
+use lib 't/lib';
 use Test::More 'no_plan';
 
 use attributes;
@@ -10,9 +12,9 @@ use attributes;
     package Stuff;
 
     use Test::More;
-    use Function::Parameters qw(:strict);
+    use Method::Signatures;
 
-    method echo($arg) {
+    method echo($arg) : method {
         return $arg;
     }
 
@@ -25,9 +27,9 @@ use attributes;
     package Foo;
 
     use Test::More;
-    use Function::Parameters qw(:strict);
+    use Method::Signatures;
 
-    my $code = fun () : method {};
+    my $code = func () : method {};
     is_deeply( [attributes::get $code], ['method'] );
 }
 
@@ -35,7 +37,8 @@ use attributes;
 {
     package Things;
 
-    use Function::Parameters qw(:strict);
+    use attributes;
+    use Method::Signatures;
 
     my $attrs;
     my $cb_called;

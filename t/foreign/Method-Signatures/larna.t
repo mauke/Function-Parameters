@@ -1,14 +1,16 @@
 #!perl
+
 use strict;
 use warnings FATAL => 'all';
+use lib 't/lib';
 
 use Test::More;
 
-use Function::Parameters qw(:strict);
+use Method::Signatures;
 
 {
     my $a;
-    ok eval q{ $a = [ fun () {}, 1 ]; 1 }, 'anonymous function in list is okay'
+    ok eval q{ $a = [ func () {}, 1 ]; 1 }, 'anonymous function in list is okay'
         or diag "eval error: $@";
     is ref $a->[0], "CODE";
     is $a->[1], 1;

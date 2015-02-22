@@ -2,6 +2,8 @@
 
 use strict;
 use warnings FATAL => 'all';
+use lib 't/lib';
+
 use Dir::Self;
 use lib __DIR__ . '/lib';
 

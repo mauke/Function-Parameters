@@ -1,13 +1,15 @@
 #!perl
+
 use strict;
 use warnings FATAL => 'all';
 
+use lib 't/lib';
 use Test::More tests => 3;
 
 {
     package Bla;
     use Test::More;
-    use Function::Parameters qw(:strict);
+    use Method::Signatures;
 
     method new ($class:) {
         bless {}, $class;
