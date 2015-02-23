@@ -2,11 +2,12 @@
 
 use strict;
 use warnings FATAL => 'all';
+use lib 't/lib';
 
 package Foo;
 
 use Test::More "no_plan";
-use Function::Parameters qw(:strict);
+use Method::Signatures;
 
 method foo(
     $arg
