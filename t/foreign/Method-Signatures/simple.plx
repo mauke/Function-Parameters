@@ -2,8 +2,9 @@ package Foo;
 
 use strict;
 use warnings;
+use lib 't/lib';
 
-use Function::Parameters;
+use Method::Signatures;
 
 method echo($msg) {
     return $msg

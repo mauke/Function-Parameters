@@ -1,12 +1,15 @@
 #!perl
-use warnings FATAL => 'all';
+
 use strict;
+use warnings FATAL => 'all';
+use lib 't/lib';
+
 use Test::More tests => 1;
 
 {
     package Thing;
 
-    use Function::Parameters qw(:strict);
+    use Method::Signatures;
     method foo {"wibble"}
 
     ::is( Thing->foo, "wibble" );

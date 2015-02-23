@@ -1,14 +1,16 @@
 #!perl
+
 use strict;
 use warnings FATAL => 'all';
 
+use lib 't/lib';
 use Test::More 'no_plan';
 
 {
     package Stuff;
 
     use Test::More;
-    use Function::Parameters qw(:strict);
+    use Method::Signatures;
 
     method echo($arg) {
         return $arg

@@ -4,11 +4,12 @@ package Foo;
 
 use strict;
 use warnings FATAL => 'all';
+use lib 't/lib';
 
 use Test::More;
 use Test::Fatal;
 
-use Function::Parameters { method => { defaults => 'method', runtime => 0 } };
+use Method::Signatures;
 
 
 our $phase;
@@ -37,16 +38,16 @@ sub method_undefined
 method top_level_default() {}
 
 # Turn it off.
-use Function::Parameters { method => { defaults => 'method', runtime => 1 } };
+use Method::Signatures { compile_at_BEGIN => 0 };
 method top_level_off() {}
 
 # And on again.
-use Function::Parameters { method => { defaults => 'method', runtime => 0 } };
+use Method::Signatures { compile_at_BEGIN => 1 };
 method top_level_on() {}
 
 # Now turn it off inside a lexical scope
 {
-    use Function::Parameters { method => { defaults => 'method', runtime => 1 } };
+    use Method::Signatures { compile_at_BEGIN => 0 };
     method inner_scope_off() {}
 }
 

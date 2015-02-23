@@ -1,9 +1,10 @@
 #!perl
 
-# Test the $arg = undef optional syntax.
+# Test the $arg? optional syntax.
 
 use strict;
-use warnings FATAL => 'all';
+use warnings;
+use lib 't/lib';
 
 use Test::More;
 
@@ -11,22 +12,22 @@ use Test::More;
     package Stuff;
 
     use Test::More;
-    use Test::Fatal;
-    use Function::Parameters qw(:strict);
+    use Test::Fatal qw(lives_ok);
+    use Method::Signatures;
 
-    method whatever($this = undef) {
+    method whatever($this?) {
         return $this;
     }
 
     is( Stuff->whatever(23),    23 );
 
-    method things($this = 99) {
+    method things($this? = 99) {
         return $this;
     }
 
     is( Stuff->things(),        99 );
 
-    method some_optional($that, $this = undef) {
+    method some_optional($that, $this?) {
         return $that + ($this || 0);
     }
 
@@ -34,10 +35,11 @@ use Test::More;
     is( Stuff->some_optional(18), 18 );
 
 
-    method named_params(:$this = undef, :$that = undef) {}
+    # are named parameters optional by default?
+    method named_params(:$this, :$that) {}
 
-    is exception { Stuff->named_params(this => 0) }, undef, 'can leave out some named params';
-    is exception { Stuff->named_params(         ) }, undef, 'can leave out all named params';
+    lives_ok { Stuff->named_params(this => 0) } 'can leave out some named params';
+    lives_ok { Stuff->named_params(         ) } 'can leave out all named params';
 
 
     # are slurpy parameters optional by default?
@@ -45,9 +47,9 @@ use Test::More;
     method slurpy_param($this, $that = 0, @other) {}
 
     my @a = ();
-    is exception { Stuff->slurpy_param(0, 0, @a) }, undef, 'can pass empty array to slurpy param';
-    is exception { Stuff->slurpy_param(0, 0    ) }, undef, 'can omit slurpy param altogether';
-    is exception { Stuff->slurpy_param(0       ) }, undef, 'can omit other optional params as well as slurpy param';
+    lives_ok { Stuff->slurpy_param(0, 0, @a) } 'can pass empty array to slurpy param';
+    lives_ok { Stuff->slurpy_param(0, 0    ) } 'can omit slurpy param altogether';
+    lives_ok { Stuff->slurpy_param(0       ) } 'can omit other optional params as well as slurpy param';
 }
 
 

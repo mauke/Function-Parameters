@@ -4,12 +4,13 @@
 
 use strict;
 use warnings FATAL => 'all';
+use lib 't/lib';
 
 use Test::More;
 
-use Function::Parameters qw(:strict);
+use Method::Signatures;
 
-fun foo($foo, $bar,) {
+func foo($foo, $bar,) {
     return [$foo, $bar];
 }
 

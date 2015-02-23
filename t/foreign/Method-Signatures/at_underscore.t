@@ -1,15 +1,31 @@
-#!perl
+#!/usr/bin/env perl
+
+# Test the @_ signature
+
 use strict;
 use warnings FATAL => 'all';
+use lib 't/lib';
 
 use Test::More;
 
+BEGIN {
+    TODO: {
+        local $TODO = '# F::P currently does not support the @_ signature.';
+        use Method::Signatures;
+
+        if( !ok( eval q[ func (@_){}; ] ) ) {
+            done_testing;
+            exit;
+        }
+    }
+}
+
 {
     package Foo;
-    use Function::Parameters qw(:strict);
-
-    fun foo { return @_ }
-    method bar { return @_ }
+    use Method::Signatures;
+    
+    func foo(@_) { return @_ }
+    method bar(@_) { return @_ }
 }
 
 is_deeply [Foo::foo()], [];

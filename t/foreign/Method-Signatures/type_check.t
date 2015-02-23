@@ -1,17 +1,14 @@
-#!perl
+#!/usr/bin/perl
 
 use strict;
-use warnings FATAL => 'all';
+use warnings;
+use lib 't/lib';
 
-use Test::More
-    eval { require Moose }
-    ? ()
-    : (skip_all => "Moose required for testing types")
-;
 use Test::More;
-use Test::Fatal;
+use Test::Warn;
+use Test::Exception;
 
-use Function::Parameters qw(:strict);
+use Method::Signatures;
 
 
 { package Foo::Bar; sub new { bless {}, __PACKAGE__; } }
@@ -42,10 +39,10 @@ our @TYPES =
                                             =>  { foo=>[1..3], bar=>[1] }       =>  { foo=>['a'] }                               ,
 ##  ScalarRef[X] not implemented in Mouse, so this test is moved to typeload_moose.t
 ##  if Mouse starts supporting it, the test could be restored here
-    paramized_sref  =>  'ScalarRef[Num]'    =>  \42                             =>  \'thing'                            ,
-    int_or_aref     =>  'Int|ArrayRef[Int]' =>  [ 42 , [42 ] ]                  =>  'foo'                               ,
+#   paramized_sref  =>  'ScalarRef[Num]'    =>  \42                             =>  \'thing'                            ,
+    int_or_aref     =>  'ArrayRef[Int]|Int' =>  [ 42 , [42 ] ]                  =>  'foo'                               ,
     int_or_aref_or_undef
-                    =>  'Int|ArrayRef[Int]|Undef'
+                    =>  'ArrayRef[Int]|Int|Undef'
                                             =>  [ 42 , [42 ], undef ]           =>  'foo'                               ,
 );
 
@@ -58,9 +55,10 @@ our $tester;
     use warnings;
 
     use Test::More;
-    use Test::Fatal;
+    use Test::Warn;
+    use Test::Exception;
 
-    use Function::Parameters qw(:strict);
+    use Method::Signatures;
 
     method new ($class:) { bless {}, $class; }
 
@@ -76,8 +74,7 @@ our $tester;
         no strict 'refs';
 
         # make sure the declaration of the method doesn't throw a warning
-        is eval qq{ method $method ($type \$bar) {} 42 }, 42;
-        is $@, '';
+        warning_is { eval qq{ method $method ($type \$bar) {} } } undef, "no warnings from declaring $name param";
 
         # positive test--can we call it with a good value?
         my @vals = _list($goodval);
@@ -85,17 +82,18 @@ our $tester;
         foreach (@vals)
         {
             my $tag = @vals ? ' (alternative ' . $count++ . ')' : '';
-            is exception { $tester->$method($_) }, undef, "call with good value for $name passes" . $tag;
+            lives_ok { $tester->$method($_) } "call with good value for $name passes" . $tag;
         }
 
         # negative test--does calling it with a bad value throw an exception?
         @vals = _list($badval);
         $count = 1;
-        foreach (@vals)
+        foreach my $val (@vals)
         {
             my $tag = @vals ? ' (#' . $count++ . ')' : '';
-            like exception { $tester->$method($_) }, qr/method \Q$method\E.+parameter 1\b.+\$bar\b.+Validation failed for '[^']+' with value\b/,
-                    "call with bad value for $name dies";
+            throws_ok { $tester->$method($val) }
+              qr{^In method \Q$method\E: parameter 1 \(\$bar\): Validation failed for '\Q$type\E' with value \Q$val\E},
+              "call with bad value for $name dies";
         }
     }
 
@@ -103,46 +101,51 @@ our $tester;
     # try some mixed (i.e. some with a type, some without) and multiples
 
     my $method = 'check_mixed_type_first';
-    is eval qq{ method $method (Int \$bar, \$baz) {} 42 }, 42;
-    is exception { $tester->$method(0, 'thing') }, undef, 'call with good values (type, notype) passes';
-    like exception { $tester->$method('thing1', 'thing2') }, qr/method \Q$method\E.+parameter 1\b.+\$bar\b.+Validation failed for '[^']+' with value\b/,
-            'call with bad values (type, notype) dies';
+    warning_is { eval qq{ method $method (Int \$bar, \$baz) {} } } undef, 'no warnings (type, notype)';
+    lives_ok { $tester->$method(0, 'thing') } 'call with good values (type, notype) passes';
+    throws_ok { $tester->$method('thing1', 'thing2') }
+      qr{^In method \Q$method\E: parameter 1 \(\$bar\): Validation failed for 'Int' with value thing1},
+      'call with bad values (type, notype) dies';
 
     $method = 'check_mixed_type_second';
-    is eval qq{ method $method (\$bar, Int \$baz) {} 42 }, 42;
-    is exception { $tester->$method('thing', 1) }, undef, 'call with good values (notype, type) passes';
-    like exception { $tester->$method('thing1', 'thing2') }, qr/method \Q$method\E.+parameter 2\b.+\$baz\b.+Validation failed for '[^']+' with value\b/,
-            'call with bad values (notype, type) dies';
+    warning_is { eval qq{ method $method (\$bar, Int \$baz) {} } } undef, 'no warnings (notype, type)';
+    lives_ok { $tester->$method('thing', 1) } 'call with good values (notype, type) passes';
+    throws_ok { $tester->$method('thing1', 'thing2') }
+      qr{^In method \Q$method\E: parameter 2 \(\$baz\): Validation failed for 'Int' with value thing2},
+      'call with bad values (notype, type) dies';
 
     $method = 'check_multiple_types';
-    is eval qq{ method $method (Int \$bar, Int \$baz) {} 42 }, 42;
-    is exception { $tester->$method(1, 1) }, undef, 'call with good values (type, type) passes';
+    warning_is { eval qq{ method $method (Int \$bar, Int \$baz) {} } } undef, 'no warnings when type loaded';
+    lives_ok { $tester->$method(1, 1) } 'call with good values (type, type) passes';
     # with two types, and bad values for both, they should fail in order of declaration
-    like exception { $tester->$method('thing1', 'thing2') }, qr/method \Q$method\E.+parameter 1\b.+\$bar\b.+Validation failed for '[^']+' with value\b/,
-            'call with bad values (type, type) dies';
+    throws_ok { $tester->$method('thing1', 'thing2') }
+      qr{^In method \Q$method\E: parameter 1 \(\$bar\): Validation failed for 'Int' with value thing1},
+      'call with bad values (type, type) dies';
 
     # want to try one with undef as well to make sure we don't get an uninitialized warning
 
-    like exception { $tester->check_int(undef) }, qr/method check_int.+parameter 1\b.+\$bar\b.+Validation failed for '[^']+' with value\b/,
-            'call with bad values (undef) dies';
-
+    warning_is { eval { $tester->check_int(undef) } } undef, 'no warning for undef value in type checking';
+    like $@, qr{^In method check_int: parameter 1 \(\$bar\): Validation failed for 'Int' with value undef},
+      'call with undefined Int arg is okay';
 
 
     # finally, some types that shouldn't be recognized
     my $type;
 
-    #$method = 'unknown_type';
-    #$type = 'Bmoogle';
-    #is eval qq{ method $method ($type \$bar) {} 42 }, 42;
-    #like exception { $tester->$method(42) }, qr/ducks $tester, $type, "perhaps you forgot to load it?", $method/,
-    #        'call with unrecognized type dies';
+    $method = 'unknown_type';
+    $type = 'Bmoogle';
+    warning_is { eval qq{ method $method ($type \$bar) {} } } undef, 'no warnings when weird type loaded';
+    throws_ok { $tester->$method(42) }
+      qr{type $type is unrecognized},
+      'call with unrecognized type dies';
 
     # this one is a bit specialer in that it involved an unrecognized parameterization
     $method = 'unknown_paramized_type';
     $type = 'Bmoogle[Int]';
-    is eval qq{ method $method ($type \$bar) {} 42 }, undef;
-    like $@, qr/\QCould not locate the base type (Bmoogle)/;
-    like exception { $tester->$method(42) }, qr/\QCan't locate object method "unknown_paramized_type" via package "TypeCheck::Class"/;
+    warning_is { eval qq{ method $method ($type \$bar) {} } } undef, 'no warnings when weird paramized type loaded';
+    throws_ok { $tester->$method(42) }
+      qr{type \Q$type\E},
+      'call with unrecognized paramized type dies';
 
 }
 

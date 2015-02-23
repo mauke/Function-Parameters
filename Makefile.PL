@@ -62,8 +62,6 @@ my %opt = (
     },
 );
 
-(do 'maint/eumm-fixup.pl' || die $@ || $!)->(\%opt) if !-f 'META.yml';
-
 (my $mm_version = ExtUtils::MakeMaker->VERSION) =~ tr/_//d;
 
 if ($mm_version < 6.67_04) {

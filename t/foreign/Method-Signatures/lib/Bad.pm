@@ -2,7 +2,7 @@ package Bad;
 
 use strict;
 use warnings;
-use Function::Parameters qw(:strict);
+use Method::Signatures;
 
 ## $info->{} should be $info{}
 method meth1 ($foo) {
@@ -12,4 +12,4 @@ method meth1 ($foo) {
 
 method meth2 ($bar) {}
 
-'ok'
+1;

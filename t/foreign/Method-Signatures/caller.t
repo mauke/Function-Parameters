@@ -1,6 +1,8 @@
 #!perl
-use warnings FATAL => 'all';
+
 use strict;
+use warnings FATAL => 'all';
+use lib 't/lib';
 
 # Test that caller() works
 
@@ -9,7 +11,7 @@ use strict;
 
     use Test::More 'no_plan';
 
-    use Function::Parameters qw(:strict);
+    use Method::Signatures;
 
     sub sub_caller {
         my($self, $level) = @_;

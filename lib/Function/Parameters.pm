@@ -169,6 +169,7 @@ sub import {
         $clean{check_argument_count} = $clean{check_argument_types} = 1 if delete $type{strict};
 
         $clean{ms_compat_question_mark}  = _delete_default \%type, 'ms_compat_question_mark', 0;
+        $clean{ms_compat_exclaimation_mark}  = _delete_default \%type, 'ms_compat_exclaimation_mark', 0;
         $clean{ms_compat_named_optional} = _delete_default \%type, 'ms_compat_named_optional', 0;
 
         if (my $rt = delete $type{reify_type}) {
@@ -210,6 +211,7 @@ sub import {
         $flags |= FLAG_TYPES_OK     if $type->{types};
         $flags |= FLAG_RUNTIME      if $type->{runtime};
         $flags |= FLAG_MSC_QUESTION_MARK_MEANS_OPTIONAL if $type->{ms_compat_question_mark};
+        $flags |= FLAG_MSC_EXCLAIMATION_MARK_MEANS_REQUIRED if $type->{ms_compat_exclaimation_mark};
         $flags |= FLAG_MSC_NAMED_OPTIONAL_BY_DEFAULT    if $type->{ms_compat_named_optional};
         $^H{HINTK_FLAGS_ . $kw} = $flags;
         $^H{HINTK_SHIFT_ . $kw} = $type->{shift};

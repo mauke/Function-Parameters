@@ -1,12 +1,14 @@
 #!perl
+
 use strict;
 use warnings FATAL => 'all';
+use lib 't/lib';
 
 use Test::More tests => 1;
 
-use Function::Parameters qw(:strict);
+use Method::Signatures;
 
-fun echo($arg) {
+func echo($arg) {
     return $arg;
 }
 

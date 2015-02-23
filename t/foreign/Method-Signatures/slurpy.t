@@ -4,49 +4,31 @@
 
 use strict;
 use warnings FATAL => 'all';
+use lib 't/lib';
 
 use Test::More;
-#use Test::Exception;
+use Test::Fatal;
 
 {
     package Stuff;
-    use Function::Parameters qw(:strict);
+    use Method::Signatures;
     use Test::More;
 
     method slurpy(@that) { return \@that }
-    method slurpy_required(@that) { return \@that }
+    method slurpy_required(@that!) { return \@that }
     method slurpy_last($this, @that) { return $this, \@that; }
 
-    ok !eval q[fun slurpy_first(@that, $this) { return $this, \@that; }];
-    like $@, qr{\@that\b.+\$this\b};
-#    TODO: {
-#        local $TODO = "error message incorrect inside an eval";
+    ok !eval q[func slurpy_first(@that, $this) { return $this, \@that; }];
+    like $@, qr{In func slurpy_first: I was expecting "\)" after "\@that", not "\$this"};
 
-#        like $@, qr{Stuff::};
-        like $@, qr{\bslurpy_first\b};
-#    }
+    ok !eval q[func slurpy_middle($this, @that, $other) { return $this, \@that, $other }];
+    like $@, qr{In func slurpy_middle: I was expecting "\)" after "\@that", not "\$other"}i;
+    ok !eval q[func slurpy_positional(:@that) { return \@that; }];
+    like $@, qr{In func slurpy_positional: named parameter \@that can't be an array}i;
 
-    ok !eval q[fun slurpy_middle($this, @that, $other) { return $this, \@that, $other }];
-    like $@, qr{\@that\b.+\$other\b};
-#    TODO: {
-#        local $TODO = "error message incorrect inside an eval";
 
-#        like $@, qr{Stuff::};
-        like $@, qr{\bslurpy_middle\b};
-#    }
-
-    ok !eval q[fun slurpy_positional(:@that) { return \@that; }];
-    like $@, qr{\bnamed\b.+\@that\b.+\barray\b};
-
-#    TODO: {
-#        local $TODO = "error message incorrect inside an eval";
-
-#        like $@, qr{Stuff::};
-        like $@, qr{\bslurpy_positional\b};
-#    }
-
-    ok !eval q[fun slurpy_two($this, @that, @other) { return $this, \@that, \@other }];
-    like $@, qr{\@that\b.+\@other\b};
+    ok !eval q[func slurpy_two($this, @that, @other) { return $this, \@that, \@other }];
+    like $@, qr{In func slurpy_two: I was expecting "\)" after "\@that", not "\@other"};
 }
 
 
@@ -55,10 +37,10 @@ note "Optional slurpy params accept 0 length list"; {
     is_deeply [Stuff->slurpy_last(23)], [23, []];
 }
 
-#note "Required slurpy params require an argument"; {
-#    throws_ok { Stuff->slurpy_required() }
-#      qr{slurpy_required\Q()\E, missing required argument \@that at \Q$0\E line @{[__LINE__ - 1]}};
-#}
+note "Required slurpy params require an argument"; {
+    ok !eval { Stuff->slurpy_required() };
+    like $@, qr{slurpy_required\Q()\E, missing required argument \@that at \Q$0\E line @{[__LINE__ - 1]}};
+}
 
 
 done_testing;
