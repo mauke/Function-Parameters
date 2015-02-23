@@ -1,7 +1,8 @@
-#!perl
+#!/usr/bin/perl
 
 use strict;
 use warnings FATAL => 'all';
+use lib 't/lib';
 
 use Test::More;
 
@@ -9,10 +10,7 @@ use Test::More;
 {
     package Foo::Bar;
 
-    use strict;
-    use warnings;
-
-    use Function::Parameters qw(:strict);
+    use Method::Signatures;
 
     method new ($class:) { bless {}, $class; }
 
