@@ -2081,6 +2081,11 @@ static int kw_flags_enter(pTHX_ Resource ***psen, const char *kw_ptr, STRLEN kw_
     STRLEN kw_active_len;
     bool kw_is_utf8;
 
+    /* don't bother doing anything fancy after a syntax error */
+    if (PL_parser && PL_parser->error_count) {
+        return FALSE;
+    }
+
     if (!(hints = GvHV(PL_hintgv))) {
         return FALSE;
     }
