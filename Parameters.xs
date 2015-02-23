@@ -114,8 +114,9 @@ enum {
     FLAG_TYPES_OK     = 0x040,
     FLAG_CHECK_TARGS  = 0x080,
     FLAG_RUNTIME      = 0x100,
-    FLAG_MSC_QUESTION_MARK_MEANS_OPTIONAL = 0x200,
-    FLAG_MSC_NAMED_OPTIONAL_BY_DEFAULT    = 0x400
+    FLAG_MSC_QUESTION_MARK_MEANS_OPTIONAL     = 0x200,
+    FLAG_MSC_EXCLAIMATION_MARK_MEANS_REQUIRED = 0x400,
+    FLAG_MSC_NAMED_OPTIONAL_BY_DEFAULT        = 0x800
 };
 
 DEFSTRUCT(KWSpec) {
@@ -969,6 +970,12 @@ static PADOFFSET parse_param(
         lex_read_space(0);
 
         op_guard_update(ginit, newOP(OP_UNDEF, 0));
+        c = lex_peek_unichar(0);
+    }
+    else if (c == '!' && spec->flags & FLAG_MSC_EXCLAIMATION_MARK_MEANS_REQUIRED) {
+        lex_read_unichar(0);
+        lex_read_space(0);
+        
         c = lex_peek_unichar(0);
     }
 
@@ -2266,6 +2273,7 @@ WARNINGS_ENABLE {
     newCONSTSUB(stash, "FLAG_CHECK_TARGS",  newSViv(FLAG_CHECK_TARGS));
     newCONSTSUB(stash, "FLAG_RUNTIME",      newSViv(FLAG_RUNTIME));
     newCONSTSUB(stash, "FLAG_MSC_QUESTION_MARK_MEANS_OPTIONAL", newSViv(FLAG_MSC_QUESTION_MARK_MEANS_OPTIONAL));
+    newCONSTSUB(stash, "FLAG_MSC_EXCLAIMATION_MARK_MEANS_REQUIRED", newSViv(FLAG_MSC_EXCLAIMATION_MARK_MEANS_REQUIRED));
     newCONSTSUB(stash, "FLAG_MSC_NAMED_OPTIONAL_BY_DEFAULT",    newSViv(FLAG_MSC_NAMED_OPTIONAL_BY_DEFAULT));
     newCONSTSUB(stash, "HINTK_KEYWORDS", newSVpvs(HINTK_KEYWORDS));
     newCONSTSUB(stash, "HINTK_FLAGS_",   newSVpvs(HINTK_FLAGS_));

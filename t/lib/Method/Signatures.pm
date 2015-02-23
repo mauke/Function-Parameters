@@ -47,8 +47,9 @@ sub import {
     my %fp_opts = (
         runtime => 0,
         reify_type => sub { Method::Signatures->_make_constraint($_[0]) },
-        ms_compat_question_mark => 1,
-        ms_compat_named_optional => 1,
+        ms_compat_question_mark         => 1,
+        ms_compat_exclaimation_mark     => 1,
+        ms_compat_named_optional        => 1,
     );
 
     # Adapt compile_at_BEGIN
