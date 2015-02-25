@@ -2,11 +2,6 @@ use strict;
 use warnings;
 use ExtUtils::MakeMaker;
 
-sub MY::postamble {
-    my ($self, %args) = @_;
-    $args{text} || ''
-}
-
 sub merge_key_into {
     my ($href, $target, $source) = @_;
     %{$href->{$target}} = (%{$href->{$target}}, %{delete $href->{$source}});

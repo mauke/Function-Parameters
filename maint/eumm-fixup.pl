@@ -3,6 +3,11 @@ use warnings;
 
 use Config ();
 
+sub MY::postamble {
+    my ($self, %args) = @_;
+    $args{text} || ''
+}
+
 my @ccflags;
 my @otherldflags;
 
