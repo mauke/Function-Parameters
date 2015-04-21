@@ -46,11 +46,12 @@ my %opt = (
     clean  => { FILES    => 'Function-Parameters-*' },
 
     META_MERGE => {
-        'meta-spec' => { version => 2 },
-        resources => {
+        'meta-spec'    => { version => 2 },
+        dynamic_config => 0,
+        resources      => {
             repository => {
-                url => 'git://github.com/mauke/Function-Parameters',
-                web => 'https://github.com/mauke/Function-Parameters',
+                url  => 'git://github.com/mauke/Function-Parameters',
+                web  => 'https://github.com/mauke/Function-Parameters',
                 type => 'git',
             },
         },
