@@ -75,7 +75,7 @@ See http://dev.perl.org/licenses/ for more information.
 #endif
 
 #ifndef SvREFCNT_dec_NN
-#define SvREFCNT_dec_NN(SV) SvREFCNT_dec(SV)
+ #define SvREFCNT_dec_NN(SV) SvREFCNT_dec(SV)
 #endif
 
 
@@ -1860,24 +1860,9 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
                     keys = newUNOP(OP_KEYS, 0, my_var_g(aTHX_ OP_PADHV, 0, param_spec->rest_hash));
                     keys = newLISTOP(OP_SORT, 0, newOP(OP_PUSHMARK, 0), keys);
-                    {
-                        OP *first, *mid, *last;
-
-                        last = keys;
-
-                        mid = mkconstpvs(", ");
-                        mid->op_sibling = last;
-
-                        first = newOP(OP_PUSHMARK, 0);
-
-                        keys = newLISTOP(OP_JOIN, 0, first, mid);
-                        keys->op_targ = pad_alloc(OP_JOIN, SVs_PADTMP);
-                        ((LISTOP *)keys)->op_last = last;
-#if HAVE_PERL_VERSION(5, 21, 2)
-                        mid->op_lastsib = 0;
-                        last->op_lastsib = 1;
-#endif
-                    }
+                    keys->op_flags = (keys->op_flags & ~OPf_WANT) | OPf_WANT_LIST;
+                    keys = op_convert_list(OP_JOIN, 0, op_prepend_elem(OP_LIST, mkconstpvs(", "), keys));
+                    keys->op_targ = pad_alloc(OP_JOIN, SVs_PADTMP);
 
                     msg = mkconstsv(aTHX_ newSVpvf("In %"SVf": no such named parameter: ", SVfARG(declarator)));
                     msg = newBINOP(OP_CONCAT, 0, msg, keys);
