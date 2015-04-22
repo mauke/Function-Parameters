@@ -1,5 +1,12 @@
 Revision history for Function-Parameters
 
+1.0604  2015-04-22
+        - new explicit "lax" mode
+        - fix info() with taint mode on (gh pr #12)
+        - don't hide syntax errors that are followed by a parameter list with
+          types (gh #15)
+        - compatibility with perl v5.21.11 (#103843)
+
 1.0603  2014-11-25
         - some documentation changes
         - compatibility with perl development versions
