@@ -910,7 +910,7 @@ You can also look for information at:
 
 =item MetaCPAN
 
-L<https://metacpan.org/module/Function%3A%3AParameters>
+L<https://metacpan.org/pod/Function%3A%3AParameters>
 
 =item RT, CPAN's request tracker
 
