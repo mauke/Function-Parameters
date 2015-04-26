@@ -61,7 +61,6 @@ t/foreign/Method-Signatures/attributes.t
 t/foreign/Method-Signatures/begin.t
 t/foreign/Method-Signatures/caller.t
 t/foreign/Method-Signatures/comments.t
-t/foreign/Method-Signatures/debugger.t
 t/foreign/Method-Signatures/defaults.t
 t/foreign/Method-Signatures/error_interruption.t
 t/foreign/Method-Signatures/func.t
