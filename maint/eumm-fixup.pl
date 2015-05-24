@@ -1,4 +1,4 @@
-use strict;
+use v5.14;
 use warnings;
 
 use Config ();
@@ -7,6 +7,8 @@ sub MY::postamble {
     my ($self, %args) = @_;
     $args{text} || ''
 }
+
+my $preload_libasan;
 
 my @ccflags;
 my @otherldflags;
@@ -23,6 +25,16 @@ if (-e '/dev/null') {
         push @ccflags,      $flag;
         push @otherldflags, $flag;
     }
+
+    {
+        local $ENV{LD_PRELOAD} = 'libasan.so ' . ($ENV{LD_PRELOAD} // '');
+        my $out = `"$^X" -e 0 2>&1`;
+        if ($out eq '') {
+            $preload_libasan = 1;
+        } else {
+            warn qq{LD_PRELOAD="$ENV{LD_PRELOAD}" "$^X" failed:\n${out}Skipping ...\n};
+        }
+    }
 }
 
 sub {
@@ -36,6 +48,12 @@ CCFLAGS +=      @ccflags -DDEVEL
 OTHERLDFLAGS += @otherldflags
 
 EOT
+    if ($preload_libasan) {
+        $opt->{postamble}{text} .= <<'EOT';
+FULLPERLRUN := LD_PRELOAD="libasan.so $$LD_PRELOAD" $(FULLPERLRUN)
+
+EOT
+    }
 
     $opt->{postamble}{text} .= <<'EOT';
 .PHONY: multitest
