@@ -9,10 +9,18 @@ See http://dev.perl.org/licenses/ for more information.
  */
 
 #ifdef __GNUC__
+ #if __GNUC__ >= 5
+  #define IF_HAVE_GCC_5(X) X
+ #endif
+
  #if (__GNUC__ == 4 && __GNUC_MINOR__ >= 6) || __GNUC__ >= 5
   #define PRAGMA_GCC_(X) _Pragma(#X)
   #define PRAGMA_GCC(X) PRAGMA_GCC_(GCC X)
  #endif
+#endif
+
+#ifndef IF_HAVE_GCC_5
+ #define IF_HAVE_GCC_5(X)
 #endif
 
 #ifndef PRAGMA_GCC
@@ -30,11 +38,11 @@ See http://dev.perl.org/licenses/ for more information.
     WARNINGS_ENABLEW(-Wbad-function-cast) \
     WARNINGS_ENABLEW(-Wcast-align) \
     WARNINGS_ENABLEW(-Wwrite-strings) \
-    /* WARNINGS_ENABLEW(-Wnested-externs) wtf? */ \
     WARNINGS_ENABLEW(-Wstrict-prototypes) \
     WARNINGS_ENABLEW(-Wmissing-prototypes) \
     WARNINGS_ENABLEW(-Winline) \
-    WARNINGS_ENABLEW(-Wdisabled-optimization)
+    WARNINGS_ENABLEW(-Wdisabled-optimization) \
+    IF_HAVE_GCC_5(WARNINGS_ENABLEW(-Wnested-externs))
 
 #else
  #define WARNINGS_RESET
