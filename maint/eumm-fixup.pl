@@ -40,22 +40,26 @@ if (-e '/dev/null') {
 sub {
     my ($opt) = @_;
 
-    $opt->{postamble}{text} .= <<"EOT";
+    $opt->{test}{TESTS} .= ' ' . join(' ', map 'xt' . '/*' x $_ . '.t', 1 .. 4);
+    $opt->{TEST_REQUIRES}{'Test::Pod'} = 1.22;
+
+    $opt->{postamble}{text} .= <<"__EOT__";
 export RELEASE_TESTING=1
 export HARNESS_OPTIONS=c
 
-CCFLAGS +=      @ccflags -DDEVEL
+CCFLAGS      += @ccflags -DDEVEL
 OTHERLDFLAGS += @otherldflags
 
-EOT
+__EOT__
+
     if ($preload_libasan) {
-        $opt->{postamble}{text} .= <<'EOT';
+        $opt->{postamble}{text} .= <<'__EOT__';
 FULLPERLRUN := LD_PRELOAD="libasan.so $$LD_PRELOAD" $(FULLPERLRUN)
 
-EOT
+__EOT__
     }
 
-    $opt->{postamble}{text} .= <<'EOT';
+    $opt->{postamble}{text} .= <<'__EOT__';
 .PHONY: multitest
 multitest:
 	f=''; k=''; \
@@ -70,5 +74,5 @@ multitest:
 	done; \
 	[ -z "$$k" ] || { echo "OK:    $$k" >&2; } ; \
 	[ -z "$$f" ] || { echo "Failed:$$f" >&2; exit 1; }
-EOT
+__EOT__
 }
