@@ -41,7 +41,7 @@ my %opt = (
         Makefile    => '$(VERSION_FROM)',
         '$(OBJECT)' => join(' ', glob 'hax/*.c.inc'),
     },
-    test   => { TESTS    => 't/*.t t/foreign/*.t t/foreign/*/*.t' },
+    test   => { TESTS    => join(' ', map 't' . '/*' x $_ . '.t', 1 .. 4) },
     dist   => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean  => { FILES    => 'Function-Parameters-*' },
 
