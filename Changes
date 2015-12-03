@@ -1,5 +1,12 @@
 Revision history for Function-Parameters
 
+1.0701  2015-12-04
+        - remove old "bare" import syntax:
+            use Function::Parameters 'foo', 'bar';
+            # equivalent to
+            # use Function::Parameters { foo => 'function', bar => 'method' };
+          (marked as deprecated in 0.06, no longer documented since 1.00)
+
 1.0605  2015-04-26
         - update metacpan links
         - remove wonky test
