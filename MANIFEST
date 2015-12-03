@@ -125,7 +125,6 @@ t/name_2.fail
 t/name_3.fail
 t/name_4.fail
 t/named_params.t
-t/pod.t
 t/precedence.t
 t/prototype.t
 t/recursion.t
@@ -147,3 +146,4 @@ t/types_moosex.t
 t/types_parse.t
 t/unicode.t
 t/unicode2.t
+xt/pod.t
