@@ -3,7 +3,7 @@ package Function::Parameters;
 use v5.14.0;
 use warnings;
 
-use Carp qw(confess);
+use Carp qw(croak confess);
 
 use XSLoader;
 BEGIN {
@@ -97,40 +97,32 @@ our @type_reifiers = \&_reify_type_default;
 sub import {
     my $class = shift;
 
-    if (!@_) {
-        @_ = {
+    my $imports =
+        @_ == 0 ? {
             fun    => 'function',
             method => 'method',
-        };
-    }
-    if (@_ == 1) {
-        if ($_[0] eq ':strict') {
-            @_ = {
+        } :
+        @_ == 1 ?
+            $_[0] eq ':strict' ? {
                 fun    => 'function_strict',
                 method => 'method_strict',
-            };
-        } elsif ($_[0] eq ':lax') {
-            @_ = {
+            } :
+            $_[0] eq ':lax' ? {
                 fun    => 'function_lax',
                 method => 'method_lax',
-            };
-        }
-
-        if (ref($_[0]) eq 'HASH') {
-            @_ = map [$_, $_[0]{$_}], keys %{$_[0]};
-        }
-    }
+            } :
+            ref($_[0]) eq 'HASH' ?
+                $_[0] :
+            croak qq{"$_[0]" is not exported by the $class module}
+        :
+        croak "Too many arguments in import list for the $class module"
+    ;
 
     my %spec;
 
-    my $bare = 0;
-    for my $proto (@_) {
-        my $item = ref $proto
-            ? $proto
-            : [$proto, $bare_arms[$bare++] || confess(qq{Don't know what to do with "$proto"})]
-        ;
-        my ($name, $proto_type) = @$item;
+    for my $name (sort keys %$imports) {
         _assert_valid_identifier $name;
+        my $proto_type = $imports->{$name};
 
         $proto_type = {defaults => $proto_type} unless ref $proto_type;
 
