@@ -423,7 +423,7 @@ question.
 =head3 Attributes
 
 Attributes are relatively unusual in Perl code, but if you want them, they work
-exactly the same as with L<C<sub>|perlsub/Subroutine-Attributes>.
+exactly the same as with L<C<sub>|perlsub/Subroutine Attributes>.
 
 =head3 Prototype
 
@@ -435,7 +435,7 @@ runtime (e.g. because it's called as a method or through a reference).
 
 With L<C<sub>|perlsub>, a prototype comes directly after the function name (if
 any). C<Function::Parameters> reserves this spot for the
-L<parameter list|/"Parameter list">. To specify a prototype, put it as the
+L<parameter list|/Parameter list>. To specify a prototype, put it as the
 first attribute (e.g. C<fun foo :(&$$)>). This is syntactically unambiguous
 because normal L<attributes|/Attributes> need a name after the colon.
 
@@ -463,8 +463,8 @@ A parameter list can include the following 6 parts, all of which are optional:
 
 This is a scalar variable followed by a colon (C<:>) and no comma. If an
 invocant is present in the parameter list, the first element of
-L<C<@_>|perlvar/@ARG> is automatically L<C<shift>ed|perlfunc/shift> off and
-placed in this variable. This is intended for methods:
+L<C<@_>|perlvar/@ARG> is automatically L<C<shift>ed|perlfunc/shift ARRAY> off
+and placed in this variable. This is intended for methods:
 
   method new($class: %init) {
     return bless { %init }, $class;
@@ -607,9 +607,10 @@ containing all unrecognized keys:
 
 =back
 
-Apart from the L<C<shift>|perlfunc/shift> performed by the L<invocant|/"1.
-Invocant">, all of the above leave L<C<@_>|perlvar/@ARG> unchanged; and if you
-don't specify a parameter list at all, L<C<@_>|perlvar/@ARG> is all you get.
+Apart from the L<C<shift>|perlfunc/shift ARRAY> performed by the
+L<invocant|/1. Invocant>, all of the above leave L<C<@_>|perlvar/@ARG>
+unchanged; and if you don't specify a parameter list at all,
+L<C<@_>|perlvar/@ARG> is all you get.
 
 =head3 Keyword
 
@@ -688,15 +689,16 @@ default for methods.
 =item C<shift>
 
 Valid values: strings that look like scalar variables. This lets you specify a
-default L<invocant|/"1. Invocant">, i.e. a function defined with this keyword
+default L<invocant|/1. Invocant>, i.e. a function defined with this keyword
 that doesn't have an explicit invocant in its parameter list will automatically
-L<C<shift>|perlfunc/shift> its first argument into the variable specified here.
+L<C<shift>|perlfunc/shift ARRAY> its first argument into the variable specified
+here.
 
 =item C<invocant>
 
 Valid values: booleans. If you set this to a true value, the keyword will
-accept L<invocants|/"1. Invocant"> in parameter lists; otherwise specifying
-an invocant in a function defined with this keyword is a syntax error.
+accept L<invocants|/1. Invocant> in parameter lists; otherwise specifying an
+invocant in a function defined with this keyword is a syntax error.
 
 =item C<attributes>
 
@@ -802,14 +804,15 @@ You can ask a function at runtime what parameters it has. This functionality is
 available through the function C<Function::Parameters::info> (which is not
 exported, so you have to call it by its full name). It takes a reference to a
 function, and returns either C<undef> (if it knows nothing about the function)
-or a L<Function::Parameters::Info> object describing the parameter list.
+or a L<C<Function::Parameters::Info>|Function::Parameters::Info> object
+describing the parameter list.
 
-Note: This feature is implemented using L<Moo>, so you'll need to have L<Moo>
-installed if you want to call C<Function::Parameters::info> (alternatively, if
-L<Moose> is already loaded by the time C<Function::Parameters::info> is first
-called, it will use that instead).
+Note: This feature is implemented using L<C<Moo>|Moo>, so you'll need to have
+L<C<Moo>|Moo> installed if you want to call C<Function::Parameters::info>
+(alternatively, if L<C<Moose>|Moose> is already loaded by the time
+C<Function::Parameters::info> is first called, it will use that instead).
 
-See L<Function::Parameters::Info> for examples.
+See L<C<Function::Parameters::Info>|Function::Parameters::Info> for examples.
 
 =head2 Wrapping C<Function::Parameters>
 
@@ -835,8 +838,8 @@ consisting of identifiers (C<Foo>), unions (C<... | ...>), and parametric types
 
 If you do this, the type reification function corresponding to the keyword will
 be called to turn the type (a string) into a constraint object. The default
-type reifier simply loads L<Moose> and forwards to
-L<C<Moose::Util::TypeConstraints::find_or_parse_type_constraint>|Moose::Util::TypeConstraints/find_or_parse_type_constraint>,
+type reifier simply loads L<C<Moose>|Moose> and forwards to
+L<C<Moose::Util::TypeConstraints::find_or_parse_type_constraint>|Moose::Util::TypeConstraints/find_or_parse_type_constraint($type_name)>,
 which creates L<Moose types|Moose::Manual::Types>.
 
 If you are in "lax" mode, nothing further happens and the types are ignored. If
@@ -845,7 +848,7 @@ any values passed in conform to the type (via
 L<< C<< $constraint->check($value) >>|Moose::Meta::TypeConstraint/$constraint->check($value) >>).
 
 In addition, these type constraints are inspectable through the
-L<Function::Parameters::Info> object returned by
+L<C<Function::Parameters::Info>|Function::Parameters::Info> object returned by
 L<C<Function::Parameters::info>|/Introspection>.
 
 =head2 Experimental experimental feature: Type expressions
@@ -870,7 +873,7 @@ The module is actually written in L<C|perlxs> and uses
 L<C<PL_keyword_plugin>|perlapi/PL_keyword_plugin> to generate opcodes directly.
 However, you can run L<C<perl -MO=Deparse ...>|B::Deparse> on your code to see
 what happens under the hood. In the simplest case (no argument checks, possibly
-an L<invocant|/"1. Invocant">, required positional/slurpy parameters only), the
+an L<invocant|/1. Invocant>, required positional/slurpy parameters only), the
 generated code corresponds to:
 
   fun foo($x, $y, @z) { ... }
