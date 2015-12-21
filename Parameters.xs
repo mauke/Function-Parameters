@@ -413,11 +413,11 @@ static void my_check_prototype(pTHX_ Sentinel sen, const SV *declarator, SV *pro
                 return;
 
             case '_':
-                if (r[1] && !strchr(";@%", *r)) {
+                if (r[1] && !strchr(";@%", r[1])) {
                     warner(
                         packWARN(WARN_ILLEGALPROTO),
                         "Illegal character after '_' in prototype for %"SVf" : %s",
-                        SVfARG(declarator), r
+                        SVfARG(declarator), r + 1
                     );
                     return;
                 }
