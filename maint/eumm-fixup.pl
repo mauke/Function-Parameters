@@ -41,7 +41,6 @@ sub {
     my ($opt) = @_;
 
     $opt->{test}{TESTS} .= ' ' . join(' ', map 'xt' . '/*' x $_ . '.t', 1 .. 4);
-    $opt->{TEST_REQUIRES}{'Test::Pod'} = 1.22;
 
     $opt->{postamble}{text} .= <<"__EOT__";
 export RELEASE_TESTING=1
