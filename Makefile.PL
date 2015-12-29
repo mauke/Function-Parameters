@@ -34,7 +34,7 @@ my %settings = do $settings_file
 
     $settings{CONFIGURE_REQUIRES}{strict}                ||= 0;
     $settings{CONFIGURE_REQUIRES}{warnings}              ||= 0;
-    $settings{CONFIGURE_REQUIRES}{'ExtUtils::MakeMaker'} ||= '6.48';
+    $settings{CONFIGURE_REQUIRES}{'ExtUtils::MakeMaker'} ||= 0;
     $settings{CONFIGURE_REQUIRES}{'File::Find'}          ||= 0;
     $settings{CONFIGURE_REQUIRES}{'File::Spec'}          ||= 0;
 
@@ -74,7 +74,13 @@ my %settings = do $settings_file
 
 (my $mm_version = ExtUtils::MakeMaker->VERSION) =~ tr/_//d;
 
-if ($mm_version < 6.67_04) {
+if ($mm_version < 6.63_03) {
+    $settings{META_MERGE}{resources}{repository} = $settings{META_MERGE}{resources}{repository}{url}
+        if $settings{META_MERGE}{resources} &&
+           $settings{META_MERGE}{resources}{repository} &&
+           $settings{META_MERGE}{resources}{repository}{url};
+    delete $settings{META_MERGE}{'meta-spec'}{version};
+} elsif ($mm_version < 6.67_04) {
     # Why? For the glory of satan, of course!
     no warnings qw(redefine);
     *ExtUtils::MM_Any::_add_requirements_to_meta_v1_4 = \&ExtUtils::MM_Any::_add_requirements_to_meta_v2;
@@ -95,5 +101,11 @@ if ($mm_version < 6.67_04) {
     $merge_key_into->('PREREQ_PM', 'CONFIGURE_REQUIRES')
         if $mm_version < 6.51_03;
 }
+
+delete $settings{MIN_PERL_VERSION} if $mm_version < 6.47_01;
+delete $settings{META_MERGE}       if $mm_version < 6.46;
+delete $settings{LICENSE}          if $mm_version < 6.30_01;
+delete $settings{ABSTRACT_FROM}    if $mm_version < 6.06_03;
+delete $settings{AUTHOR}           if $mm_version < 6.06_03;
 
 WriteMakefile %settings;
