@@ -23,38 +23,12 @@ sub find_tests_recursively_in {
         keys %seen
 }
 
-my %settings = (
-    NAME   => 'Function::Parameters',
-    AUTHOR => q{Lukas Mai <l.mai@web.de>},
-
-    MIN_PERL_VERSION => '5.14.0',
-    CONFIGURE_REQUIRES => {},
-    BUILD_REQUIRES => {},
-    TEST_REQUIRES => {
-        'constant'    => 0,
-        'strict'      => 0,
-        'utf8'        => 0,
-        'Dir::Self'   => 0,
-        'Test::More'  => 0,
-        'Test::Fatal' => 0,
-    },
-    PREREQ_PM => {
-        'Carp'     => 0,
-        'XSLoader' => 0,
-        'warnings' => 0,
-    },
-
-    depend => {
-        Makefile    => '$(VERSION_FROM)',
-        '$(OBJECT)' => join(' ', glob 'hax/*.c.inc'),
-    },
-
-    test => { TESTS => find_tests_recursively_in('t') },
-
-    bonus => { github => 'mauke' },
-);
+my $settings_file = 'Makefile_PL_settings';
+my %settings = do $settings_file
+    or die "Internal error: can't do $settings_file: ", $@ || $!;
 
 {
+    $settings{depend}{Makefile} .= " $settings_file";
     $settings{LICENSE} ||= 'perl';
     $settings{PL_FILES} ||= {};
 
