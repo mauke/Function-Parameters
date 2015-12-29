@@ -50,6 +50,8 @@ my %opt = (
     },
 
     test => { TESTS => find_tests_recursively_in('t') },
+
+    bonus => { github => 'mauke' },
 );
 
 {
@@ -83,11 +85,15 @@ my %opt = (
     $opt{META_MERGE}{'meta-spec'}{version} ||= 2;
     $opt{META_MERGE}{dynamic_config} ||= 0;
 
-    my $github_account = 'mauke';
-    my $github = "github.com/$github_account/$opt{DISTNAME}";
-    $opt{META_MERGE}{resources}{repository}{type} ||= 'git';
-    $opt{META_MERGE}{resources}{repository}{url}  ||= "git://$github";
-    $opt{META_MERGE}{resources}{repository}{web}  ||= "https://$github";
+    if (my $bonus = delete $opt{bonus}) {
+        if (my $account = delete $bonus->{github}) {
+            my $github_addr = "github.com/$account/$opt{DISTNAME}";
+            $opt{META_MERGE}{resources}{repository}{type} ||= 'git';
+            $opt{META_MERGE}{resources}{repository}{url}  ||= "git://$github_addr";
+            $opt{META_MERGE}{resources}{repository}{web}  ||= "https://$github_addr";
+        }
+        die "Internal error: unknown 'bonus' keys: @{[sort keys %$bonus]}" if %$bonus;
+    }
 }
 
 (do 'maint/eumm-fixup.pl' || die $@ || $!)->(\%opt) if !-f 'META.yml';
