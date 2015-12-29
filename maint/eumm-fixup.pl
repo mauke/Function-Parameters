@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 
+use ExtUtils::MakeMaker 6.48 ();
 use Config ();
 
 sub MY::postamble {
