@@ -59,6 +59,8 @@ my %settings = do $settings_file
     $settings{META_MERGE}{'meta-spec'}{version} ||= 2;
     $settings{META_MERGE}{dynamic_config} ||= 0;
 
+    push @{$settings{META_MERGE}{no_index}{directory}}, 'xt';
+
     if (my $bonus = delete $settings{bonus}) {
         if (my $account = delete $bonus->{github}) {
             my $github_addr = "github.com/$account/$settings{DISTNAME}";
