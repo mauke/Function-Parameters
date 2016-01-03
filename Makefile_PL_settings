@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-return (
+return {
     NAME   => 'Function::Parameters',
     AUTHOR => q{Lukas Mai <l.mai@web.de>},
 
@@ -31,4 +31,4 @@ return (
     test => { TESTS => find_tests_recursively_in('t') },
 
     bonus => { github => 'mauke' },
-);
+};

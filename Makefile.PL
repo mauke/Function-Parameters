@@ -24,8 +24,7 @@ sub find_tests_recursively_in {
 }
 
 my $settings_file = 'Makefile_PL_settings';
-my %settings = do $settings_file
-    or die "Internal error: can't do $settings_file: ", $@ || $!;
+my %settings = %{do $settings_file or die "Internal error: can't do $settings_file: ", $@ || $!};
 
 {
     $settings{depend}{Makefile} .= " $settings_file";
