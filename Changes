@@ -1,5 +1,9 @@
 Revision history for Function-Parameters
 
+1.0703  2016-01-05
+        - fix line numbers in runtime errors caused by calls with bad arguments
+          (Carp trying to be smart and skipping over "internal" callers)
+
 1.0702  2015-12-21
         - fix parsing of _ in prototypes
           (caused bogus "Illegal character after '_' in prototype" warnings)
