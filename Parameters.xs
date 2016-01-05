@@ -806,7 +806,7 @@ static OP *mkconstpv(pTHX_ const char *p, size_t n) {
 #define mkconstpvs(S) mkconstpv(aTHX_ "" S "", sizeof S - 1)
 
 static OP *mktypecheck(pTHX_ const SV *declarator, int nr, SV *name, PADOFFSET padoff, SV *type) {
-    /* $type->check($value) or Carp::croak "...: " . $type->get_message($value) */
+    /* $type->check($value) or F:P::_croak "...: " . $type->get_message($value) */
     OP *chk, *err, *msg, *xcroak;
 
     err = mkconstsv(aTHX_ newSVpvf("In %"SVf": parameter %d (%"SVf"): ", SVfARG(declarator), nr, SVfARG(name)));
@@ -831,7 +831,7 @@ static OP *mktypecheck(pTHX_ const SV *declarator, int nr, SV *name, PADOFFSET p
 
     xcroak = newCVREF(
         OPf_WANT_SCALAR,
-        newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV))
+        newGVOP(OP_GV, 0, gv_fetchpvs(MY_PKG "::_croak", 0, SVt_PVCV))
     );
     xcroak = newUNOP(OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, msg, xcroak));
 
@@ -1524,7 +1524,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
             );
 
             xcroak = newCVREF(OPf_WANT_SCALAR,
-                              newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV)));
+                              newGVOP(OP_GV, 0, gv_fetchpvs(MY_PKG "::_croak", 0, SVt_PVCV)));
             err = newUNOP(OP_ENTERSUB, OPf_STACKED,
                           op_append_elem(OP_LIST, err, xcroak));
 
@@ -1554,7 +1554,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
             xcroak = newCVREF(
                 OPf_WANT_SCALAR,
-                newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV))
+                newGVOP(OP_GV, 0, gv_fetchpvs(MY_PKG "::_croak", 0, SVt_PVCV))
             );
             err = newUNOP(OP_ENTERSUB, OPf_STACKED,
             op_append_elem(OP_LIST, err, xcroak));
@@ -1577,7 +1577,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
             xcroak = newCVREF(
                 OPf_WANT_SCALAR,
-                newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV))
+                newGVOP(OP_GV, 0, gv_fetchpvs(MY_PKG "::_croak", 0, SVt_PVCV))
             );
             err = newUNOP(OP_ENTERSUB, OPf_STACKED,
             op_append_elem(OP_LIST, err, xcroak));
@@ -1811,7 +1811,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                     msg = mkconstsv(aTHX_ newSVpvf("In %"SVf": missing named parameter: %.*s", SVfARG(declarator), (int)(n - 1), p + 1));
                     xcroak = newCVREF(
                         OPf_WANT_SCALAR,
-                        newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV))
+                        newGVOP(OP_GV, 0, gv_fetchpvs(MY_PKG "::_croak", 0, SVt_PVCV))
                     );
                     xcroak = newUNOP(OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, msg, xcroak));
 
@@ -1877,7 +1877,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
                     xcroak = newCVREF(
                         OPf_WANT_SCALAR,
-                        newGVOP(OP_GV, 0, gv_fetchpvs("Carp::croak", 0, SVt_PVCV))
+                        newGVOP(OP_GV, 0, gv_fetchpvs(MY_PKG "::_croak", 0, SVt_PVCV))
                     );
                     xcroak = newUNOP(OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, msg, xcroak));
 

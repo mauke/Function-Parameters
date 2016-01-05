@@ -31,6 +31,7 @@ t/checkered.t
 t/checkered_2.t
 t/checkered_3.t
 t/checkered_4.t
+t/croak.t
 t/defaults.t
 t/defaults_bare.t
 t/defaults_regress.t

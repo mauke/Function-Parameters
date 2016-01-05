@@ -5,6 +5,11 @@ use warnings;
 
 use Carp qw(croak confess);
 
+sub _croak {
+    my (undef, $file, $line) = caller 1;
+    die @_, " at $file line $line.\n";
+}
+
 use XSLoader;
 BEGIN {
     our $VERSION = '1.0702_01';
@@ -720,8 +725,7 @@ a syntax error.
 
 Valid values: booleans. If turned on, functions defined with this keyword will
 automatically check that they have been passed all required arguments and no
-excess arguments. If this check fails, an exception will by thrown via
-L<C<Carp::croak>|Carp>.
+excess arguments. If this check fails, an exception will by thrown.
 
 =item C<check_argument_types>
 
