@@ -8,7 +8,7 @@ use strict;
 use Function::Parameters;
 
 fun mk_counter($i) {
-	fun () { $i++ }
+    fun () { $i++ }
 }
 
 method nop() {}

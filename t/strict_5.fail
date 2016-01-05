@@ -3,9 +3,9 @@ use warnings;
 use strict;
 
 use Function::Parameters {
-	spike => {
-		rarity => 'best',
-	},
+    spike => {
+        rarity => 'best',
+    },
 };
 
 'ok'

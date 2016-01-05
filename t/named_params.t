@@ -8,9 +8,9 @@ use Test::Fatal;
 use Function::Parameters qw(:strict);
 
 sub compile_fail {
-	my ($src, $re, $name) = @_;
-	is eval $src, undef;
-	like $@, $re, $name || ();
+    my ($src, $re, $name) = @_;
+    is eval $src, undef;
+    like $@, $re, $name || ();
 }
 
 

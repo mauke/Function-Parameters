@@ -6,23 +6,23 @@ use warnings FATAL => 'all';
 use strict;
 
 use Function::Parameters {
-	method => {
-		defaults => 'method',
-		strict => 1,
-	},
+    method => {
+        defaults => 'method',
+        strict => 1,
+    },
 
-	cathod => {
-		defaults => 'method',
-		strict => 0,
-	},
+    cathod => {
+        defaults => 'method',
+        strict => 0,
+    },
 
-	fun => 'function',
+    fun => 'function',
 };
 
 fun error_like($re, $body, $name = undef) {
-	local $@;
-	ok !eval { $body->(); 1 };
-	like $@, $re, $name;
+    local $@;
+    ok !eval { $body->(); 1 };
+    like $@, $re, $name;
 }
 
 method foo_any { [@_] }

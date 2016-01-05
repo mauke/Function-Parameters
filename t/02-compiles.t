@@ -31,7 +31,7 @@ method##
  } ##
 
 method add($y) {
-	$self + $y
+    $self + $y
 }
 
 method mymap(@args) :(&@) {
@@ -43,11 +43,11 @@ method mymap(@args) :(&@) {
 }
 
 method fac_1() {
-	$self < 2 ? 1 : $self * fac_1 $self - 1
+    $self < 2 ? 1 : $self * fac_1 $self - 1
 }
 
 method fac_2() :($) {
-	$self < 2 ? 1 : $self * fac_2 $self - 1
+    $self < 2 ? 1 : $self * fac_2 $self - 1
 }
 
 ok id_1 1;

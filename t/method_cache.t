@@ -6,7 +6,7 @@ use strict;
 use Test::More tests => 2;
 
 use Function::Parameters {
-	method => { defaults => 'method_strict', runtime => 1 },
+    method => { defaults => 'method_strict', runtime => 1 },
 };
 
 # See commit 978a498e17ec54b6f1fc65f3375a62a68f321f99 in perl:

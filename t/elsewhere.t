@@ -3,9 +3,9 @@ use warnings;
 use Test::More;
 
 {
-	package Wrapper;
-	use Function::Parameters ();
-	sub shazam { Function::Parameters->import(@_); }
+    package Wrapper;
+    use Function::Parameters ();
+    sub shazam { Function::Parameters->import(@_); }
 }
 
 BEGIN { Wrapper::shazam; }
@@ -13,10 +13,10 @@ BEGIN { Wrapper::shazam; }
 ok fun ($x) { $x }->(1);
 
 {
-	package Cu::Ba;
-	BEGIN { Wrapper::shazam { gorn => 'function' }; }
+    package Cu::Ba;
+    BEGIN { Wrapper::shazam { gorn => 'function' }; }
 
-	gorn wooden ($gorn) { !$gorn }
+    gorn wooden ($gorn) { !$gorn }
 }
 
 ok Cu::Ba::wooden;

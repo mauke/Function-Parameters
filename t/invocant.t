@@ -8,23 +8,23 @@ use strict;
 use Function::Parameters { fun => 'function_strict', method => 'method_strict' };
 
 {
-	package Foo;
+    package Foo;
 
-	method new($class : ) {
-		return bless {
-			x => 1,
-			y => 2,
-			z => 3,
-		}, $class;
-	}
+    method new($class : ) {
+        return bless {
+            x => 1,
+            y => 2,
+            z => 3,
+        }, $class;
+    }
 
-	method get_x()       { $self->{x} }
-	method get_y($self:) { $self->{y} }
-	method get_z($this:) { $this->{z} }
+    method get_x()       { $self->{x} }
+    method get_y($self:) { $self->{y} }
+    method get_z($this:) { $this->{z} }
 
-	method set_x($val)        { $self->{x} = $val; }
-	method set_y($self:$val)  { $self->{y} = $val; }
-	method set_z($this: $val) { $this->{z} = $val; }
+    method set_x($val)        { $self->{x} = $val; }
+    method set_y($self:$val)  { $self->{y} = $val; }
+    method set_z($this: $val) { $this->{z} = $val; }
 }
 
 my $o = Foo->new;
@@ -61,20 +61,20 @@ is eval q{method (%x:) {}}, undef;
 like $@, qr/invocant/;
 
 {
-	use Function::Parameters {
-		def => {
-			invocant => 1,
-		}
-	};
+    use Function::Parameters {
+        def => {
+            invocant => 1,
+        }
+    };
 
-	def foo1($x) { join ' ', $x, @_ }
-	def foo2($x: $y) { join ' ', $x, $y, @_ }
-	def foo3($x, $y) { join ' ', $x, $y, @_ }
+    def foo1($x) { join ' ', $x, @_ }
+    def foo2($x: $y) { join ' ', $x, $y, @_ }
+    def foo3($x, $y) { join ' ', $x, $y, @_ }
 
-	is foo1("a"), "a a";
-	is foo2("a", "b"), "a b b";
-	is foo3("a", "b"), "a b a b";
-	is foo1("a", "b"), "a a b";
-	is foo2("a", "b", "c"), "a b b c";
-	is foo3("a", "b", "c"), "a b a b c";
+    is foo1("a"), "a a";
+    is foo2("a", "b"), "a b b";
+    is foo3("a", "b"), "a b a b";
+    is foo1("a", "b"), "a a b";
+    is foo2("a", "b", "c"), "a b b c";
+    is foo3("a", "b", "c"), "a b a b c";
 }

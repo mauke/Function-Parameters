@@ -6,8 +6,8 @@ fun get_ip( $agent ) {
 }
 
 fun get_record( $agent, $target_name ) {
-	for my $record ( @$records ) {
-	}
+    for my $record ( @$records ) {
+    }
 }
 
 'ok'

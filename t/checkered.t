@@ -6,19 +6,19 @@ use warnings FATAL => 'all';
 use strict;
 
 use Function::Parameters {
-	fun => {
-		strict => 1,
-	},
+    fun => {
+        strict => 1,
+    },
 
-	sad => {
-		strict => 0,
-	},
+    sad => {
+        strict => 0,
+    },
 };
 
 fun error_like($re, $body, $name = undef) {
-	local $@;
-	ok !eval { $body->(); 1 };
-	like $@, $re, $name;
+    local $@;
+    ok !eval { $body->(); 1 };
+    like $@, $re, $name;
 }
 
 fun foo_any { [@_] }

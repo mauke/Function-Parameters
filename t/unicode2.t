@@ -43,15 +43,15 @@ is eval { ääää }, undef;
 like $@, qr/pŕöç.*ääää/s;
 
 SKIP: {
-	eval { require Moo } or skip "info requires Moo", 4;
+    eval { require Moo } or skip "info requires Moo", 4;
 
-	for my $info (Function::Parameters::info \&ääää) {
-		is $info->keyword, 'pŕöç';
-		is join(' ', $info->positional_required), '$éééééé';
-	}
+    for my $info (Function::Parameters::info \&ääää) {
+        is $info->keyword, 'pŕöç';
+        is join(' ', $info->positional_required), '$éééééé';
+    }
 
-	for my $info (Function::Parameters::info \&drau) {
-		is $info->keyword, 'pŕöç';
-		is join(' ', $info->positional_required), '$spın̈al_tap';
-	}
+    for my $info (Function::Parameters::info \&drau) {
+        is $info->keyword, 'pŕöç';
+        is join(' ', $info->positional_required), '$spın̈al_tap';
+    }
 }

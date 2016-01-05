@@ -8,55 +8,55 @@ use strict;
 sub Burlap::fun (&) { $_[0]->() }
 
 {
-	use Function::Parameters;
+    use Function::Parameters;
 
-	is fun { 2 + 2 }->(), 4;
+    is fun { 2 + 2 }->(), 4;
 
-	package Burlap;
+    package Burlap;
 
-	::ok fun { 0 };
+    ::ok fun { 0 };
 }
 
 {
-	package Burlap;
+    package Burlap;
 
-	::is fun { 'singing' }, 'singing';
+    ::is fun { 'singing' }, 'singing';
 }
 
 {
-	sub proc (&) { &Burlap::fun }
+    sub proc (&) { &Burlap::fun }
 
-	use Function::Parameters { proc => 'function' };
+    use Function::Parameters { proc => 'function' };
 
-	proc add($x, $y) {
-		return $x + $y;
-	}
+    proc add($x, $y) {
+        return $x + $y;
+    }
 
-	is add(@{[2, 3]}), 5;
+    is add(@{[2, 3]}), 5;
 
-	{
-		use Function::Parameters;
+    {
+        use Function::Parameters;
 
-		is proc () { 'bla' }->(), 'bla';
-		is method () { $self }->('der'), 'der';
+        is proc () { 'bla' }->(), 'bla';
+        is method () { $self }->('der'), 'der';
 
-		{
-			no Function::Parameters;
+        {
+            no Function::Parameters;
 
-			is proc { 'unk' }, 'unk';
+            is proc { 'unk' }, 'unk';
 
-			is eval('fun foo($x) { $x; } 1'), undef;
-			like $@, qr/syntax error/;
-		}
+            is eval('fun foo($x) { $x; } 1'), undef;
+            like $@, qr/syntax error/;
+        }
 
-		is proc () { 'bla' }->(), 'bla';
-		is method () { $self }->('der'), 'der';
+        is proc () { 'bla' }->(), 'bla';
+        is method () { $self }->('der'), 'der';
 
-		no Function::Parameters 'proc';
-		is proc { 'unk2' }, 'unk2';
-		is method () { $self }->('der2'), 'der2';
-	}
-	is proc () { 'bla3' }->(), 'bla3';
-	is eval('fun foo($x) { $x; } 1'), undef;
-	like $@, qr/syntax error/;
+        no Function::Parameters 'proc';
+        is proc { 'unk2' }, 'unk2';
+        is method () { $self }->('der2'), 'der2';
+    }
+    is proc () { 'bla3' }->(), 'bla3';
+    is eval('fun foo($x) { $x; } 1'), undef;
+    like $@, qr/syntax error/;
 }

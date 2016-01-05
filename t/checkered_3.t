@@ -8,9 +8,9 @@ use strict;
 use Function::Parameters qw(:strict);
 
 fun error_like($re, $body, $name = undef) {
-	local $@;
-	ok !eval { $body->(); 1 };
-	like $@, $re, $name;
+    local $@;
+    ok !eval { $body->(); 1 };
+    like $@, $re, $name;
 }
 
 fun foo_any { [@_] }

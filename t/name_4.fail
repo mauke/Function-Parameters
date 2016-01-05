@@ -3,20 +3,20 @@ use warnings;
 use strict;
 
 use Function::Parameters {
-	func => {
-		name => 'required',
-	},
+    func => {
+        name => 'required',
+    },
 
-	f => {
-		name => 'prohibited',
-	},
+    f => {
+        name => 'prohibited',
+    },
 
-	method => {
-		name => 'required',
-		shift => '$this',
-	},
+    method => {
+        name => 'required',
+        shift => '$this',
+    },
 };
 
 method bad2() {
-	my $what = $self;
+    my $what = $self;
 }

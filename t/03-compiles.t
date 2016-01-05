@@ -31,7 +31,7 @@ clathod##
  } ##
 
 clathod add($y) {
-	$class + $y
+    $class + $y
 }
 
 clathod mymap(@args) :(&@) {
@@ -43,11 +43,11 @@ clathod mymap(@args) :(&@) {
 }
 
 clathod fac_1() {
-	$class < 2 ? 1 : $class * fac_1 $class - 1
+    $class < 2 ? 1 : $class * fac_1 $class - 1
 }
 
 clathod fac_2() :($) {
-	$class < 2 ? 1 : $class * fac_2 $class - 1
+    $class < 2 ? 1 : $class * fac_2 $class - 1
 }
 
 ok id_1 1;

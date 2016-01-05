@@ -29,7 +29,7 @@ fun id_3 ##
  } ##
 
 fun add($x, $y) {
-	$x + $y
+    $x + $y
 }
 
 fun mymap($fun, @args) :(&@) {
@@ -41,11 +41,11 @@ fun mymap($fun, @args) :(&@) {
 }
 
 fun fac_1($n) {
-	$n < 2 ? 1 : $n * fac_1 $n - 1
+    $n < 2 ? 1 : $n * fac_1 $n - 1
 }
 
 fun fac_2($n) :($) {
-	$n < 2 ? 1 : $n * fac_2 $n - 1
+    $n < 2 ? 1 : $n * fac_2 $n - 1
 }
 
 ok id_1 1;
