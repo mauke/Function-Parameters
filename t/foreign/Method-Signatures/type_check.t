@@ -131,6 +131,7 @@ our $tester;
     # finally, some types that shouldn't be recognized
     my $type;
 
+    ## Moose accepts unknown types as classes
     #$method = 'unknown_type';
     #$type = 'Bmoogle';
     #is eval qq{ method $method ($type \$bar) {} 42 }, 42;
