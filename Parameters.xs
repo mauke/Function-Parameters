@@ -805,6 +805,16 @@ static OP *mkconstpv(pTHX_ const char *p, size_t n) {
 
 #define mkconstpvs(S) mkconstpv(aTHX_ "" S "", sizeof S - 1)
 
+static OP *mkcroak(OP *msg) {
+    OP *xcroak;
+    xcroak = newCVREF(
+        OPf_WANT_SCALAR,
+        newGVOP(OP_GV, 0, gv_fetchpvs(MY_PKG "::_croak", 0, SVt_PVCV))
+    );
+    xcroak = newUNOP(OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, msg, xcroak));
+    return xcroak;
+}
+
 static OP *mktypecheck(pTHX_ const SV *declarator, int nr, SV *name, PADOFFSET padoff, SV *type) {
     /* $type->check($value) or F:P::_croak "...: " . $type->get_message($value) */
     OP *chk, *err, *msg, *xcroak;
@@ -829,11 +839,7 @@ static OP *mktypecheck(pTHX_ const SV *declarator, int nr, SV *name, PADOFFSET p
 
     msg = newBINOP(OP_CONCAT, 0, err, msg);
 
-    xcroak = newCVREF(
-        OPf_WANT_SCALAR,
-        newGVOP(OP_GV, 0, gv_fetchpvs(MY_PKG "::_croak", 0, SVt_PVCV))
-    );
-    xcroak = newUNOP(OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, msg, xcroak));
+    xcroak = mkcroak(msg);
 
     {
         OP *args = NULL;
@@ -1509,7 +1515,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
         amin = args_min(aTHX_ param_spec, spec);
         if (amin > 0) {
-            OP *chk, *cond, *err, *xcroak;
+            OP *chk, *cond, *err;
 
             err = mkconstsv(aTHX_ newSVpvf("Too few arguments for %"SVf" (expected %d, got ", SVfARG(declarator), amin));
             err = newBINOP(
@@ -1523,10 +1529,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                 mkconstpvs(")")
             );
 
-            xcroak = newCVREF(OPf_WANT_SCALAR,
-                              newGVOP(OP_GV, 0, gv_fetchpvs(MY_PKG "::_croak", 0, SVt_PVCV)));
-            err = newUNOP(OP_ENTERSUB, OPf_STACKED,
-                          op_append_elem(OP_LIST, err, xcroak));
+            err = mkcroak(err);
 
             cond = newBINOP(OP_LT, 0,
                             newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
@@ -1538,7 +1541,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
         amax = args_max(param_spec);
         if (amax >= 0) {
-            OP *chk, *cond, *err, *xcroak;
+            OP *chk, *cond, *err;
 
             err = mkconstsv(aTHX_ newSVpvf("Too many arguments for %"SVf" (expected %d, got ", SVfARG(declarator), amax));
             err = newBINOP(
@@ -1552,12 +1555,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                 mkconstpvs(")")
             );
 
-            xcroak = newCVREF(
-                OPf_WANT_SCALAR,
-                newGVOP(OP_GV, 0, gv_fetchpvs(MY_PKG "::_croak", 0, SVt_PVCV))
-            );
-            err = newUNOP(OP_ENTERSUB, OPf_STACKED,
-            op_append_elem(OP_LIST, err, xcroak));
+            err = mkcroak(err);
 
             cond = newBINOP(
                 OP_GT, 0,
@@ -1570,17 +1568,12 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
         }
 
         if (param_spec && (count_named_params(param_spec) || (param_spec->slurpy.name && SvPV_nolen(param_spec->slurpy.name)[0] == '%'))) {
-            OP *chk, *cond, *err, *xcroak;
+            OP *chk, *cond, *err;
             const UV fixed = count_positional_params(param_spec) + !!param_spec->invocant.name;
 
             err = mkconstsv(aTHX_ newSVpvf("Odd number of paired arguments for %"SVf"", SVfARG(declarator)));
 
-            xcroak = newCVREF(
-                OPf_WANT_SCALAR,
-                newGVOP(OP_GV, 0, gv_fetchpvs(MY_PKG "::_croak", 0, SVt_PVCV))
-            );
-            err = newUNOP(OP_ENTERSUB, OPf_STACKED,
-            op_append_elem(OP_LIST, err, xcroak));
+            err = mkcroak(err);
 
             cond = newBINOP(OP_GT, 0,
                             newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
@@ -1809,11 +1802,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                     var = newUNOP(OP_DELETE, 0, var);
 
                     msg = mkconstsv(aTHX_ newSVpvf("In %"SVf": missing named parameter: %.*s", SVfARG(declarator), (int)(n - 1), p + 1));
-                    xcroak = newCVREF(
-                        OPf_WANT_SCALAR,
-                        newGVOP(OP_GV, 0, gv_fetchpvs(MY_PKG "::_croak", 0, SVt_PVCV))
-                    );
-                    xcroak = newUNOP(OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, msg, xcroak));
+                    xcroak = mkcroak(msg);
 
                     cond = newUNOP(OP_EXISTS, 0, cond);
 
@@ -1875,11 +1864,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                     msg = mkconstsv(aTHX_ newSVpvf("In %"SVf": no such named parameter: ", SVfARG(declarator)));
                     msg = newBINOP(OP_CONCAT, 0, msg, keys);
 
-                    xcroak = newCVREF(
-                        OPf_WANT_SCALAR,
-                        newGVOP(OP_GV, 0, gv_fetchpvs(MY_PKG "::_croak", 0, SVt_PVCV))
-                    );
-                    xcroak = newUNOP(OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, msg, xcroak));
+                    xcroak = mkcroak(msg);
 
                     cond = newUNOP(OP_KEYS, 0, my_var_g(aTHX_ OP_PADHV, 0, param_spec->rest_hash));
                     xcroak = newCONDOP(0, cond, xcroak, NULL);
@@ -2170,6 +2155,28 @@ static int my_keyword_plugin(pTHX_ char *keyword_ptr, STRLEN keyword_len, OP **o
     return ret;
 }
 
+static void my_boot(void) {
+    HV *const stash = gv_stashpvs(MY_PKG, GV_ADD);
+
+    newCONSTSUB(stash, "FLAG_NAME_OK",      newSViv(FLAG_NAME_OK));
+    newCONSTSUB(stash, "FLAG_ANON_OK",      newSViv(FLAG_ANON_OK));
+    newCONSTSUB(stash, "FLAG_DEFAULT_ARGS", newSViv(FLAG_DEFAULT_ARGS));
+    newCONSTSUB(stash, "FLAG_CHECK_NARGS",  newSViv(FLAG_CHECK_NARGS));
+    newCONSTSUB(stash, "FLAG_INVOCANT",     newSViv(FLAG_INVOCANT));
+    newCONSTSUB(stash, "FLAG_NAMED_PARAMS", newSViv(FLAG_NAMED_PARAMS));
+    newCONSTSUB(stash, "FLAG_TYPES_OK",     newSViv(FLAG_TYPES_OK));
+    newCONSTSUB(stash, "FLAG_CHECK_TARGS",  newSViv(FLAG_CHECK_TARGS));
+    newCONSTSUB(stash, "FLAG_RUNTIME",      newSViv(FLAG_RUNTIME));
+    newCONSTSUB(stash, "HINTK_KEYWORDS", newSVpvs(HINTK_KEYWORDS));
+    newCONSTSUB(stash, "HINTK_FLAGS_",   newSVpvs(HINTK_FLAGS_));
+    newCONSTSUB(stash, "HINTK_SHIFT_",   newSVpvs(HINTK_SHIFT_));
+    newCONSTSUB(stash, "HINTK_ATTRS_",   newSVpvs(HINTK_ATTRS_));
+    newCONSTSUB(stash, "HINTK_REIFY_",   newSVpvs(HINTK_REIFY_));
+
+    next_keyword_plugin = PL_keyword_plugin;
+    PL_keyword_plugin = my_keyword_plugin;
+}
+
 #ifndef assert_
 #ifdef DEBUGGING
 #define assert_(X) assert(X),
@@ -2232,24 +2239,4 @@ fp__defun(name, body)
         CvANON_off(body);
 
 BOOT:
-WARNINGS_ENABLE {
-    HV *const stash = gv_stashpvs(MY_PKG, GV_ADD);
-    /**/
-    newCONSTSUB(stash, "FLAG_NAME_OK",      newSViv(FLAG_NAME_OK));
-    newCONSTSUB(stash, "FLAG_ANON_OK",      newSViv(FLAG_ANON_OK));
-    newCONSTSUB(stash, "FLAG_DEFAULT_ARGS", newSViv(FLAG_DEFAULT_ARGS));
-    newCONSTSUB(stash, "FLAG_CHECK_NARGS",  newSViv(FLAG_CHECK_NARGS));
-    newCONSTSUB(stash, "FLAG_INVOCANT",     newSViv(FLAG_INVOCANT));
-    newCONSTSUB(stash, "FLAG_NAMED_PARAMS", newSViv(FLAG_NAMED_PARAMS));
-    newCONSTSUB(stash, "FLAG_TYPES_OK",     newSViv(FLAG_TYPES_OK));
-    newCONSTSUB(stash, "FLAG_CHECK_TARGS",  newSViv(FLAG_CHECK_TARGS));
-    newCONSTSUB(stash, "FLAG_RUNTIME",      newSViv(FLAG_RUNTIME));
-    newCONSTSUB(stash, "HINTK_KEYWORDS", newSVpvs(HINTK_KEYWORDS));
-    newCONSTSUB(stash, "HINTK_FLAGS_",   newSVpvs(HINTK_FLAGS_));
-    newCONSTSUB(stash, "HINTK_SHIFT_",   newSVpvs(HINTK_SHIFT_));
-    newCONSTSUB(stash, "HINTK_ATTRS_",   newSVpvs(HINTK_ATTRS_));
-    newCONSTSUB(stash, "HINTK_REIFY_",   newSVpvs(HINTK_REIFY_));
-    /**/
-    next_keyword_plugin = PL_keyword_plugin;
-    PL_keyword_plugin = my_keyword_plugin;
-} WARNINGS_RESET
+    my_boot();
