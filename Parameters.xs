@@ -805,7 +805,7 @@ static OP *mkconstpv(pTHX_ const char *p, size_t n) {
 
 #define mkconstpvs(S) mkconstpv(aTHX_ "" S "", sizeof S - 1)
 
-static OP *mkcroak(OP *msg) {
+static OP *mkcroak(pTHX_ OP *msg) {
     OP *xcroak;
     xcroak = newCVREF(
         OPf_WANT_SCALAR,
@@ -839,7 +839,7 @@ static OP *mktypecheck(pTHX_ const SV *declarator, int nr, SV *name, PADOFFSET p
 
     msg = newBINOP(OP_CONCAT, 0, err, msg);
 
-    xcroak = mkcroak(msg);
+    xcroak = mkcroak(aTHX_ msg);
 
     {
         OP *args = NULL;
@@ -1529,7 +1529,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                 mkconstpvs(")")
             );
 
-            err = mkcroak(err);
+            err = mkcroak(aTHX_ err);
 
             cond = newBINOP(OP_LT, 0,
                             newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
@@ -1555,7 +1555,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                 mkconstpvs(")")
             );
 
-            err = mkcroak(err);
+            err = mkcroak(aTHX_ err);
 
             cond = newBINOP(
                 OP_GT, 0,
@@ -1573,7 +1573,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
             err = mkconstsv(aTHX_ newSVpvf("Odd number of paired arguments for %"SVf"", SVfARG(declarator)));
 
-            err = mkcroak(err);
+            err = mkcroak(aTHX_ err);
 
             cond = newBINOP(OP_GT, 0,
                             newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
@@ -1802,7 +1802,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                     var = newUNOP(OP_DELETE, 0, var);
 
                     msg = mkconstsv(aTHX_ newSVpvf("In %"SVf": missing named parameter: %.*s", SVfARG(declarator), (int)(n - 1), p + 1));
-                    xcroak = mkcroak(msg);
+                    xcroak = mkcroak(aTHX_ msg);
 
                     cond = newUNOP(OP_EXISTS, 0, cond);
 
@@ -1864,7 +1864,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                     msg = mkconstsv(aTHX_ newSVpvf("In %"SVf": no such named parameter: ", SVfARG(declarator)));
                     msg = newBINOP(OP_CONCAT, 0, msg, keys);
 
-                    xcroak = mkcroak(msg);
+                    xcroak = mkcroak(aTHX_ msg);
 
                     cond = newUNOP(OP_KEYS, 0, my_var_g(aTHX_ OP_PADHV, 0, param_spec->rest_hash));
                     xcroak = newCONDOP(0, cond, xcroak, NULL);
@@ -2155,7 +2155,7 @@ static int my_keyword_plugin(pTHX_ char *keyword_ptr, STRLEN keyword_len, OP **o
     return ret;
 }
 
-static void my_boot(void) {
+static void my_boot(pTHX) {
     HV *const stash = gv_stashpvs(MY_PKG, GV_ADD);
 
     newCONSTSUB(stash, "FLAG_NAME_OK",      newSViv(FLAG_NAME_OK));
@@ -2239,4 +2239,4 @@ fp__defun(name, body)
         CvANON_off(body);
 
 BOOT:
-    my_boot();
+    my_boot(aTHX);
