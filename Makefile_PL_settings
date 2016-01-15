@@ -2,6 +2,22 @@
 use strict;
 use warnings;
 
+if (eval { require Moose }) {
+    if (!eval { package A_Moose_User; Moose->import; 1 }) {
+        print STDERR <<"EOT";
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! Error: You seem to have Moose but I can't "use" it (import dies).  !!!
+!!! This would cause confusing test errors, so I'm bailing out. Sorry. !!!
+!!! Maybe try upgrading Moose?                                         !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+The exception was:
+$@
+EOT
+        exit 1;
+    }
+}
+
 return {
     NAME   => 'Function::Parameters',
     AUTHOR => q{Lukas Mai <l.mai@web.de>},
