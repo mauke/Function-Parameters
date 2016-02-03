@@ -281,7 +281,15 @@ sub info {
         keyword  => $info->{declarator},
         invocant => _mkparam1($info->{invocant}),
         slurpy   => _mkparam1($info->{slurpy}),
-        (map +("_$_" => _mkparams @{$info->{$_}}), glob '{positional,named}_{required,optional}')
+        (
+            map +("_$_" => _mkparams @{$info->{$_}}),
+            qw(
+                positional_required
+                positional_optional
+                named_required
+                named_optional
+            )
+        )
     )
 }
 
