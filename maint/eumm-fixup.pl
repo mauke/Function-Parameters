@@ -102,8 +102,9 @@ __EOT__
     }
 
     my $multitest = <<'__EOT__';
+
 .PHONY: multitest
-multitest:
+multitest :
 	shopt -s nullglob; f=''; k=''; \
 	for i in "$$PERLBREW_ROOT"/perls/<PERL_PATTERN>/bin/perl perl; do \
 	    echo "Trying $$i ..."; \
@@ -119,4 +120,13 @@ multitest:
 __EOT__
     $multitest =~ s/<PERL_PATTERN>/$perl_pattern/g;
     $opt->{postamble}{text} .= $multitest;
+
+    my $maint_distcheck = <<'__EOT__';
+
+distcheck : maint_distcheck
+.PHONY: maint_distcheck
+maint_distcheck :
+	$(PERLRUN) maint/distcheck.pl '$(VERSION)' '$(TO_INST_PM)'
+__EOT__
+    $opt->{postamble}{text} .= $maint_distcheck;
 }
