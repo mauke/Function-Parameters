@@ -44,6 +44,8 @@ my %settings = %{do $settings_file or die "Internal error: can't do $settings_fi
     $settings{VERSION_FROM}  ||= $module_file;
     $settings{ABSTRACT_FROM} ||= $module_file;
 
+    $settings{test}{TESTS} ||= find_tests_recursively_in 't';
+
     $settings{DISTNAME} ||= do {
         my $name = $settings{NAME};
         $name =~ s!::!-!g;

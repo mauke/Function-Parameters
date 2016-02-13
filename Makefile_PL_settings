@@ -44,7 +44,5 @@ return {
         '$(OBJECT)' => join(' ', glob 'hax/*.c.inc'),
     },
 
-    test => { TESTS => find_tests_recursively_in('t') },
-
     bonus => { github => 'mauke' },
 };
