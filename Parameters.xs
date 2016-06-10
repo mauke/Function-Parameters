@@ -64,22 +64,10 @@ See http://dev.perl.org/licenses/ for more information.
 #define HAVE_PERL_VERSION(R, V, S) \
     (PERL_REVISION > (R) || (PERL_REVISION == (R) && (PERL_VERSION > (V) || (PERL_VERSION == (V) && (PERL_SUBVERSION >= (S))))))
 
-#if HAVE_PERL_VERSION(5, 16, 0)
- #define IF_HAVE_PERL_5_16(YES, NO) YES
-#else
- #define IF_HAVE_PERL_5_16(YES, NO) NO
-#endif
-
 #if HAVE_PERL_VERSION(5, 19, 3)
  #define IF_HAVE_PERL_5_19_3(YES, NO) YES
 #else
  #define IF_HAVE_PERL_5_19_3(YES, NO) NO
-#endif
-
-#if HAVE_PERL_VERSION(5, 19, 4)
- #define IF_HAVE_PERL_5_19_4(YES, NO) YES
-#else
- #define IF_HAVE_PERL_5_19_4(YES, NO) NO
 #endif
 
 #ifndef SvREFCNT_dec_NN
@@ -102,6 +90,10 @@ See http://dev.perl.org/licenses/ for more information.
 #include "hax/block_end.c.inc"
 
 #include "hax/op_convert_list.c.inc"  /* < 5.22 */
+
+#ifndef padadd_NO_DUP_CHECK  /* 5.14 */
+#define padadd_NO_DUP_CHECK 4
+#endif
 
 #endif
 
@@ -1016,7 +1008,7 @@ static PADOFFSET parse_param(
 
     return SvCUR(*pname) < 2
         ? NOT_IN_PAD
-        : pad_add_name_sv(*pname, IF_HAVE_PERL_5_16(padadd_NO_DUP_CHECK, 0), NULL, NULL)
+        : pad_add_name_sv(*pname, padadd_NO_DUP_CHECK, NULL, NULL)
     ;
 }
 
