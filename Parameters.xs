@@ -89,6 +89,8 @@ See http://dev.perl.org/licenses/ for more information.
 
 #define MY_PKG "Function::Parameters"
 
+/* 5.22+ shouldn't require any hax */
+#if !HAVE_PERL_VERSION(5, 22, 0)
 
 #include "hax/pad_alloc.c.inc"        /* 5.14 */
 #include "hax/pad_add_name_sv.c.inc"  /* 5.14 */
@@ -100,6 +102,8 @@ See http://dev.perl.org/licenses/ for more information.
 #include "hax/block_end.c.inc"
 
 #include "hax/op_convert_list.c.inc"  /* < 5.22 */
+
+#endif
 
 
 WARNINGS_ENABLE
