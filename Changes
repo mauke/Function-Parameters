@@ -1,5 +1,8 @@
 Revision history for Function-Parameters
 
+1.0705  2016-06-11
+        - simplify internals
+
 1.0704  2016-02-13
         - guard against broken Mooses in Makefile.PL
         - remove last internal use of glob()
