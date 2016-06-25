@@ -750,12 +750,12 @@ static size_t count_named_params(const ParamSpec *ps) {
     return ps->named_required.used + ps->named_optional.used;
 }
 
-static SV *my_eval(pTHX_ Sentinel sen, I32 floor, OP *op) {
+static SV *my_eval(pTHX_ Sentinel sen, I32 floor_ix, OP *op) {
     SV *sv;
     CV *cv;
     dSP;
 
-    cv = newATTRSUB(floor, NULL, NULL, NULL, op);
+    cv = newATTRSUB(floor_ix, NULL, NULL, NULL, op);
 
     ENTER;
     SAVETMPS;
@@ -885,13 +885,13 @@ static PADOFFSET parse_param(
 
     if (spec->flags & FLAG_TYPES_OK) {
         if (c == '(') {
-            I32 floor;
+            I32 floor_ix;
             OP *expr;
             Resource *expr_sentinel;
 
             lex_read_unichar(0);
 
-            floor = start_subparse(FALSE, 0);
+            floor_ix = start_subparse(FALSE, 0);
             SAVEFREESV(PL_compcv);
             CvSPECIAL_on(PL_compcv);
 
@@ -916,7 +916,7 @@ static PADOFFSET parse_param(
             if (expr_sentinel) {
                 sentinel_disarm(expr_sentinel);
             }
-            *ptype = my_eval(aTHX_ sen, floor, expr);
+            *ptype = my_eval(aTHX_ sen, floor_ix, expr);
             if (!SvROK(*ptype)) {
                 *ptype = reify_type(aTHX_ sen, declarator, spec, *ptype);
             }
