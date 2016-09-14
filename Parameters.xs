@@ -57,6 +57,11 @@ See http://dev.perl.org/licenses/ for more information.
 
 #include <string.h>
 
+#ifdef DEVEL
+#undef NDEBUG
+#include <assert.h>
+#endif
+
 #ifdef PERL_MAD
 #error "MADness is not supported."
 #endif
@@ -80,20 +85,22 @@ See http://dev.perl.org/licenses/ for more information.
 /* 5.22+ shouldn't require any hax */
 #if !HAVE_PERL_VERSION(5, 22, 0)
 
-#include "hax/pad_alloc.c.inc"        /* 5.14 */
-#include "hax/pad_add_name_sv.c.inc"  /* 5.14 */
-#include "hax/pad_add_name_pvs.c.inc" /* 5.14 */
+ #if !HAVE_PERL_VERSION(5, 16, 0)
+  #include "hax/pad_alloc.c.inc"
+  #include "hax/pad_add_name_sv.c.inc"
+  #include "hax/pad_add_name_pvs.c.inc"
 
-#include "hax/newDEFSVOP.c.inc"
-#include "hax/intro_my.c.inc"
-#include "hax/block_start.c.inc"
-#include "hax/block_end.c.inc"
+  #ifndef padadd_NO_DUP_CHECK
+   #define padadd_NO_DUP_CHECK 0
+  #endif
+ #endif
 
-#include "hax/op_convert_list.c.inc"  /* < 5.22 */
+ #include "hax/newDEFSVOP.c.inc"
+ #include "hax/intro_my.c.inc"
+ #include "hax/block_start.c.inc"
+ #include "hax/block_end.c.inc"
 
-#ifndef padadd_NO_DUP_CHECK  /* 5.14 */
-#define padadd_NO_DUP_CHECK 4
-#endif
+ #include "hax/op_convert_list.c.inc"  /* < 5.22 */
 
 #endif
 
