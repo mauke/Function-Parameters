@@ -8,7 +8,7 @@ use Test::More
     : (skip_all => "Moo required for testing parameter introspection")
 ;
 
-use Function::Parameters;
+use Function::Parameters qw(:lax);
 
 sub Inf () { 0 + 'Inf' }
 

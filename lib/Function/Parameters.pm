@@ -74,7 +74,7 @@ my %type_map = (
         defaults   => 'function_lax',
         strict     => 1,
     },
-    function           => { defaults => 'function_lax' },
+    function           => { defaults => 'function_strict' },
     method_lax         => {
         defaults   => 'function_lax',
         attributes => ':method',
@@ -85,7 +85,7 @@ my %type_map = (
         defaults   => 'method_lax',
         strict     => 1,
     },
-    method             => { defaults => 'method_lax' },
+    method             => { defaults => 'method_strict' },
     classmethod_lax    => {
         defaults   => 'method_lax',
         shift      => '$class',
@@ -94,7 +94,7 @@ my %type_map = (
         defaults   => 'classmethod_lax',
         strict     => 1,
     },
-    classmethod        => { defaults => 'classmethod_lax' },
+    classmethod        => { defaults => 'classmethod_strict' },
 );
 
 our @type_reifiers = \&_reify_type_default;

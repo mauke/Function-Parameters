@@ -75,7 +75,7 @@ fun slurpy(:$n, %rest) { [$n, \%rest] }
         }
     }
 
-    use Function::Parameters; # lax
+    use Function::Parameters qw(:lax);
 
     fun bar(:$n) { defined $n ? $n + 1 : "nope" }
 

@@ -5,7 +5,7 @@ use Test::More tests => 19;
 use warnings FATAL => 'all';
 use strict;
 
-use Function::Parameters;
+use Function::Parameters qw(:lax);
 
 fun hörps($x) { $x * 2 }
 fun drau($spın̈al_tap) { $spın̈al_tap * 3 }

@@ -3,7 +3,7 @@
 use strict;
 use warnings FATAL => 'all';
 
-use Test::More tests => 49;
+use Test::More tests => 52;
 use Test::Fatal;
 
 {
@@ -19,8 +19,10 @@ use Test::Fatal;
     is eval('fun foo :() {}; 1'), undef;
     like $@, qr/syntax error/;
 
-    pound foo_1($x, $u) { $x }
+    pound foo_1($x) { $x }
     is foo_1(2 + 2), 4;
+
+    like exception { foo_1(5, 6) }, qr/Too many arguments/;
 
     no Function::Parameters qw(pound);
 
@@ -34,8 +36,10 @@ use Test::Fatal;
     is eval('fun foo () {}; 1'), undef;
     like $@, qr/syntax error/;
 
-    pound foo_2($u) { $self }
+    pound foo_2() { $self }
     is foo_2(2 + 2), 4;
+
+    like exception { foo_2(5, 6) }, qr/Too many arguments/;
 
     no Function::Parameters qw(pound);
 
@@ -52,8 +56,10 @@ use Test::Fatal;
     is eval('fun foo () {}; 1'), undef;
     like $@, qr/syntax error/;
 
-    pound foo_3($u) { $class }
+    pound foo_3() { $class }
     is foo_3(2 + 2), 4;
+
+    like exception { foo_3(5, 6) }, qr/Too many arguments/;
 
     no Function::Parameters;
 

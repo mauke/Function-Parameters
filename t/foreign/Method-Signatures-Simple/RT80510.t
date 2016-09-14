@@ -3,7 +3,7 @@ use strict;
 use warnings FATAL => 'all';
 use Test::More tests => 2;
 
-use Function::Parameters;
+use Function::Parameters qw(:lax);
 
 fun empty ($x) {}
 

@@ -4,7 +4,7 @@ use strict;
 
 use Test::More tests => 1;
 
-use Function::Parameters;
+use Function::Parameters qw(:lax);
 
 fun yes_this_is_an_unusually_long_function_name_wouldnt_you_agree_with_me_there (
     $the_first_parameter_is_the_only_one_I_really_care_about_and_gets_a_very_special_name,

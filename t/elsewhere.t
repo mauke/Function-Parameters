@@ -14,7 +14,7 @@ ok fun ($x) { $x }->(1);
 
 {
     package Cu::Ba;
-    BEGIN { Wrapper::shazam { gorn => 'function' }; }
+    BEGIN { Wrapper::shazam { gorn => 'function_lax' }; }
 
     gorn wooden ($gorn) { !$gorn }
 }

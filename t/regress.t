@@ -5,7 +5,7 @@ use Test::More tests => 21;
 use warnings FATAL => 'all';
 use strict;
 
-use Function::Parameters;
+use Function::Parameters qw(:lax);
 
 fun mk_counter($i) {
     fun () { $i++ }

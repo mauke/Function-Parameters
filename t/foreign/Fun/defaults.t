@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Test::More;
 
-use Function::Parameters;
+use Function::Parameters qw(:lax);
 
 fun foo ($x, $y = 5) {
     return $x + $y;
