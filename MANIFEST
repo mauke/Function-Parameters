@@ -138,6 +138,7 @@ t/strict_2.fail
 t/strict_3.fail
 t/strict_4.fail
 t/strict_5.fail
+t/types_caller.t
 t/types_custom.t
 t/types_custom_2.t
 t/types_custom_3.t
