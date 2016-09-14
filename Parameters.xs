@@ -533,6 +533,7 @@ static SV *reify_type(pTHX_ Sentinel sen, const SV *declarator, const KWSpec *sp
     AV *type_reifiers;
     SV *t, *sv, **psv;
     int n;
+    COP curcop_with_stash;
     dSP;
 
     type_reifiers = get_av(MY_PKG "::type_reifiers", 0);
@@ -550,17 +551,21 @@ static SV *reify_type(pTHX_ Sentinel sen, const SV *declarator, const KWSpec *sp
     SAVETMPS;
 
     PUSHMARK(SP);
-    EXTEND(SP, 2);
-    PUSHs(name);
-    PUSHs(PL_curstname);
+    XPUSHs(name);
     PUTBACK;
 
+    assert(PL_curcop == &PL_compiling);
+    curcop_with_stash = PL_compiling;
+    CopSTASH_set(&curcop_with_stash, PL_curstash);
+    PL_curcop = &curcop_with_stash;
     n = call_sv(sv, G_SCALAR);
+    PL_curcop = &PL_compiling;
+
     SPAGAIN;
 
     assert(n == 1);
     /* don't warn about n being unused if assert() is compiled out */
-    n = n;
+    (void)n;
 
     t = sentinel_mortalize(sen, SvREFCNT_inc(POPs));
 

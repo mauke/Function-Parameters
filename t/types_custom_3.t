@@ -17,7 +17,8 @@ use Function::Parameters {
     fun => {
         strict => 1,
         reify_type => sub {
-            my ($type, $package) = @_;
+            my ($type) = @_;
+            my $package = caller;
             if ($package ne $type) {
                 my (undef, $file, $line) = @_;
                 diag "";

@@ -14,7 +14,7 @@ use Function::Parameters {
 {
     package MyT;
 
-    fun reify_type($type, $pkg) {
+    fun reify_type($type) {
         bless [$type], __PACKAGE__
     }
 
