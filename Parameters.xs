@@ -484,16 +484,18 @@ static SV *parse_type_paramd(pTHX_ Sentinel sen, const SV *declarator, char prev
 
     c = lex_peek_unichar(0);
     if (c == '[') {
-        SV *u;
+        do {
+            SV *u;
 
-        lex_read_unichar(0);
-        lex_read_space(0);
-        my_sv_cat_c(aTHX_ t, c);
+            lex_read_unichar(0);
+            lex_read_space(0);
+            my_sv_cat_c(aTHX_ t, c);
 
-        u = parse_type(aTHX_ sen, declarator, '[');
-        sv_catsv(t, u);
+            u = parse_type(aTHX_ sen, declarator, c);
+            sv_catsv(t, u);
 
-        c = lex_peek_unichar(0);
+            c = lex_peek_unichar(0);
+        } while (c == ',');
         if (c != ']') {
             croak("In %"SVf": missing ']' after '%"SVf"'", SVfARG(declarator), SVfARG(t));
         }
@@ -512,8 +514,7 @@ static SV *parse_type(pTHX_ Sentinel sen, const SV *declarator, char prev) {
 
     t = parse_type_paramd(aTHX_ sen, declarator, prev);
 
-    c = lex_peek_unichar(0);
-    while (c == '|') {
+    while ((c = lex_peek_unichar(0)) == '|') {
         SV *u;
 
         lex_read_unichar(0);
@@ -522,8 +523,6 @@ static SV *parse_type(pTHX_ Sentinel sen, const SV *declarator, char prev) {
         my_sv_cat_c(aTHX_ t, c);
         u = parse_type_paramd(aTHX_ sen, declarator, '|');
         sv_catsv(t, u);
-
-        c = lex_peek_unichar(0);
     }
 
     return t;
