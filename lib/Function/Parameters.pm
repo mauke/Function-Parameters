@@ -68,30 +68,30 @@ sub _delete_default {
 }
 
 my %type_map = (
-    function_lax       => {},  # all default settings
-    function_strict    => {
-        defaults   => 'function_lax',
-        strict     => 1,
+    function_strict    => {},
+    function_lax       => {
+        defaults   => 'function_strict',
+        strict     => 0,
     },
     function           => { defaults => 'function_strict' },
-    method_lax         => {
-        defaults   => 'function_lax',
+    method_strict      => {
+        defaults   => 'function_strict',
         attributes => ':method',
         shift      => '$self',
         invocant   => 1,
     },
-    method_strict      => {
-        defaults   => 'method_lax',
-        strict     => 1,
+    method_lax         => {
+        defaults   => 'method_strict',
+        strict     => 0,
     },
     method             => { defaults => 'method_strict' },
-    classmethod_lax    => {
-        defaults   => 'method_lax',
+    classmethod_strict => {
+        defaults   => 'method_strict',
         shift      => '$class',
     },
-    classmethod_strict => {
-        defaults   => 'classmethod_lax',
-        strict     => 1,
+    classmethod_lax    => {
+        defaults   => 'classmethod_strict',
+        strict     => 0,
     },
     classmethod        => { defaults => 'classmethod_strict' },
 );
@@ -137,6 +137,11 @@ sub import {
             %type = (%$base, %type);
         }
 
+        if (exists $type{strict}) {
+            $type{check_argument_count} ||= $type{strict};
+            delete $type{strict};
+        }
+
         my %clean;
 
         $clean{name} = delete $type{name} // 'optional';
@@ -158,9 +163,8 @@ sub import {
 
         $clean{invocant}             = _delete_default \%type, 'invocant',             0;
         $clean{runtime}              = _delete_default \%type, 'runtime',              0;
-        $clean{check_argument_count} = _delete_default \%type, 'check_argument_count', 0;
+        $clean{check_argument_count} = _delete_default \%type, 'check_argument_count', 1;
         $clean{check_argument_types} = _delete_default \%type, 'check_argument_types', 1;
-        $clean{check_argument_count} = $clean{check_argument_types} = 1 if delete $type{strict};
 
         if (my $rt = delete $type{reify_type}) {
             ref $rt eq 'CODE' or confess qq{"$rt" doesn't look like a type reifier};
@@ -180,7 +184,7 @@ sub import {
             $clean{reify_type} = $index;
         }
 
-        %type and confess "Invalid keyword property: @{[keys %type]}";
+        %type and confess "Invalid keyword property: @{[sort keys %type]}";
 
         $spec{$name} = \%clean;
     }

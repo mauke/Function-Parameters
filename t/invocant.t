@@ -5,7 +5,7 @@ use Test::More tests => 25;
 use warnings FATAL => 'all';
 use strict;
 
-use Function::Parameters { fun => 'function_strict', method => 'method_strict' };
+use Function::Parameters;
 
 {
     package Foo;
@@ -64,6 +64,7 @@ like $@, qr/invocant/;
     use Function::Parameters {
         def => {
             invocant => 1,
+            strict   => 0,
         }
     };
 
