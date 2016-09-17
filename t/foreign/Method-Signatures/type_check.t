@@ -11,7 +11,7 @@ use Test::More
 use Test::More;
 use Test::Fatal;
 
-use Function::Parameters qw(:strict);
+use Function::Parameters qw(:moose);
 
 
 { package Foo::Bar; sub new { bless {}, __PACKAGE__; } }
@@ -60,7 +60,7 @@ our $tester;
     use Test::More;
     use Test::Fatal;
 
-    use Function::Parameters qw(:strict);
+    use Function::Parameters qw(:moose);
 
     method new ($class:) { bless {}, $class; }
 

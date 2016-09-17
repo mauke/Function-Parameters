@@ -11,7 +11,7 @@ use Test::More
     package Foo;
 
     use Moose;
-    use Function::Parameters qw(:strict);
+    use Function::Parameters qw(:moose);
 
     for my $meth (qw/foo bar baz/) {
         Foo->meta->add_method("anon_$meth" => method (Str $bar) {

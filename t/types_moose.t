@@ -9,7 +9,7 @@ use Test::More
 ;
 use Test::Fatal;
 
-use Function::Parameters qw(:strict);
+use Function::Parameters qw(:moose);
 
 fun foo(Int $n, CodeRef $f, $x) {
     $x = $f->($x) for 1 .. $n;

@@ -10,7 +10,7 @@ use Test::More
 use Test::Fatal;
 
 use Function::Parameters {
-    def => { strict => 1 },
+    def => { strict => 1, reify_type => 'moose' },
 };
 
 def foo(Int $n, CodeRef $f, $x) {

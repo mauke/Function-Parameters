@@ -17,7 +17,7 @@ our $skip_no_invocants;
     package Stuff;
 
     use Test::More;
-    use Function::Parameters qw(:strict);
+    use Function::Parameters qw(:moose);
 
     sub new { bless {}, __PACKAGE__ }
 

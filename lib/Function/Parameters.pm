@@ -57,9 +57,61 @@ sub _assert_valid_attributes {
     }sx or confess qq{"$attrs" doesn't look like valid attributes};
 }
 
-sub _reify_type_default {
+sub _reify_type_moose {
     require Moose::Util::TypeConstraints;
     Moose::Util::TypeConstraints::find_or_create_isa_type_constraint($_[0])
+}
+
+sub _malformed_type {
+    my ($type, $msg) = @_;
+    my $pos = pos $_[0];
+    substr $type, $pos, 0, ' <-- HERE ';
+    croak "Malformed type: $msg marked by <-- HERE in '$type'";
+}
+
+sub _reify_type_auto_term {
+    # (str, caller)
+    $_[0] =~ /\G ( \w+ (?: :: \w+)* ) \s* /xgc or _malformed_type $_[0], "missing type name";
+    my $name = $1;
+    $name = "$_[1]::$name" unless $name =~ /::/;
+    my $fun = do {
+        no strict 'refs';
+        defined &$name or croak "Undefined type name $name";
+        \&$name
+    };
+
+    $_[0] =~ /\G \[ \s* /xgc
+        or return $fun;
+
+    my @args;
+    until ($_[0] =~ /\G \] \s* /xgc) {
+        $_[0] =~ /\G , \s* /xgc or _malformed_type $_[0], "missing ',' or ']'"
+            if @args;
+        push @args, &_reify_type_auto_union;
+    }
+
+    sub { $fun->([map $_->(), @args]) }
+}
+
+sub _reify_type_auto_union {
+    # (str, caller)
+    my $fun = &_reify_type_auto_term;
+    while ($_[0] =~ /\G \| \s* /xgc) {
+        my $right = &_reify_type_auto_term;
+        my $left  = $fun;
+        $fun = sub { $left->() | $right->() };
+    }
+    $fun
+}
+
+sub _reify_type_auto {
+    my ($type) = @_;
+    my $caller = caller;
+
+    $type =~ /\G \s+ /xgc;
+    my $tfun = _reify_type_auto_union $type, $caller;
+    $type =~ /\G \z/xgc or _malformed_type $type, "trailing garbage";
+    $tfun->()
 }
 
 sub _delete_default {
@@ -96,7 +148,10 @@ my %type_map = (
     classmethod        => { defaults => 'classmethod_strict' },
 );
 
-our @type_reifiers = \&_reify_type_default;
+our @type_reifiers = (
+    \&_reify_type_auto,
+    \&_reify_type_moose,
+);
 
 sub import {
     my $class = shift;
@@ -114,6 +169,10 @@ sub import {
             $_[0] eq ':lax' ? {
                 fun    => 'function_lax',
                 method => 'method_lax',
+            } :
+            $_[0] eq ':moose' ? {
+                fun    => { defaults => 'function_strict', reify_type => 'moose' },
+                method => { defaults => 'method_strict',   reify_type => 'moose' },
             } :
             ref($_[0]) eq 'HASH' ?
                 $_[0] :
@@ -166,8 +225,16 @@ sub import {
         $clean{check_argument_count} = _delete_default \%type, 'check_argument_count', 1;
         $clean{check_argument_types} = _delete_default \%type, 'check_argument_types', 1;
 
-        if (my $rt = delete $type{reify_type}) {
-            ref $rt eq 'CODE' or confess qq{"$rt" doesn't look like a type reifier};
+        if (exists $type{reify_type}) {
+            my $rt = delete $type{reify_type} // '(undef)';
+            if (!ref $rt) {
+                $rt =
+                    $rt eq 'auto'  ? \&_reify_type_auto :
+                    $rt eq 'moose' ? \&_reify_type_moose :
+                    confess qq{"$rt" isn't a known predefined type reifier};
+            } elsif (ref $rt ne 'CODE') {
+                confess qq{"$rt" doesn't look like a type reifier};
+            }
 
             my $index;
             for my $i (0 .. $#type_reifiers) {

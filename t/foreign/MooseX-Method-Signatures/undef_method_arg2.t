@@ -17,7 +17,7 @@ my $captured_args;
     package Named;
 
     use Moose;
-    use Function::Parameters qw(:strict);
+    use Function::Parameters qw(:moose);
 
 #    use Data::Dumper;
 
@@ -32,7 +32,7 @@ my $captured_args;
 {
     package Positional;
     use Moose;
-    use Function::Parameters qw(:strict);
+    use Function::Parameters qw(:moose);
 
 #    use Data::Dumper;
 
