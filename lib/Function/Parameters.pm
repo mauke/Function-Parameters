@@ -67,7 +67,6 @@ sub _delete_default {
     exists $href->{$key} ? delete $href->{$key} : $default
 }
 
-my @bare_arms = qw(function method);
 my %type_map = (
     function_lax       => {},  # all default settings
     function_strict    => {
