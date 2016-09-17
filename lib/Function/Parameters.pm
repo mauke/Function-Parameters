@@ -19,14 +19,14 @@ BEGIN {
 sub _assert_valid_identifier {
     my ($name, $with_dollar) = @_;
     my $bonus = $with_dollar ? '\$' : '';
-    $name =~ /^${bonus}[^\W\d]\w*\z/
+    $name =~ /\A${bonus}[^\W\d]\w*\z/
         or confess qq{"$name" doesn't look like a valid identifier};
 }
 
 sub _assert_valid_attributes {
     my ($attrs) = @_;
     $attrs =~ m{
-        ^ \s*+
+        \A \s*+
         : \s*+
         (?&ident) (?! [^\s:(] ) (?&param)?+ \s*+
         (?:
@@ -141,7 +141,7 @@ sub import {
         my %clean;
 
         $clean{name} = delete $type{name} // 'optional';
-        $clean{name} =~ /^(?:optional|required|prohibited)\z/
+        $clean{name} =~ /\A(?:optional|required|prohibited)\z/
             or confess qq["$clean{name}" doesn't look like a valid name attribute (one of optional, required, prohibited)];
 
         $clean{shift} = delete $type{shift} // '';
