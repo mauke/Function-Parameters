@@ -2059,7 +2059,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
     }
 }
 
-static int kw_flags_enter(pTHX_ Resource ***psen, const char *kw_ptr, STRLEN kw_len, KWSpec *spec) {
+static int kw_flags_enter(pTHX_ Sentinel **ppsen, const char *kw_ptr, STRLEN kw_len, KWSpec *spec) {
     HV *hints;
     SV *sv, **psv;
     const char *p, *kw_active;
@@ -2099,21 +2099,21 @@ static int kw_flags_enter(pTHX_ Resource ***psen, const char *kw_ptr, STRLEN kw_
             ENTER;
             SAVETMPS;
 
-            Newx(*psen, 1, Resource *);
-            **psen = NULL;
-            SAVEDESTRUCTOR_X(sentinel_clear_void, *psen);
+            Newx(*ppsen, 1, Sentinel);
+            ***ppsen = NULL;
+            SAVEDESTRUCTOR_X(sentinel_clear_void, *ppsen);
 
             spec->flags = 0;
             spec->reify_type = 0;
-            spec->shift = sentinel_mortalize(*psen, newSVpvs(""));
-            spec->attrs = sentinel_mortalize(*psen, newSVpvs(""));
+            spec->shift = sentinel_mortalize(**ppsen, newSVpvs(""));
+            spec->attrs = sentinel_mortalize(**ppsen, newSVpvs(""));
 
 #define FETCH_HINTK_INTO(NAME, PTR, LEN, X) STMT_START { \
     const char *fk_ptr_; \
     STRLEN fk_len_; \
     I32 fk_xlen_; \
     SV *fk_sv_; \
-    fk_sv_ = sentinel_mortalize(*psen, newSVpvs(HINTK_ ## NAME)); \
+    fk_sv_ = sentinel_mortalize(**ppsen, newSVpvs(HINTK_ ## NAME)); \
     sv_catpvn(fk_sv_, PTR, LEN); \
     fk_ptr_ = SvPV(fk_sv_, fk_len_); \
     fk_xlen_ = fk_len_; \
@@ -2145,13 +2145,13 @@ static int kw_flags_enter(pTHX_ Resource ***psen, const char *kw_ptr, STRLEN kw_
 }
 
 static int my_keyword_plugin(pTHX_ char *keyword_ptr, STRLEN keyword_len, OP **op_ptr) {
-    Resource **sen;
+    Sentinel *psen;
     KWSpec spec;
     int ret;
 
-    if (kw_flags_enter(aTHX_ &sen, keyword_ptr, keyword_len, &spec)) {
-        /* scope was entered, 'sen' and 'spec' are initialized */
-        ret = parse_fun(aTHX_ sen, op_ptr, keyword_ptr, keyword_len, &spec);
+    if (kw_flags_enter(aTHX_ &psen, keyword_ptr, keyword_len, &spec)) {
+        /* scope was entered, 'psen' and 'spec' are initialized */
+        ret = parse_fun(aTHX_ *psen, op_ptr, keyword_ptr, keyword_len, &spec);
         FREETMPS;
         LEAVE;
     } else {
