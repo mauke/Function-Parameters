@@ -889,11 +889,6 @@ function, and returns either C<undef> (if it knows nothing about the function)
 or a L<C<Function::Parameters::Info>|Function::Parameters::Info> object
 describing the parameter list.
 
-Note: This feature is implemented using L<C<Moo>|Moo>, so you'll need to have
-L<C<Moo>|Moo> installed if you want to call C<Function::Parameters::info>
-(alternatively, if L<C<Moose>|Moose> is already loaded by the time
-C<Function::Parameters::info> is first called, it will use that instead).
-
 See L<C<Function::Parameters::Info>|Function::Parameters::Info> for examples.
 
 =head2 Wrapping C<Function::Parameters>

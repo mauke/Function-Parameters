@@ -3,56 +3,47 @@ package Function::Parameters::Info;
 use v5.14.0;
 use warnings;
 
-our $VERSION = '1.0706';
+use Function::Parameters;
 
-# If Moo isn't loaded yet but Moose is, avoid pulling in Moo and fall back to Moose
-my ($Moo, $meta_make_immutable);
-BEGIN {
-    if ($INC{'Moose.pm'} && !$INC{'Moo.pm'}) {
-        $Moo = 'Moose';
-        $meta_make_immutable = sub { $_[0]->meta->make_immutable };
-    } else {
-        require Moo;
-        $Moo = 'Moo';
-        $meta_make_immutable = sub {};
-    }
-    $Moo->import;
-}
+our $VERSION = '1.0706';
 
 {
     package Function::Parameters::Param;
 
-    BEGIN { $Moo->import; }
     use overload
         fallback => 1,
-        '""'     => sub { $_[0]->name },
+        '""'     => method (@) { $self->{name} },
     ;
 
-    has $_ => (is => 'ro') for qw(name type);
+    method new($class: :$name, :$type) {
+        bless { @_ }, $class
+    }
 
-    __PACKAGE__->$meta_make_immutable;
+    method name() { $self->{name} }
+    method type() { $self->{type} }
 }
 
-my @pn_ro = qw(
-    positional_required
-    positional_optional
-    named_required
-    named_optional
-);
-
-for my $attr (qw[keyword invocant slurpy], map "_$_", @pn_ro) {
-    has $attr => (
-        is => 'ro',
-    );
+method new($class:
+    :$keyword,
+    :$invocant,
+    :$slurpy,
+    :$_positional_required,
+    :$_positional_optional,
+    :$_named_required,
+    :$_named_optional,
+) {
+    bless {@_}, $class
 }
 
-sub positional_required { @{$_[0]->_positional_required } }
-sub positional_optional { @{$_[0]->_positional_optional } }
-sub named_required      { @{$_[0]->_named_required } }
-sub named_optional      { @{$_[0]->_named_optional } }
+method keyword () { $self->{keyword}  }
+method invocant() { $self->{invocant} }
+method slurpy  () { $self->{slurpy}   }
+method positional_required() { @{$self->{_positional_required}} }
+method positional_optional() { @{$self->{_positional_optional}} }
+method named_required     () { @{$self->{_named_required}} }
+method named_optional     () { @{$self->{_named_optional}} }
 
-sub args_min {
-    my $self = shift;
+method args_min() {
     my $r = 0;
     $r++ if defined $self->invocant;
     $r += $self->positional_required;
@@ -60,8 +51,7 @@ sub args_min {
     $r
 }
 
-sub args_max {
-    my $self = shift;
+method args_max() {
     return 0 + 'Inf' if defined $self->slurpy || $self->named_required || $self->named_optional;
     my $r = 0;
     $r++ if defined $self->invocant;
@@ -69,8 +59,6 @@ sub args_max {
     $r += $self->positional_optional;
     $r
 }
-
-__PACKAGE__->$meta_make_immutable;
 
 'ok'
 
