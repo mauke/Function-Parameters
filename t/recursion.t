@@ -70,7 +70,7 @@ fun slurpy(:$n, %rest) { [$n, \%rest] }
             bless {on_destroy => $f}, $class
         }
 
-        method DESTROY {
+        method DESTROY() {
             $self->{on_destroy}();
         }
     }

@@ -51,7 +51,7 @@ use attributes;
     }
 
     # Torture test for the attribute handling.
-    method foo
+    method foo()
     :
     Bar
     :Moo(:Ko{oh)

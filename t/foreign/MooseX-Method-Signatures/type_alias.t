@@ -14,7 +14,10 @@ use lib __DIR__ . '/lib';
 {
     package TestClass;
     use Moose;
-    use Function::Parameters qw(:moose);
+    use Function::Parameters {
+        fun    => { defaults => 'function', reify_type => 'moose' },
+        method => { defaults => 'method',   reify_type => 'moose' },
+    };
 
     use aliased 'My::Annoyingly::Long::Name::Space', 'Shortcut';
 

@@ -15,7 +15,7 @@ use Test::More tests => 3;
         function => 'function',
     };
 
-    constructor spawn {
+    constructor spawn (@) {
         bless {@_}, $species;
     }
 

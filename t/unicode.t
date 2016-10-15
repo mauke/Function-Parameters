@@ -19,19 +19,19 @@ is eval('fun á(){} 1'), 1;
 is á(42), undef;
 
 is eval('fun ́(){} 1'), undef;
-like $@, qr/ function body/;
+like $@, qr/ parameter list/;
 
 is eval(q<fun 'hi(){} 1>), undef;
-like $@, qr/ function body/;
+like $@, qr/ parameter list/;
 
 is eval('fun ::hi(){} 1'), 1;
 is hi(42), undef;
 
 is eval('fun 123(){} 1'), undef;
-like $@, qr/ function body/;
+like $@, qr/ parameter list/;
 
 is eval('fun main::234(){} 1'), undef;
-like $@, qr/ function body/;
+like $@, qr/ parameter list/;
 
 is eval('fun m123(){} 1'), 1;
 is m123(42), undef;

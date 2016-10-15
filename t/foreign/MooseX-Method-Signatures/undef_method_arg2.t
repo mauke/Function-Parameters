@@ -17,7 +17,10 @@ my $captured_args;
     package Named;
 
     use Moose;
-    use Function::Parameters qw(:moose);
+    use Function::Parameters {
+        fun    => { defaults => 'function', reify_type => 'moose' },
+        method => { defaults => 'method',   reify_type => 'moose' },
+    };
 
 #    use Data::Dumper;
 
@@ -32,7 +35,10 @@ my $captured_args;
 {
     package Positional;
     use Moose;
-    use Function::Parameters qw(:moose);
+    use Function::Parameters {
+        fun    => { defaults => 'function', reify_type => 'moose' },
+        method => { defaults => 'method',   reify_type => 'moose' },
+    };
 
 #    use Data::Dumper;
 

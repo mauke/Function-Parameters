@@ -25,7 +25,7 @@ fun error_like($re, $body, $name = undef) {
     like $@, $re, $name;
 }
 
-method foo_any { [@_] }
+method foo_any(@) { [@_] }
 method foo_any_a(@args) { [@args] }
 method foo_any_b($x = undef, @rest) { [@_] }
 method foo_0() { [@_] }

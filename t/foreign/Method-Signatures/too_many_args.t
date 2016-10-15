@@ -7,7 +7,7 @@ use Test::More;
 
 use Function::Parameters qw(:strict);
 
-fun no_sig { return @_ }
+fun no_sig(@) { return @_ }
 fun no_args() { return @_ }
 fun one_arg($foo) { return $foo }
 fun two_args($foo, $bar) { return ($foo, $bar) }

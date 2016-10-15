@@ -7,7 +7,10 @@ use Test::More
     : (skip_all => "Moose required for testing types")
 ;
 use Test::Fatal;
-use Function::Parameters qw(:moose);
+use Function::Parameters {
+    fun    => { defaults => 'function', reify_type => 'moose' },
+    method => { defaults => 'method',   reify_type => 'moose' },
+};
 
 my $o = bless {} => 'Foo';
 

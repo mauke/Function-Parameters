@@ -11,7 +11,7 @@ use Function::Parameters { sub => 'function_strict' };
 our $a = 123;
 our $z;
 
-sub t001 { $a || "z" }
+sub t001 (@) { $a || "z" }
 is prototype(\&t001), undef;
 is eval("t001()"), 123;
 is eval("t001(456)"), 123;
@@ -184,7 +184,7 @@ is eval("t016()"), 222;
 is $z, 2;
 is $a, 123;
 
-sub t018 { join("/", @_) }
+sub t018 (@) { join("/", @_) }
 sub t017 ($p = t018 222, $a = 333) { $p // "z" }
 is prototype(\&t017), undef;
 is eval("t017()"), "222/333";
@@ -209,7 +209,7 @@ is eval("t019(456, 789, 987)"), undef;
 like $@, qr/\AToo many arguments for /;
 is $a, 123;
 
-sub t020 :prototype($) { $_[0]."z" }
+sub t020 (@) :prototype($) { $_[0]."z" }
 sub t021 ($p = t020 222, $a = 333) { "$p/$a" }
 is prototype(\&t021), undef;
 is eval("t021()"), "222z/333";
@@ -235,11 +235,11 @@ like $@, qr/\AToo many arguments for /;
 is $z, 13;
 is $a, 123;
 
-sub t023 ($a = sub { $_[0]."z" }) { $a->("a")."y" }
+sub t023 ($a = sub (@) { $_[0]."z" }) { $a->("a")."y" }
 is prototype(\&t023), undef;
 is eval("t023()"), "azy";
-is eval("t023(sub { \"x\".\$_[0].\"x\" })"), "xaxy";
-is eval("t023(sub { \"x\".\$_[0].\"x\" }, 789)"), undef;
+is eval("t023(sub (@) { \"x\".\$_[0].\"x\" })"), "xaxy";
+is eval("t023(sub (@) { \"x\".\$_[0].\"x\" }, 789)"), undef;
 like $@, qr/\AToo many arguments for /;
 is $a, 123;
 
@@ -401,7 +401,7 @@ is eval("t128(456, 789, 987)"), undef;
 like $@, qr/\AToo many arguments for /;
 is $a, 123;
 
-sub t130 { join(",", @_).";".scalar(@_) }
+sub t130 (@) { join(",", @_).";".scalar(@_) }
 sub t131 ($a = 222, $b = goto &t130) { "$a/$b" }
 is prototype(\&t131), undef;
 is eval("t131()"), ";0";
@@ -1181,39 +1181,39 @@ is $a, 123;
 sub t033 ($a = sub ($a) { $a."z" }) { $a->("a")."y" }
 is prototype(\&t033), undef;
 is eval("t033()"), "azy";
-is eval("t033(sub { \"x\".\$_[0].\"x\" })"), "xaxy";
-is eval("t033(sub { \"x\".\$_[0].\"x\" }, 789)"), undef;
+is eval("t033(sub (@) { \"x\".\$_[0].\"x\" })"), "xaxy";
+is eval("t033(sub (@) { \"x\".\$_[0].\"x\" }, 789)"), undef;
 like $@, qr/\AToo many arguments for /;
 is $a, 123;
 
 sub t133 ($a = sub ($a = 222) { $a."z" }) { $a->()."/".$a->("a") }
 is prototype(\&t133), undef;
 is eval("t133()"), "222z/az";
-is eval("t133(sub { \"x\".(\$_[0] // \"u\").\"x\" })"), "xux/xax";
-is eval("t133(sub { \"x\".(\$_[0] // \"u\").\"x\" }, 789)"), undef;
+is eval("t133(sub (@) { \"x\".(\$_[0] // \"u\").\"x\" })"), "xux/xax";
+is eval("t133(sub (@) { \"x\".(\$_[0] // \"u\").\"x\" }, 789)"), undef;
 like $@, qr/\AToo many arguments for /;
 is $a, 123;
 
-sub t134 ($a = sub ($a, $t = sub { $_[0]."p" }) { $t->($a)."z" }) {
-    $a->("a")."/".$a->("b", sub { $_[0]."q" } )
+sub t134 ($a = sub ($a, $t = sub (@) { $_[0]."p" }) { $t->($a)."z" }) {
+    $a->("a")."/".$a->("b", sub (@) { $_[0]."q" } )
 }
 is prototype(\&t134), undef;
 is eval("t134()"), "apz/bqz";
-is eval("t134(sub { \"x\".(\$_[1] // sub{\$_[0]})->(\$_[0]).\"x\" })"),
+is eval("t134(sub (@) { \"x\".(\$_[1] // sub (@) {\$_[0]})->(\$_[0]).\"x\" })"),
     "xax/xbqx";
-is eval("t134(sub { \"x\".(\$_[1] // sub{\$_[0]})->(\$_[0]).\"x\" }, 789)"),
+is eval("t134(sub (@) { \"x\".(\$_[1] // sub (@) {\$_[0]})->(\$_[0]).\"x\" }, 789)"),
     undef;
 like $@, qr/\AToo many arguments for /;
 is $a, 123;
 
 sub t135 ($a = sub ($a, $t = sub ($p) { $p."p" }) { $t->($a)."z" }) {
-    $a->("a")."/".$a->("b", sub { $_[0]."q" } )
+    $a->("a")."/".$a->("b", sub (@) { $_[0]."q" } )
 }
 is prototype(\&t135), undef;
 is eval("t135()"), "apz/bqz";
-is eval("t135(sub { \"x\".(\$_[1] // sub{\$_[0]})->(\$_[0]).\"x\" })"),
+is eval("t135(sub (@) { \"x\".(\$_[1] // sub (@) {\$_[0]})->(\$_[0]).\"x\" })"),
     "xax/xbqx";
-is eval("t135(sub { \"x\".(\$_[1] // sub{\$_[0]})->(\$_[0]).\"x\" }, 789)"),
+is eval("t135(sub (@) { \"x\".(\$_[1] // sub (@) {\$_[0]})->(\$_[0]).\"x\" }, 789)"),
     undef;
 like $@, qr/\AToo many arguments for /;
 is $a, 123;
@@ -1221,13 +1221,13 @@ is $a, 123;
 sub t132 (
     $a = sub ($a, $t = sub ($p = 222) { $p."p" }) { $t->($a)."z".$t->() },
 ) {
-    $a->("a")."/".$a->("b", sub { ($_[0] // "u")."q" } )
+    $a->("a")."/".$a->("b", sub (@) { ($_[0] // "u")."q" } )
 }
 is prototype(\&t132), undef;
 is eval("t132()"), "apz222p/bqzuq";
-is eval("t132(sub { \"x\".(\$_[1] // sub{\$_[0]})->(\$_[0]).\"x\" })"),
+is eval("t132(sub (@) { \"x\".(\$_[1] // sub (@) {\$_[0]})->(\$_[0]).\"x\" })"),
     "xax/xbqx";
-is eval("t132(sub { \"x\".(\$_[1] // sub{\$_[0]})->(\$_[0]).\"x\" }, 789)"),
+is eval("t132(sub (@) { \"x\".(\$_[1] // sub (@) {\$_[0]})->(\$_[0]).\"x\" }, 789)"),
     undef;
 like $@, qr/\AToo many arguments for /;
 is $a, 123;
@@ -1274,7 +1274,7 @@ is $a, 123;
 #eval "#line 8 foo\nsub t108 (\$a) :prototype(\$) { }";
 #isnt $@, "";
 
-sub t109 { }
+sub t109 (@) { }
 is prototype(\&t109), undef;
 is scalar(@{[ t109() ]}), 0;
 is scalar(t109()), undef;

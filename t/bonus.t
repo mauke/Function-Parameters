@@ -18,7 +18,7 @@ fun filter($f = fun ($x) { 1 }, @xs) {
 }
 
 is_deeply [filter], [];
-is_deeply [filter fun { 1 }, 2 .. 3], [2 .. 3];
+is_deeply [filter fun (@) { 1 }, 2 .. 3], [2 .. 3];
 is_deeply [filter fun ($x) { $x % 2 }, 1 .. 10], [1, 3, 5, 7, 9];
 
 fun fact($k, $n) :(&$) {

@@ -20,7 +20,7 @@ sub MODIFY_CODE_ATTRIBUTES {
 method moo ($a, $b) : Bar Baz(fubar) {
 }
 
-method foo
+method foo()
 :
 Bar
 :Moo(:Ko{oh)

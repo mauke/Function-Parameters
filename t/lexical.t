@@ -10,11 +10,11 @@ sub Burlap::fun (&) { $_[0]->() }
 {
     use Function::Parameters;
 
-    is fun { 2 + 2 }->(), 4;
+    is fun () { 2 + 2 }->(), 4;
 
     package Burlap;
 
-    ::ok fun { 0 };
+    ::ok fun () { 0 };
 }
 
 {

@@ -16,7 +16,7 @@ fun error_like($re, $body, $name = undef) {
     like $@, $re, $name;
 }
 
-fun foo_any { [@_] }
+fun foo_any(@) { [@_] }
 fun foo_any_a(@args) { [@args] }
 fun foo_any_b($x = undef, @rest) { [@_] }
 fun foo_0() { [@_] }
@@ -50,66 +50,66 @@ is_deeply foo_any_b('a', 'b', 'c'), ['a', 'b', 'c'];
 is_deeply foo_any_b('a', 'b', 'c', 'd'), ['a', 'b', 'c', 'd'];
 
 is_deeply foo_0, [];
-error_like qr/^Too many arguments.*foo_0/, fun { foo_0 'a' };
-error_like qr/^Too many arguments.*foo_0/, fun { foo_0 'a', 'b' };
-error_like qr/^Too many arguments.*foo_0/, fun { foo_0 'a', 'b', 'c' };
-error_like qr/^Too many arguments.*foo_0/, fun { foo_0 'a', 'b', 'c', 'd' };
+error_like qr/^Too many arguments.*foo_0/, fun () { foo_0 'a' };
+error_like qr/^Too many arguments.*foo_0/, fun () { foo_0 'a', 'b' };
+error_like qr/^Too many arguments.*foo_0/, fun () { foo_0 'a', 'b', 'c' };
+error_like qr/^Too many arguments.*foo_0/, fun () { foo_0 'a', 'b', 'c', 'd' };
 
-error_like qr/^Too few arguments.*foo_1/, fun { foo_1 };
+error_like qr/^Too few arguments.*foo_1/, fun () { foo_1 };
 is_deeply foo_1('a'), ['a'];
-error_like qr/^Too many arguments.*foo_1/, fun { foo_1 'a', 'b' };
-error_like qr/^Too many arguments.*foo_1/, fun { foo_1 'a', 'b', 'c' };
-error_like qr/^Too many arguments.*foo_1/, fun { foo_1 'a', 'b', 'c', 'd' };
+error_like qr/^Too many arguments.*foo_1/, fun () { foo_1 'a', 'b' };
+error_like qr/^Too many arguments.*foo_1/, fun () { foo_1 'a', 'b', 'c' };
+error_like qr/^Too many arguments.*foo_1/, fun () { foo_1 'a', 'b', 'c', 'd' };
 
-error_like qr/^Too few arguments.*foo_2/, fun { foo_2 };
-error_like qr/^Too few arguments.*foo_2/, fun { foo_2 'a' };
+error_like qr/^Too few arguments.*foo_2/, fun () { foo_2 };
+error_like qr/^Too few arguments.*foo_2/, fun () { foo_2 'a' };
 is_deeply foo_2('a', 'b'), ['a', 'b'];
-error_like qr/^Too many arguments.*foo_2/, fun { foo_2 'a', 'b', 'c' };
-error_like qr/^Too many arguments.*foo_2/, fun { foo_2 'a', 'b', 'c', 'd' };
+error_like qr/^Too many arguments.*foo_2/, fun () { foo_2 'a', 'b', 'c' };
+error_like qr/^Too many arguments.*foo_2/, fun () { foo_2 'a', 'b', 'c', 'd' };
 
-error_like qr/^Too few arguments.*foo_3/, fun { foo_3 };
-error_like qr/^Too few arguments.*foo_3/, fun { foo_3 'a' };
-error_like qr/^Too few arguments.*foo_3/, fun { foo_3 'a', 'b' };
+error_like qr/^Too few arguments.*foo_3/, fun () { foo_3 };
+error_like qr/^Too few arguments.*foo_3/, fun () { foo_3 'a' };
+error_like qr/^Too few arguments.*foo_3/, fun () { foo_3 'a', 'b' };
 is_deeply foo_3('a', 'b', 'c'), ['a', 'b', 'c'];
-error_like qr/^Too many arguments.*foo_3/, fun { foo_3 'a', 'b', 'c', 'd' };
+error_like qr/^Too many arguments.*foo_3/, fun () { foo_3 'a', 'b', 'c', 'd' };
 
 is_deeply foo_0_1, ['D0'];
 is_deeply foo_0_1('a'), ['a'];
-error_like qr/^Too many arguments.*foo_0_1/, fun { foo_0_1 'a', 'b' };
-error_like qr/^Too many arguments.*foo_0_1/, fun { foo_0_1 'a', 'b', 'c' };
-error_like qr/^Too many arguments.*foo_0_1/, fun { foo_0_1 'a', 'b', 'c', 'd' };
+error_like qr/^Too many arguments.*foo_0_1/, fun () { foo_0_1 'a', 'b' };
+error_like qr/^Too many arguments.*foo_0_1/, fun () { foo_0_1 'a', 'b', 'c' };
+error_like qr/^Too many arguments.*foo_0_1/, fun () { foo_0_1 'a', 'b', 'c', 'd' };
 
 is_deeply foo_0_2, ['D0', 'D1'];
 is_deeply foo_0_2('a'), ['a', 'D1'];
 is_deeply foo_0_2('a', 'b'), ['a', 'b'];
-error_like qr/^Too many arguments.*foo_0_2/, fun { foo_0_2 'a', 'b', 'c' };
-error_like qr/^Too many arguments.*foo_0_2/, fun { foo_0_2 'a', 'b', 'c', 'd' };
+error_like qr/^Too many arguments.*foo_0_2/, fun () { foo_0_2 'a', 'b', 'c' };
+error_like qr/^Too many arguments.*foo_0_2/, fun () { foo_0_2 'a', 'b', 'c', 'd' };
 
 is_deeply foo_0_3, ['D0', undef, 'D2'];
 is_deeply foo_0_3('a'), ['a', undef, 'D2'];
 is_deeply foo_0_3('a', 'b'), ['a', 'b', 'D2'];
 is_deeply foo_0_3('a', 'b', 'c'), ['a', 'b', 'c'];
-error_like qr/^Too many arguments.*foo_0_3/, fun { foo_0_3 'a', 'b', 'c', 'd' };
+error_like qr/^Too many arguments.*foo_0_3/, fun () { foo_0_3 'a', 'b', 'c', 'd' };
 
-error_like qr/^Too few arguments.*foo_1_2/, fun { foo_1_2 };
+error_like qr/^Too few arguments.*foo_1_2/, fun () { foo_1_2 };
 is_deeply foo_1_2('a'), ['a', 'D1'];
 is_deeply foo_1_2('a', 'b'), ['a', 'b'];
-error_like qr/^Too many arguments.*foo_1_2/, fun { foo_1_2 'a', 'b', 'c' };
-error_like qr/^Too many arguments.*foo_1_2/, fun { foo_1_2 'a', 'b', 'c', 'd' };
+error_like qr/^Too many arguments.*foo_1_2/, fun () { foo_1_2 'a', 'b', 'c' };
+error_like qr/^Too many arguments.*foo_1_2/, fun () { foo_1_2 'a', 'b', 'c', 'd' };
 
-error_like qr/^Too few arguments.*foo_1_3/, fun { foo_1_3 };
+error_like qr/^Too few arguments.*foo_1_3/, fun () { foo_1_3 };
 is_deeply foo_1_3('a'), ['a', 'D1', 'D2'];
 is_deeply foo_1_3('a', 'b'), ['a', 'b', 'D2'];
 is_deeply foo_1_3('a', 'b', 'c'), ['a', 'b', 'c'];
-error_like qr/^Too many arguments.*foo_1_3/, fun { foo_1_3 'a', 'b', 'c', 'd' };
+error_like qr/^Too many arguments.*foo_1_3/, fun () { foo_1_3 'a', 'b', 'c', 'd' };
 
-error_like qr/^Too few arguments.*foo_2_3/, fun { foo_2_3 };
-error_like qr/^Too few arguments.*foo_2_3/, fun { foo_2_3 'a' };
+error_like qr/^Too few arguments.*foo_2_3/, fun () { foo_2_3 };
+error_like qr/^Too few arguments.*foo_2_3/, fun () { foo_2_3 'a' };
 is_deeply foo_2_3('a', 'b'), ['a', 'b', 'D2'];
 is_deeply foo_2_3('a', 'b', 'c'), ['a', 'b', 'c'];
-error_like qr/^Too many arguments.*foo_2_3/, fun { foo_2_3 'a', 'b', 'c', 'd' };
+error_like qr/^Too many arguments.*foo_2_3/, fun () { foo_2_3 'a', 'b', 'c', 'd' };
 
-error_like qr/^Too few arguments.*foo_1_/, fun { foo_1_ };
+error_like qr/^Too few arguments.*foo_1_/, fun () { foo_1_ };
 is_deeply foo_1_('a'), ['a'];
 is_deeply foo_1_('a', 'b'), ['a', 'b'];
 is_deeply foo_1_('a', 'b', 'c'), ['a', 'b', 'c'];

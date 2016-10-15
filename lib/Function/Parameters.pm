@@ -4,6 +4,7 @@ use v5.14.0;
 use warnings;
 
 use Carp qw(croak confess);
+use Scalar::Util qw(blessed);
 
 sub _croak {
     my (undef, $file, $line) = caller 1;
@@ -119,6 +120,22 @@ sub _delete_default {
     exists $href->{$key} ? delete $href->{$key} : $default
 }
 
+sub _find_or_add_idx {
+    my ($array, $x) = @_;
+    my $index;
+    for my $i (0 .. $#$array) {
+        if ($array->[$i] == $x) {
+            $index = $i;
+            last;
+        }
+    }
+    unless (defined $index) {
+        $index = @$array;
+        push @$array, $x;
+    }
+    $index
+}
+
 my %type_map = (
     function_strict    => {},
     function_lax       => {
@@ -126,6 +143,7 @@ my %type_map = (
         strict     => 0,
     },
     function           => { defaults => 'function_strict' },
+
     method_strict      => {
         defaults   => 'function_strict',
         attributes => ':method',
@@ -137,6 +155,7 @@ my %type_map = (
         strict     => 0,
     },
     method             => { defaults => 'method_strict' },
+
     classmethod_strict => {
         defaults   => 'method_strict',
         shift      => '$class',
@@ -152,6 +171,10 @@ our @type_reifiers = (
     \&_reify_type_auto,
     \&_reify_type_moose,
 );
+
+our @sub_installers;
+
+our @shifty_types;
 
 sub import {
     my $class = shift;
@@ -169,10 +192,6 @@ sub import {
             $_[0] eq ':lax' ? {
                 fun    => 'function_lax',
                 method => 'method_lax',
-            } :
-            $_[0] eq ':moose' ? {
-                fun    => { defaults => 'function_strict', reify_type => 'moose' },
-                method => { defaults => 'method_strict',   reify_type => 'moose' },
             } :
             ref($_[0]) eq 'HASH' ?
                 $_[0] :
@@ -207,25 +226,12 @@ sub import {
         $clean{name} =~ /\A(?:optional|required|prohibited)\z/
             or confess qq["$clean{name}" doesn't look like a valid name attribute (one of optional, required, prohibited)];
 
-        $clean{shift} = delete $type{shift} // '';
-        if ($clean{shift}) {
-            _assert_valid_identifier $clean{shift}, 1;
-            $clean{shift} eq '$_' and confess q[Using "$_" as a parameter is not supported];
-        }
-
         $clean{attrs} = join ' ', map delete $type{$_} // (), qw(attributes attrs);
         _assert_valid_attributes $clean{attrs} if $clean{attrs};
 
-        $clean{default_arguments} = _delete_default \%type, 'default_arguments', 1;
-        $clean{named_parameters}  = _delete_default \%type, 'named_parameters',  1;
-        $clean{types}             = _delete_default \%type, 'types',             1;
-
-        $clean{invocant}             = _delete_default \%type, 'invocant',             0;
-        $clean{runtime}              = _delete_default \%type, 'runtime',              0;
-        $clean{check_argument_count} = _delete_default \%type, 'check_argument_count', 1;
-        $clean{check_argument_types} = _delete_default \%type, 'check_argument_types', 1;
-
-        if (exists $type{reify_type}) {
+        if (!exists $type{reify_type}) {
+            $clean{reify_type} = 0;
+        } else {
             my $rt = delete $type{reify_type} // '(undef)';
             if (!ref $rt) {
                 $rt =
@@ -236,20 +242,56 @@ sub import {
                 confess qq{"$rt" doesn't look like a type reifier};
             }
 
-            my $index;
-            for my $i (0 .. $#type_reifiers) {
-                if ($type_reifiers[$i] == $rt) {
-                    $index = $i;
-                    last;
-                }
-            }
-            unless (defined $index) {
-                $index = @type_reifiers;
-                push @type_reifiers, $rt;
+            $clean{reify_type} = _find_or_add_idx \@type_reifiers, $rt;
+        }
+
+        if (!exists $type{install_sub}) {
+            $clean{install_sub} = '';
+        } else {
+            my $is = delete $type{install_sub};
+            if (!ref $is) {
+                _assert_valid_identifier $is;
+            } elsif (ref $is ne 'CODE') {
+                confess qq{"$is" doesn't look like a sub installer};
+            } else {
+                $is = _find_or_add_idx \@sub_installers, $is;
             }
 
-            $clean{reify_type} = $index;
+            $clean{install_sub} = $is;
         }
+
+        $clean{shift} = do {
+            my $shift = delete $type{shift} // [];
+            $shift = [$shift] if !ref $shift;
+            my $str = '';
+            for my $item (@$shift) {
+                my ($name, $type);
+                if (ref $item) {
+                    @$item == 2 or confess "A 'shift' item must have 2 elements, not " . @$item;
+                    ($name, $type) = @$item;
+                } else {
+                    $name = $item;
+                }
+                _assert_valid_identifier $name, 1;
+                $name eq '$_' and confess q[Using "$_" as a parameter is not supported];
+                $str .= $name;
+                if (defined $type) {
+                    blessed($type) or confess "${name}'s type must be an object, not $type";
+                    my $index = _find_or_add_idx \@shifty_types, $type;
+                    $str .= "/$index";
+                }
+                $str .= ' ';
+            }
+            $str
+        };
+
+        $clean{default_arguments}    = _delete_default \%type, 'default_arguments',    1;
+        $clean{named_parameters}     = _delete_default \%type, 'named_parameters',     1;
+        $clean{types}                = _delete_default \%type, 'types',                1;
+        $clean{invocant}             = _delete_default \%type, 'invocant',             0;
+        $clean{runtime}              = _delete_default \%type, 'runtime',              0;
+        $clean{check_argument_count} = _delete_default \%type, 'check_argument_count', 1;
+        $clean{check_argument_types} = _delete_default \%type, 'check_argument_types', 1;
 
         %type and confess "Invalid keyword property: @{[sort keys %type]}";
 
@@ -271,10 +313,11 @@ sub import {
         $flags |= FLAG_NAMED_PARAMS if $type->{named_parameters};
         $flags |= FLAG_TYPES_OK     if $type->{types};
         $flags |= FLAG_RUNTIME      if $type->{runtime};
-        $^H{HINTK_FLAGS_ . $kw} = $flags;
-        $^H{HINTK_SHIFT_ . $kw} = $type->{shift};
-        $^H{HINTK_ATTRS_ . $kw} = $type->{attrs};
-        $^H{HINTK_REIFY_ . $kw} = $type->{reify_type} // 0;
+        $^H{HINTK_FLAGS_   . $kw} = $flags;
+        $^H{HINTK_SHIFT_   . $kw} = $type->{shift};
+        $^H{HINTK_ATTRS_   . $kw} = $type->{attrs};
+        $^H{HINTK_REIFY_   . $kw} = $type->{reify_type};
+        $^H{HINTK_INSTALL_ . $kw} = $type->{install_sub};
         $^H{+HINTK_KEYWORDS} .= "$kw ";
     }
 }
@@ -299,8 +342,7 @@ sub _register_info {
     my (
         $key,
         $declarator,
-        $invocant,
-        $invocant_type,
+        $shift,
         $positional_required,
         $positional_optional,
         $named_required,
@@ -311,12 +353,12 @@ sub _register_info {
 
     my $info = {
         declarator => $declarator,
-        invocant => defined $invocant ? [$invocant, $invocant_type] : undef,
-        slurpy   => defined $slurpy   ? [$slurpy  , $slurpy_type  ] : undef,
+        shift => $shift,
         positional_required => $positional_required,
         positional_optional => $positional_optional,
         named_required => $named_required,
         named_optional => $named_optional,
+        slurpy => defined $slurpy ? [$slurpy, $slurpy_type] : undef,
     };
 
     $metadata{$key} = $info;
@@ -349,7 +391,7 @@ sub info {
     require Function::Parameters::Info;
     Function::Parameters::Info->new(
         keyword  => $info->{declarator},
-        invocant => _mkparam1($info->{invocant}),
+        nshift   => $info->{shift},
         slurpy   => _mkparam1($info->{slurpy}),
         (
             map +("_$_" => _mkparams @{$info->{$_}}),

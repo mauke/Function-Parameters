@@ -19,7 +19,7 @@ use Test::More 'no_plan';
         return $self->{$key};
     }
 
-    method no_proto {
+    method no_proto(@) {
         return($self, @_);
     }
 

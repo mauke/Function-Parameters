@@ -88,7 +88,7 @@ method baz($class: $po1 = 1, $po2 = 2, $po3 = 3, :$no1 = 4, @rem) {}
 
 {
     use Function::Parameters { proc => 'function' };
-    my $info = Function::Parameters::info proc {};
+    my $info = Function::Parameters::info proc (@) {};
     is $info->keyword, 'proc';
     is $info->invocant, undef;
     is_deeply [$info->positional_required], [];
@@ -99,13 +99,13 @@ method baz($class: $po1 = 1, $po2 = 2, $po3 = 3, :$no1 = 4, @rem) {}
     is scalar $info->named_required, 0;
     is_deeply [$info->named_optional], [];
     is scalar $info->named_optional, 0;
-    is $info->slurpy, '@_';
+    is $info->slurpy, '@';
     is $info->args_min, 0;
     is $info->args_max, Inf;
 }
 
 {
-    my $info = Function::Parameters::info method {};
+    my $info = Function::Parameters::info method (@) {};
     is $info->keyword, 'method';
     is $info->invocant, '$self';
     is_deeply [$info->positional_required], [];
@@ -116,7 +116,7 @@ method baz($class: $po1 = 1, $po2 = 2, $po3 = 3, :$no1 = 4, @rem) {}
     is scalar $info->named_required, 0;
     is_deeply [$info->named_optional], [];
     is scalar $info->named_optional, 0;
-    is $info->slurpy, '@_';
+    is $info->slurpy, '@';
     is $info->args_min, 1;
     is $info->args_max, Inf;
 }

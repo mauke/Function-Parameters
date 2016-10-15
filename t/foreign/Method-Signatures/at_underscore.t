@@ -8,8 +8,8 @@ use Test::More;
     package Foo;
     use Function::Parameters qw(:strict);
 
-    fun foo { return @_ }
-    method bar { return @_ }
+    fun foo(@) { return @_ }
+    method bar(@) { return @_ }
 }
 
 is_deeply [Foo::foo()], [];

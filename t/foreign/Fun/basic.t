@@ -24,7 +24,7 @@ is(sum(1, 2, 3, 4), 10);
 {
     package Foo;
     use Function::Parameters;
-    fun foo { }
+    fun foo() { }
 }
 
 ok(exists $Foo::{foo});

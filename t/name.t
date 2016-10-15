@@ -40,7 +40,7 @@ is $baz->(-0.5), 0;
 for my $fail (
     map [__DIR__ . "/name_$_->[0].fail", @$_[1 .. $#$_]],
     ['1', qr/expect.*function.*name/],
-    ['2', qr/expect.*function.*body/],
+    ['2', qr/expect.*parameter.*list/],
     ['3', qr/expect.*function.*name/],
     ['4', qr/Global symbol "\$self" requires explicit package name/]
 ) {

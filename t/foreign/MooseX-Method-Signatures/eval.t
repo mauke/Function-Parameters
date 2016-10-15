@@ -30,8 +30,8 @@ __DATA__
 
     use Function::Parameters qw(:strict);
     method new($class: $init) { bless $init, $class }
-    method example  { 1 } # look Ma, no semicolon!
-    method example2 { 2 }
+    method example()  { 1 } # look Ma, no semicolon!
+    method example2() { 2 }
 }
 1;
 

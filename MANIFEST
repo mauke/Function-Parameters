@@ -117,6 +117,7 @@ t/imports.t
 t/info.t
 t/invocant.t
 t/lexical.t
+t/lifetime.t
 t/lineno-torture.t
 t/lineno.t
 t/method_cache.t

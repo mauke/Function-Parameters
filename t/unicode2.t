@@ -19,19 +19,19 @@ is eval('pŕöç á(){} 1'), 1;
 is á(), undef;
 
 is eval('pŕöç ́(){} 1'), undef;
-like $@, qr/pŕöç.* function body/s;
+like $@, qr/pŕöç.* parameter list/s;
 
 is eval(q<pŕöç 'hi(){} 1>), undef;
-like $@, qr/pŕöç.* function body/s;
+like $@, qr/pŕöç.* parameter list/s;
 
 is eval('pŕöç ::hi($z){} 1'), 1;
 is hi(42), undef;
 
 is eval('pŕöç 123(){} 1'), undef;
-like $@, qr/pŕöç.* function body/s;
+like $@, qr/pŕöç.* parameter list/s;
 
 is eval('pŕöç main::234(){} 1'), undef;
-like $@, qr/pŕöç.* function body/s;
+like $@, qr/pŕöç.* parameter list/s;
 
 is eval('pŕöç m123($z){} 1'), 1;
 is m123(42), undef;

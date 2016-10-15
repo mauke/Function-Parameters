@@ -17,7 +17,10 @@ our $skip_no_invocants;
     package Stuff;
 
     use Test::More;
-    use Function::Parameters qw(:moose);
+    use Function::Parameters {
+        fun    => { defaults => 'function', reify_type => 'moose' },
+        method => { defaults => 'method',   reify_type => 'moose' },
+    };
 
     sub new { bless {}, __PACKAGE__ }
 

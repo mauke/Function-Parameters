@@ -18,8 +18,8 @@ fun foo((Int) $n, (CodeRef) $f, $x) {
     $x
 }
 
-is foo(0, fun {}, undef), undef;
-is foo(0, fun {}, "o hai"), "o hai";
+is foo(0, fun (@) {}, undef), undef;
+is foo(0, fun (@) {}, "o hai"), "o hai";
 is foo(3, fun ($x) { "($x)" }, 1.5), "(((1.5)))";
 is foo(3, fun (Str $x) { "($x)" }, 1.5), "(((1.5)))";
 
@@ -40,7 +40,7 @@ is foo(3, fun (Str $x) { "($x)" }, 1.5), "(((1.5)))";
     is $req[2]->type, undef;
 }
 
-like exception { foo("ermagerd", fun {}, undef) }, qr/\bparameter 1.+\$n\b.+\bValidation failed\b.+\bInt\b.+ermagerd/;
+like exception { foo("ermagerd", fun (@) {}, undef) }, qr/\bparameter 1.+\$n\b.+\bValidation failed\b.+\bInt\b.+ermagerd/;
 like exception { foo(0, {}, undef) }, qr/\bparameter 2.+\$f\b.+\bValidation failed\b.+\bCodeRef\b/;
 
 fun bar(((Function::Parameters::info(\&foo)->positional_required)[0]->type) $whoa) { $whoa * 2 }

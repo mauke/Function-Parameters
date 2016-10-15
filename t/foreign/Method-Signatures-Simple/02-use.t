@@ -12,10 +12,10 @@ BEGIN { use_ok 'Function::Parameters' }
     method make($class: %opts) {
         bless {%opts}, $class;
     }
-    method first : lvalue {
+    method first() : lvalue {
         $self->{first};
     }
-    method second {
+    method second() {
         $self->first + 1;
     }
     method nth($inc) {

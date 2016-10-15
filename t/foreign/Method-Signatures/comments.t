@@ -9,7 +9,10 @@ use Test::More
 ;
 use Test::Fatal;
 
-use Function::Parameters qw(:moose);
+use Function::Parameters {
+    fun    => { defaults => 'function', reify_type => 'moose' },
+    method => { defaults => 'method',   reify_type => 'moose' },
+};
 
 
 is exception

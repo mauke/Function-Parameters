@@ -8,7 +8,7 @@ use Test::Fatal;
     package Foo;
     use Function::Parameters qw(:strict);
     method new($class:) { bless {}, $class }
-    method bar { 42 }
+    method bar(@) { 42 }
 }
 
 my $foo = Foo->new;

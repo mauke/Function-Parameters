@@ -52,7 +52,7 @@ test_loc 'LX -- 3';
     #local $TODO = 'expressions break line numbers???';
 
     0
-    , fun {
+    , fun () {
             test_loc 'LX assign';
         }->()
     ;
@@ -63,7 +63,7 @@ test_loc 'LX -- 3';
 {
     #local $TODO = 'newlines in prototype/attributes';
 
-    fun wtf :(
+    fun wtf() :(
 
     )
     :

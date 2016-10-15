@@ -7,6 +7,6 @@ use Function::Parameters;
 
 is(foo(), "FOO");
 
-fun foo { "FOO" }
+fun foo() { "FOO" }
 
 done_testing;

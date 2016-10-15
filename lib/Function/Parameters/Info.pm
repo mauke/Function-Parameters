@@ -4,6 +4,7 @@ use v5.14.0;
 use warnings;
 
 use Function::Parameters;
+use Carp ();
 
 our $VERSION = '1.0706';
 
@@ -25,28 +26,32 @@ our $VERSION = '1.0706';
 
 method new($class:
     :$keyword,
-    :$invocant,
-    :$slurpy,
+    :$nshift,
     :$_positional_required,
     :$_positional_optional,
     :$_named_required,
     :$_named_optional,
+    :$slurpy,
 ) {
     bless {@_}, $class
 }
 
-method keyword () { $self->{keyword}  }
-method invocant() { $self->{invocant} }
-method slurpy  () { $self->{slurpy}   }
-method positional_required() { @{$self->{_positional_required}} }
+method keyword() { $self->{keyword} }
+method nshift () { $self->{nshift}  }
+method slurpy () { $self->{slurpy}  }
 method positional_optional() { @{$self->{_positional_optional}} }
 method named_required     () { @{$self->{_named_required}} }
 method named_optional     () { @{$self->{_named_optional}} }
 
+method positional_required() {
+    my @p = @{$self->{_positional_required}};
+    splice @p, 0, $self->nshift;
+    @p
+}
+
 method args_min() {
     my $r = 0;
-    $r++ if defined $self->invocant;
-    $r += $self->positional_required;
+    $r += @{$self->{_positional_required}};
     $r += $self->named_required * 2;
     $r
 }
@@ -54,10 +59,24 @@ method args_min() {
 method args_max() {
     return 0 + 'Inf' if defined $self->slurpy || $self->named_required || $self->named_optional;
     my $r = 0;
-    $r++ if defined $self->invocant;
-    $r += $self->positional_required;
+    $r += @{$self->{_positional_required}};
     $r += $self->positional_optional;
     $r
+}
+
+method invocant() {
+    my $nshift = $self->nshift;
+    return undef
+        if $nshift == 0;
+    return $self->{_positional_required}[0]
+        if $nshift == 1;
+    Carp::croak "Can't return a single invocant; this function has $nshift";
+}
+
+method invocants() {
+    my @p = @{$self->{_positional_required}};
+    splice @p, $self->nshift;
+    @p
 }
 
 'ok'
