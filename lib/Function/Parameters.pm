@@ -165,6 +165,22 @@ my %type_map = (
         strict     => 0,
     },
     classmethod        => { defaults => 'classmethod_strict' },
+
+    around             => {
+        defaults    => 'method',
+        install_sub => 'around',
+        shift       => ['$orig', '$self'],
+    },
+    (
+        map +(
+            $_ => {
+                defaults    => 'method',
+                install_sub => $_,
+            }
+        ), qw(
+            before after augment override
+        ),
+    ),
 );
 
 our @type_reifiers = (
