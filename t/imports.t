@@ -3,7 +3,7 @@
 use strict;
 use warnings FATAL => 'all';
 
-use Test::More tests => 52;
+use Test::More tests => 58;
 use Test::Fatal;
 
 {
@@ -121,17 +121,36 @@ use Test::Fatal;
     like $@, qr/syntax error/;
 }
 
+{
+    use Function::Parameters qw(method);
+
+    is method () { $self + 2 }->(2), 4;
+    is eval('fun () {}'), undef;
+    like $@, qr/syntax error/;
+}
+
+{
+    use Function::Parameters qw(method fun);
+
+    is method () { $self + 2 }->(2), 4;
+    is fun ($x) { $x + 2 }->(2), 4;
+}
+
+{
+    use Function::Parameters qw(:std), { def => 'function' };
+
+    is method () { $self + 2 }->(2), 4;
+    is fun ($x) { $x + 2 }->(2), 4;
+    is def ($x) { $x + 2 }->(2), 4;
+}
+
 like exception { Function::Parameters->import(":QQQQ") }, qr/not exported/;
 
 like exception { Function::Parameters->import({":QQQQ" => "function"}) }, qr/valid identifier/;
 
 like exception { Function::Parameters->import({"jetsam" => "QQQQ"}) }, qr/valid type/;
 
-like exception { Function::Parameters->import({}, undef) }, qr/Too many arguments/;
-
-like exception { Function::Parameters->import("g", "h") }, qr/Too many arguments/;
-
-like exception { Function::Parameters->import("g", "h", "i") }, qr/Too many arguments/;
+like exception { Function::Parameters->import("asdf") }, qr/not exported/;
 
 for my $kw ('', '42', 'A::B', 'a b') {
     like exception { Function::Parameters->import({ $kw => 'function' }) }, qr/valid identifier /;

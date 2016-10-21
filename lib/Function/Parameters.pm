@@ -183,6 +183,49 @@ my %type_map = (
     ),
 );
 
+my %import_map = (
+    fun => 'function',
+    (
+        map +($_ => $_),
+        qw(
+            method
+            classmethod
+            before
+            after
+            around
+            augment
+            override
+        )
+    ),
+
+    ':strict' => {
+        fun    => 'function_strict',
+        method => 'method_strict',
+    },
+
+    ':lax' => {
+        fun    => 'function_lax',
+        method => 'method_lax',
+    },
+
+    ':std' => [qw(fun method)],
+    ':modifiers' => [qw(
+        before
+        after
+        around
+        augment
+        override
+    )],
+);
+for my $v (values %import_map) {
+    if (ref $v eq 'ARRAY') {
+        $v = {
+            map +($_ => $import_map{$_} || die "Internal error: $v => $_"),
+            @$v
+        };
+    }
+}
+
 our @type_reifiers = (
     \&_reify_type_auto,
     \&_reify_type_moose,
@@ -195,32 +238,27 @@ our @shifty_types;
 sub import {
     my $class = shift;
 
-    my $imports =
-        @_ == 0 ? {
-            fun    => 'function',
-            method => 'method',
-        } :
-        @_ == 1 ?
-            $_[0] eq ':strict' ? {
-                fun    => 'function_strict',
-                method => 'method_strict',
-            } :
-            $_[0] eq ':lax' ? {
-                fun    => 'function_lax',
-                method => 'method_lax',
-            } :
-            ref($_[0]) eq 'HASH' ?
-                $_[0] :
-            croak qq{"$_[0]" is not exported by the $class module}
-        :
-        croak "Too many arguments in import list for the $class module"
-    ;
+    my %imports;
+    @_ = qw(:std) if !@_;
+    for my $item (@_) {
+        my $part;
+        if (ref $item) {
+            $part = $item;
+        } else {
+            my $type = $import_map{$item}
+                or croak qq{"$item" is not exported by the $class module};
+            $part = ref $type
+                ? $type
+                : { $item => $type };
+        }
+        @imports{keys %$part} = values %$part;
+    }
 
     my %spec;
 
-    for my $name (sort keys %$imports) {
+    for my $name (sort keys %imports) {
         _assert_valid_identifier $name;
-        my $proto_type = $imports->{$name};
+        my $proto_type = $imports{$name};
 
         $proto_type = {defaults => $proto_type} unless ref $proto_type;
 
