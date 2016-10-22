@@ -3,7 +3,7 @@
 use strict;
 use warnings FATAL => 'all';
 
-use Test::More tests => 49;
+use Test::More tests => 67;
 use Test::Fatal;
 
 use Function::Parameters;
@@ -95,6 +95,15 @@ use Function::Parameters {
 
 method2 m2_a($x) { "$self1 $self2 $x [@_]" }
 is m2_a('a', 'b', 'c'), 'a b c [c]';
+for my $info (Function::Parameters::info(\&m2_a)) {
+    my @inv = $info->invocants;
+    is_deeply \@inv, [qw($self1 $self2)];
+    is_deeply [map $_->name, @inv], [qw($self1 $self2)];
+    is_deeply [map $_->type, @inv], [undef, undef];
+    is $info->args_min, 3;
+    is $info->args_max, 3;
+    like exception { $info->invocant }, qr/single invocant/;
+}
 
 method2 m2_b($x = $self2, $y = $self1) { "$self1 $self2 $x $y [@_]" }
 like exception { m2_b('a', 'b', 'c', 'd', 'e') }, qr/^\QToo many arguments for method2 m2_b (expected 4, got 5)/;
@@ -102,11 +111,29 @@ is m2_b('a', 'b', 'c', 'd'), 'a b c d [c d]';
 is m2_b('a', 'b', 'c'), 'a b c a [c]';
 is m2_b('a', 'b'), 'a b b a []';
 like exception { m2_b('a') }, qr/^\QToo few arguments for method2 m2_b (expected 2, got 1)/;
+for my $info (Function::Parameters::info(\&m2_b)) {
+    my @inv = $info->invocants;
+    is_deeply \@inv, [qw($self1 $self2)];
+    is_deeply [map $_->name, @inv], [qw($self1 $self2)];
+    is_deeply [map $_->type, @inv], [undef, undef];
+    is $info->args_min, 2;
+    is $info->args_max, 4;
+    like exception { $info->invocant }, qr/single invocant/;
+}
 
 method2 m2_c($t1, $t2:) { "$t1 $t2 [@_]" }
 like exception { m2_c('a', 'b', 'c') }, qr/^\QToo many arguments for method2 m2_c (expected 2, got 3)/;
 is m2_c('a', 'b'), 'a b []';
 like exception { m2_c('a') }, qr/^\QToo few arguments for method2 m2_c (expected 2, got 1)/;
+for my $info (Function::Parameters::info(\&m2_c)) {
+    my @inv = $info->invocants;
+    is_deeply \@inv, [qw($t1 $t2)];
+    is_deeply [map $_->name, @inv], [qw($t1 $t2)];
+    is_deeply [map $_->type, @inv], [undef, undef];
+    is $info->args_min, 2;
+    is $info->args_max, 2;
+    like exception { $info->invocant }, qr/single invocant/;
+}
 
 is eval('method2 ($t1, $t2:) { $self1 }'), undef;
 like $@, qr/^Global symbol "\$self1" requires explicit package name/;

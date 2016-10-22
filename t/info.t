@@ -2,17 +2,19 @@
 use warnings FATAL => 'all';
 use strict;
 
-use Test::More tests => 122;
+use Test::More tests => 140;
 
-use Function::Parameters qw(:lax);
+use Function::Parameters;
 
-sub Inf () { 0 + 'Inf' }
+use constant Inf => 0 + 'Inf';
 
 fun foo($pr1, $pr2, $po1 = 1, $po2 = 2, :$no1 = 3, :$no2 = 4, %r) {}
 
 {
     my $info = Function::Parameters::info \&foo;
     is $info->keyword, 'fun';
+    is_deeply [$info->invocants], [];
+    is scalar $info->invocants, 0;
     is $info->invocant, undef;
     is_deeply [$info->positional_required], [qw($pr1 $pr2)];
     is scalar $info->positional_required, 2;
@@ -30,6 +32,8 @@ fun foo($pr1, $pr2, $po1 = 1, $po2 = 2, :$no1 = 3, :$no2 = 4, %r) {}
 {
     my $info = Function::Parameters::info fun ($pr1, :$nr1, :$nr2) {};
     is $info->keyword, 'fun';
+    is_deeply [$info->invocants], [];
+    is scalar $info->invocants, 0;
     is $info->invocant, undef;
     is_deeply [$info->positional_required], [qw($pr1)];
     is scalar $info->positional_required, 1;
@@ -55,6 +59,8 @@ method baz($class: $po1 = 1, $po2 = 2, $po3 = 3, :$no1 = 4, @rem) {}
 {
     my $info = Function::Parameters::info \&baz;
     is $info->keyword, 'method';
+    is_deeply [$info->invocants], [qw($class)];
+    is scalar $info->invocants, 1;
     is $info->invocant, '$class';
     is_deeply [$info->positional_required], [];
     is scalar $info->positional_required, 0;
@@ -72,6 +78,8 @@ method baz($class: $po1 = 1, $po2 = 2, $po3 = 3, :$no1 = 4, @rem) {}
 {
     my $info = Function::Parameters::info method () {};
     is $info->keyword, 'method';
+    is_deeply [$info->invocants], [qw($self)];
+    is scalar $info->invocants, 1;
     is $info->invocant, '$self';
     is_deeply [$info->positional_required], [];
     is scalar $info->positional_required, 0;
@@ -90,6 +98,8 @@ method baz($class: $po1 = 1, $po2 = 2, $po3 = 3, :$no1 = 4, @rem) {}
     use Function::Parameters { proc => 'function' };
     my $info = Function::Parameters::info proc (@) {};
     is $info->keyword, 'proc';
+    is_deeply [$info->invocants], [];
+    is scalar $info->invocants, 0;
     is $info->invocant, undef;
     is_deeply [$info->positional_required], [];
     is scalar $info->positional_required, 0;
@@ -107,6 +117,8 @@ method baz($class: $po1 = 1, $po2 = 2, $po3 = 3, :$no1 = 4, @rem) {}
 {
     my $info = Function::Parameters::info method (@) {};
     is $info->keyword, 'method';
+    is_deeply [$info->invocants], [qw($self)];
+    is scalar $info->invocants, 1;
     is $info->invocant, '$self';
     is_deeply [$info->positional_required], [];
     is scalar $info->positional_required, 0;
@@ -130,6 +142,8 @@ method baz($class: $po1 = 1, $po2 = 2, $po3 = 3, :$no1 = 4, @rem) {}
         my ($i, $f) = @$kf;
         my $info = Function::Parameters::info $f;
         is $info->keyword, 'fun';
+        is_deeply [$info->invocants], [];
+        is scalar $info->invocants, 0;
         is $info->invocant, undef;
         is_deeply [$info->positional_required], [];
         is scalar $info->positional_required, 0;
@@ -142,6 +156,6 @@ method baz($class: $po1 = 1, $po2 = 2, $po3 = 3, :$no1 = 4, @rem) {}
         is $info->slurpy, undef;
         is $info->args_min, 6;
         is $info->args_max, Inf;
-        is $f->(), $i;
+        is $f->(sin => 1, swift => 2, slay => 3), $i;
     }
 }
