@@ -1038,6 +1038,7 @@ static PADOFFSET parse_param(
                     p[i].type = spec->shift.data[i].type;
                 }
                 param_spec->shift = lim;
+                intro_my();
             }
 
             op_guard_update(ginit, parse_termexpr(0));
