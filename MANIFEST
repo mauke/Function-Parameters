@@ -115,6 +115,7 @@ t/foreign/signatures/weird.t
 t/hueg.t
 t/imports.t
 t/info.t
+t/install.t
 t/invocant.t
 t/lexical.t
 t/lifetime.t
