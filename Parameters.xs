@@ -1405,37 +1405,13 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
         }
     }
 
-    /* prototype */
-    proto = NULL;
-    c = lex_peek_unichar(0);
-    if (c == ':') {
-        lex_read_unichar(0);
-        lex_read_space(0);
-
-        c = lex_peek_unichar(0);
-        if (c != '(') {
-            lex_stuff_pvs(":", 0);
-            c = ':';
-        } else {
-            lex_read_unichar(0);
-            if (!(proto = my_scan_parens_tail(aTHX_ sen, FALSE))) {
-                croak("In %"SVf": prototype not terminated", SVfARG(declarator));
-            }
-            my_check_prototype(aTHX_ sen, declarator, proto);
-            lex_read_space(0);
-            c = lex_peek_unichar(0);
-            if (!(c == ':' || c == '{')) {
-                lex_stuff_pvs(":", 0);
-                c = ':';
-            }
-        }
-    }
-
     /* attributes */
     Newx(attrs_sentinel, 1, OpGuard);
     op_guard_init(attrs_sentinel);
     sentinel_register(sen, attrs_sentinel, free_op_guard_void);
+    proto = NULL;
 
+    c = lex_peek_unichar(0);
     if (c == ':' || c == '{') /* '}' - hi, vim */ {
 
         /* kludge default attributes in */

@@ -9,7 +9,7 @@ use Function::Parameters;
 
 fun four() { 2 + 2 } fun five() { 1 + four }
 
-fun quantum(@) :() {; 0xf00d
+fun quantum(@) :prototype() {; 0xf00d
 }
 
 is four, 4, "basic sanity 1";

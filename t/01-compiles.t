@@ -14,7 +14,7 @@ fun id_2
  	 $x
  )
  : #hello
- (
+ prototype(
   $
  )
  {@_ == 1 or return;
@@ -32,7 +32,7 @@ fun add($x, $y) {
     $x + $y
 }
 
-fun mymap($fun, @args) :(&@) {
+fun mymap($fun, @args) :prototype(&@) {
   my @res;
   for (@args) {
     push @res, $fun->($_);
@@ -44,7 +44,7 @@ fun fac_1($n) {
     $n < 2 ? 1 : $n * fac_1 $n - 1
 }
 
-fun fac_2($n) :($) {
+fun fac_2($n) :prototype($) {
     $n < 2 ? 1 : $n * fac_2 $n - 1
 }
 

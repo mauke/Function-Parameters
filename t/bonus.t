@@ -21,7 +21,7 @@ is_deeply [filter], [];
 is_deeply [filter fun (@) { 1 }, 2 .. 3], [2 .. 3];
 is_deeply [filter fun ($x) { $x % 2 }, 1 .. 10], [1, 3, 5, 7, 9];
 
-fun fact($k, $n) :(&$) {
+fun fact($k, $n) :prototype(&$) {
     $n < 2
         ? $k->(1)
         : fact { $k->($n * $_[0]) } $n - 1
@@ -30,7 +30,7 @@ fun fact($k, $n) :(&$) {
 is +(fact { "~@_~" } 5), "~120~";
 is +(fact { $_[0] / 2 } 6), 360;
 
-fun write_to($ref) :(\$) :lvalue { $$ref }
+fun write_to($ref) :prototype(\$) :lvalue { $$ref }
 
 {
     my $x = 2;
@@ -43,7 +43,7 @@ fun write_to($ref) :(\$) :lvalue { $$ref }
 
 {
     my $c = 0;
-    fun horf_dorf($ref, $val = $c++) :(\@;$) :lvalue {
+    fun horf_dorf($ref, $val = $c++) :prototype(\@;$) :lvalue {
         push @$ref, $val;
         $ref->[-1]
     }

@@ -10,13 +10,13 @@ BEGIN { is(@warnings, 0, 'no warnings yet') }
 
 use Function::Parameters;
 
-fun with_proto ($x, $y, $z) : ($$$) {
+fun with_proto ($x, $y, $z) : prototype($$$) {
     return $x + $y + $z;
 }
 
 {
     my $foo;
-    fun with_lvalue () : () lvalue { $foo }
+    fun with_lvalue () : prototype() lvalue { $foo }
 }
 
 is(prototype('with_proto'), '$$$', ':proto attribute');
@@ -27,7 +27,7 @@ is(with_lvalue, 1, 'other attributes still there');
 
 BEGIN { is(@warnings, 0, 'no warnings with correct :proto declarations') }
 
-fun invalid_proto ($x) : (invalid) { $x }
+fun invalid_proto ($x) : prototype(invalid) { $x }
 
 BEGIN {
     #TODO: {

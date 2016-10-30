@@ -77,7 +77,7 @@ like $@, qr/^Global symbol.*explicit package name/;
 
 {
     my $c = 0;
-    fun edelweiss($x = $c++) :(;$) { $x }
+    fun edelweiss($x = $c++) :prototype(;$) { $x }
 }
 
 is edelweiss "AAAAA", "AAAAA";

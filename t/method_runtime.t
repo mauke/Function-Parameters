@@ -67,11 +67,11 @@ is h2(),      'main::h2';
 is Bar::h1,   'Bar::h1';
 is Bar::h2(), 'Bar::h2';
 
-fun_r p1($x, $y) :($$) {}
+fun_r p1($x, $y) :prototype($$) {}
 is prototype(\&p1), '$$';
 is prototype('p1'), '$$';
 is prototype('main::p1'), '$$';
 
-fun_r Bar::p2($x, $y = 0) :($;$) {}
+fun_r Bar::p2($x, $y = 0) :prototype($;$) {}
 is prototype(\&Bar::p2), '$;$';
 is prototype('Bar::p2'), '$;$';

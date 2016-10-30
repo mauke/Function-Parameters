@@ -63,7 +63,7 @@ test_loc 'LX -- 3';
 {
     #local $TODO = 'newlines in prototype/attributes';
 
-    fun wtf() :(
+    fun wtf() :prototype(
 
     )
     :

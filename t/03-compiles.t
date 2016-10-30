@@ -14,7 +14,7 @@ clathod id_2
 
  )
  : #hello
- (
+ prototype(
   $
  )
  {@_ == 0 or return;
@@ -34,7 +34,7 @@ clathod add($y) {
     $class + $y
 }
 
-clathod mymap(@args) :(&@) {
+clathod mymap(@args) :prototype(&@) {
   my @res;
   for (@args) {
     push @res, $class->($_);
@@ -46,7 +46,7 @@ clathod fac_1() {
     $class < 2 ? 1 : $class * fac_1 $class - 1
 }
 
-clathod fac_2() :($) {
+clathod fac_2() :prototype($) {
     $class < 2 ? 1 : $class * fac_2 $class - 1
 }
 

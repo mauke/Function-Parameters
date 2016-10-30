@@ -14,7 +14,7 @@ method id_2
 
  )
  : #hello
- (
+ prototype(
   $
  )
  {@_ == 0 or return;
@@ -34,7 +34,7 @@ method add($y) {
     $self + $y
 }
 
-method mymap(@args) :(&@) {
+method mymap(@args) :prototype(&@) {
   my @res;
   for (@args) {
     push @res, $self->($_);
@@ -46,7 +46,7 @@ method fac_1() {
     $self < 2 ? 1 : $self * fac_1 $self - 1
 }
 
-method fac_2() :($) {
+method fac_2() :prototype($) {
     $self < 2 ? 1 : $self * fac_2 $self - 1
 }
 
