@@ -112,6 +112,7 @@ t/foreign/signatures/basic.t
 t/foreign/signatures/eval.t
 t/foreign/signatures/proto.t
 t/foreign/signatures/weird.t
+t/gorn.t
 t/hueg.t
 t/imports.t
 t/info.t
