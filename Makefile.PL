@@ -3,6 +3,7 @@ use warnings;
 use ExtUtils::MakeMaker;
 use File::Spec ();
 use File::Find ();
+use lib '.';
 
 sub find_tests_recursively_in {
     my ($dir) = @_;
