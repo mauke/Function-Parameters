@@ -1,5 +1,9 @@
 Revision history for Function-Parameters
 
+1.0706  2017-03-17
+        - don't require . in @INC during install
+        - improve internal code generation functions used on perls before 5.22
+
 1.0705  2016-06-11
         - simplify internals
 
