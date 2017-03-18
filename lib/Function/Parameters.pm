@@ -358,7 +358,7 @@ Function::Parameters - subroutine definitions with parameter lists
 =head1 DESCRIPTION
 
 This module extends Perl with keywords that let you define functions with
-parameter lists. It uses Perl's L<keyword plugin|perlapi/PL_keyword_plugin>
+parameter lists. It uses Perl's L<keyword plugin|http://perldoc.perl.org/perlapi.html#PL_keyword_plugin>
 API, so it works reliably and doesn't require a source filter.
 
 =head2 Basics
