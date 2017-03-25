@@ -1,16 +1,24 @@
 Function-Parameters
 
-subroutine definitions with parameter lists
+define functions and methods with parameter lists ("subroutine signatures")
 
 
 INSTALLATION
 
-To install this module, run the following commands:
+To install this module, use your favorite CPAN client, e.g. cpan:
 
-	perl Makefile.PL
-	make
-	make test
-	make install
+    cpan Function::Parameters
+
+Or cpanm:
+
+    cpanm Function::Parameters
+
+To do it manually, run the following commands (after unpacking the tarball):
+
+    perl Makefile.PL
+    make
+    make test
+    make install
 
 SUPPORT AND DOCUMENTATION
 
@@ -19,28 +27,22 @@ perldoc command.
 
     perldoc Function::Parameters
 
-You can also look for information at:
+You can also look for information at
+https://metacpan.org/pod/Function::Parameters
 
-    RT, CPAN's request tracker
-        http://rt.cpan.org/NoAuth/Bugs.html?Dist=Function-Parameters
+To see a list of open bugs, visit
+https://rt.cpan.org/Public/Dist/Display.html?Name=Function-Parameters
 
-    AnnoCPAN, Annotated CPAN documentation
-        http://annocpan.org/dist/Function-Parameters
-
-    CPAN Ratings
-        http://cpanratings.perl.org/d/Function-Parameters
-
-    MetaCPAN
-        https://metacpan.org/pod/Function::Parameters
+To report a new bug, send an email to
+<bug-Function-Parameters [at] rt.cpan.org>.
 
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2009-2014 Lukas Mai
+Copyright (C) 2009-2014, 2017 Lukas Mai
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published
 by the Free Software Foundation; or the Artistic License.
 
 See http://dev.perl.org/licenses/ for more information.
-
