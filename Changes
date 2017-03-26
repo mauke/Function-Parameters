@@ -1,172 +1,192 @@
 Revision history for Function-Parameters
 
-1.0706  2017-03-17
-        - don't require . in @INC during install
-        - improve internal code generation functions used on perls before 5.22
+2.000000  2017-03-27
+          - default to strict mode
+          - allow types with multiple arguments (e.g. 'Tuple[Int, String]')
+          - implement new 'auto' type reifier and use it by default
+          - allow multiple invocants
+          - support custom installers
+          - implement Moo/Moose-style method modifiers
+          - rework and extend import syntax
+          - make implicit $self available in default arguments
+          - call type reifiers from correct package and remove 2nd arg
+            workaround
+          - remove :(...) prototype syntax
+          - remove undocumented 'attrs' option
+          - drop internal Moo dependency
 
-1.0705  2016-06-11
-        - simplify internals
+1.0706    2017-03-17
+          - don't require . in @INC during install
+          - improve internal code generation functions used on perls before
+            5.22
 
-1.0704  2016-02-13
-        - guard against broken Mooses in Makefile.PL
-        - remove last internal use of glob()
+1.0705    2016-06-11
+          - simplify internals
 
-1.0703  2016-01-05
-        - fix line numbers in runtime errors caused by calls with bad arguments
-          (Carp trying to be smart and skipping over "internal" callers)
+1.0704    2016-02-13
+          - guard against broken Mooses in Makefile.PL
+          - remove last internal use of glob()
 
-1.0702  2015-12-21
-        - fix parsing of _ in prototypes
-          (caused bogus "Illegal character after '_' in prototype" warnings)
+1.0703    2016-01-05
+          - fix line numbers in runtime errors caused by calls with bad
+            arguments
+            (Carp trying to be smart and skipping over "internal" callers)
 
-1.0701  2015-12-04
-        - remove old "bare" import syntax:
-            use Function::Parameters 'foo', 'bar';
-            # equivalent to
-            # use Function::Parameters { foo => 'function', bar => 'method' };
-          (marked as deprecated in 0.06, no longer documented since 1.00)
+1.0702    2015-12-21
+          - fix parsing of _ in prototypes
+            (caused bogus "Illegal character after '_' in prototype" warnings)
 
-1.0605  2015-04-26
-        - update metacpan links
-        - remove wonky test
+1.0701    2015-12-04
+          - remove old "bare" import syntax:
+              use Function::Parameters 'foo', 'bar';
+              # equivalent to
+              # use Function::Parameters { foo => 'function', bar => 'method' };
+            (marked as deprecated in 0.06, no longer documented since 1.00)
 
-1.0604  2015-04-22
-        - new explicit "lax" mode
-        - fix info() with taint mode on (gh pr #12)
-        - don't hide syntax errors that are followed by a parameter list with
-          types (gh #15)
-        - compatibility with perl v5.21.11 (#103843)
+1.0605    2015-04-26
+          - update metacpan links
+          - remove wonky test
 
-1.0603  2014-11-25
-        - some documentation changes
-        - compatibility with perl development versions
+1.0604    2015-04-22
+          - new explicit "lax" mode
+          - fix info() with taint mode on (gh pr #12)
+          - don't hide syntax errors that are followed by a parameter list with
+            types (gh #15)
+          - compatibility with perl v5.21.11 (#103843)
 
-1.0602  2014-10-21
-        - fix warnings under perl5.21 (causes harmless test failure)
+1.0603    2014-11-25
+          - some documentation changes
+          - compatibility with perl development versions
 
-1.0601  2014-10-20
-        - allow nameless parameters for arguments that should be ignored
-        - fix string comparison bug (":lvaluefoobar" treated as ":lvalue", etc)
-        - explicitly disallow $_/@_/%_ as parameters
-        - change "Not enough" to "Too few" in error message to match perl
-        - don't parse $#foo as a sigil plus comment
-        - remove implicitly optional parameters ("fun foo($x = 42, $y)" used to
-          be equivalent to "fun foo($x = 42, $y = undef)")
+1.0602    2014-10-21
+          - fix warnings under perl5.21 (causes harmless test failure)
 
-1.0503  2014-10-17
-        - skip initializing parameters if the default argument is undef
-          (don't generate '$x = undef if @_ < 1' for 'fun ($x = undef)')
+1.0601    2014-10-20
+          - allow nameless parameters for arguments that should be ignored
+          - fix string comparison bug (":lvaluefoobar" treated as ":lvalue",
+            etc)
+          - explicitly disallow $_/@_/%_ as parameters
+          - change "Not enough" to "Too few" in error message to match perl
+          - don't parse $#foo as a sigil plus comment
+          - remove implicitly optional parameters ("fun foo($x = 42, $y)" used
+            to be equivalent to "fun foo($x = 42, $y = undef)")
 
-1.0502  2014-10-16
-        - fix bug that prevents building with threaded perls
+1.0503    2014-10-17
+          - skip initializing parameters if the default argument is undef
+            (don't generate '$x = undef if @_ < 1' for 'fun ($x = undef)')
 
-1.0501  2014-10-13
-        - support :prototype(...) for setting the prototype
-        - allow fun foo($x =, $y =) (empty default arg equivalent to
-          specifying undef)
+1.0502    2014-10-16
+          - fix bug that prevents building with threaded perls
 
-1.0404  2014-10-13
-        - fix segfault on 'fun foo(A[[' (malformed type)
+1.0501    2014-10-13
+          - support :prototype(...) for setting the prototype
+          - allow fun foo($x =, $y =) (empty default arg equivalent to
+            specifying undef)
 
-1.0403  2014-10-12
-        - general overhaul for 5.18 and 5.20 support
-        - be more flexible about strict 'vars' error message in tests
-          (#99100)
+1.0404    2014-10-13
+          - fix segfault on 'fun foo(A[[' (malformed type)
 
-1.0402  2014-09-01
-        - fix #92871: don't access dead stack frames on error
-        - fix #95803: don't dereference NULL
+1.0403    2014-10-12
+          - general overhaul for 5.18 and 5.20 support
+          - be more flexible about strict 'vars' error message in tests
+            (#99100)
 
-1.0401  2013-10-09
-        - enable type checks by default
+1.0402    2014-09-01
+          - fix #92871: don't access dead stack frames on error
+          - fix #95803: don't dereference NULL
 
-1.0301  2013-09-16
-        - support 'defaults' to base keywords on existing keyword types
-        - 'check_argument_count' no longer controls type checks
-        - new 'check_argument_types' property controls type checks
-        - new 'strict' property does what 'check_argument_count' used to
-        - new 'runtime' property lets you define functions at runtime
-        - some more tests
+1.0401    2013-10-09
+          - enable type checks by default
 
-1.0202  2013-08-28
-        - make t/foreign/Fun/name.t less fragile to support newer Carp
-        - support older Moo without ->meta support
+1.0301    2013-09-16
+          - support 'defaults' to base keywords on existing keyword types
+          - 'check_argument_count' no longer controls type checks
+          - new 'check_argument_types' property controls type checks
+          - new 'strict' property does what 'check_argument_count' used to
+          - new 'runtime' property lets you define functions at runtime
+          - some more tests
 
-1.0201  2013-08-13
-        - custom (per-keyword) type reification
-        - actually use documented defaults for custom keywords
+1.0202    2013-08-28
+          - make t/foreign/Fun/name.t less fragile to support newer Carp
+          - support older Moo without ->meta support
 
-1.0104  2013-06-16
-        - support unicode in custom keywords
-        - actually validate default attributes
+1.0201    2013-08-13
+          - custom (per-keyword) type reification
+          - actually use documented defaults for custom keywords
 
-1.0103  2013-06-09
-        - properly allow non-moose-based custom type constraints (#85851)
+1.0104    2013-06-16
+          - support unicode in custom keywords
+          - actually validate default attributes
 
-1.0102  2013-03-08
-        - prepare for internals changes in the upcoming 5.18 release
-          (https://rt.cpan.org/Ticket/Display.html?id=83439)
-        - only allocate memory after recognizing a keyword like 'fun'
-          (might speed up parsing a little)
+1.0103    2013-06-09
+          - properly allow non-moose-based custom type constraints (#85851)
 
-1.0101  2013-02-05
-        - new reflection API to inspect parameter information of functions
-        - Moose types in parameter lists
-        - more tests
+1.0102    2013-03-08
+          - prepare for internals changes in the upcoming 5.18 release
+            (https://rt.cpan.org/Ticket/Display.html?id=83439)
+          - only allocate memory after recognizing a keyword like 'fun'
+            (might speed up parsing a little)
 
-1.0004  2012-11-26
-        - fix test relying on hash ordering
+1.0101    2013-02-05
+          - new reflection API to inspect parameter information of functions
+          - Moose types in parameter lists
+          - more tests
 
-1.0003  2012-11-19
-        - clean up internals
-        - fix build errors on some platforms
-        - fix module metadata
-        - some more tests
+1.0004    2012-11-26
+          - fix test relying on hash ordering
 
-1.00    2012-11-01
-        - add named parameters with ':$foo, :$bar' syntax
-        - rewrite documentation
-        - more tests (some of them copied from similar modules on CPAN)
+1.0003    2012-11-19
+          - clean up internals
+          - fix build errors on some platforms
+          - fix module metadata
+          - some more tests
 
-0.10    2012-10-21
-        - add ':strict' import target
-        - support $invocant: parameter syntax
+1.00      2012-11-01
+          - add named parameters with ':$foo, :$bar' syntax
+          - rewrite documentation
+          - more tests (some of them copied from similar modules on CPAN)
 
-0.09    2012-10-14
-        - fix wrong line number for statement immediately following a function
+0.10      2012-10-21
+          - add ':strict' import target
+          - support $invocant: parameter syntax
 
-0.08    2012-07-19
-        - support UTF-8 in function/parameter names
-        - better detection of invalid prototypes
+0.09      2012-10-14
+          - fix wrong line number for statement immediately following a
+            function
 
-0.07    2012-06-25
-        - completely rework internals to generate optrees directly
-          (no more generating/reparsing source)
-        - simplify / fewer dependencies
-        - new feature: default arguments (on by default)
-        - new feature: strict argument count checks (off by default)
-                       enabled by "*_strict" variants of symbolic types
+0.08      2012-07-19
+          - support UTF-8 in function/parameter names
+          - better detection of invalid prototypes
 
-0.06    2012-06-19
-        - complete rewrite in XS
-        - require perl 5.14+
-        - hopefully fix bug where it would get the line numbers wrong
-        - we're a lexical pragma now; remove import_into()
-        - more fine-grained control over behavior of generated keywords:
-           * function name can be optional/required/prohibited
-           * invocant name can be any variable, not just $self
-           * default attributes (and method now defaults to ':method')
+0.07      2012-06-25
+          - completely rework internals to generate optrees directly
+            (no more generating/reparsing source)
+          - simplify / fewer dependencies
+          - new feature: default arguments (on by default)
+          - new feature: strict argument count checks (off by default)
+                         enabled by "*_strict" variants of symbolic types
 
-0.05    2011-08-02
-        - complete rewrite
-        - hopefully fix bug where it would swallow compilation errors or get the line numbers wrong
-        - method keyword!
-        - more flexible keyword customization
+0.06      2012-06-19
+          - complete rewrite in XS
+          - require perl 5.14+
+          - hopefully fix bug where it would get the line numbers wrong
+          - we're a lexical pragma now; remove import_into()
+          - more fine-grained control over behavior of generated keywords:
+             * function name can be optional/required/prohibited
+             * invocant name can be any variable, not just $self
+             * default attributes (and method now defaults to ':method')
 
-0.04    2010-03-03
-        - allow renaming the function keyword
-        - provide import_into so you can mess with other packages
+0.05      2011-08-02
+          - complete rewrite
+          - hopefully fix bug where it would swallow compilation errors or get
+            the line numbers wrong
+          - method keyword!
+          - more flexible keyword customization
 
-0.03    2009-12-14
+0.04      2010-03-03
+          - allow renaming the function keyword
+          - provide import_into so you can mess with other packages
+
+0.03      2009-12-14
         First version, released on an unsuspecting world.
 

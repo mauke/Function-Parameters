@@ -6,7 +6,7 @@ use warnings;
 use Function::Parameters;
 use Carp ();
 
-our $VERSION = '1.0706';
+our $VERSION = '2.000000';
 
 {
     package Function::Parameters::Param;
