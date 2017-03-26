@@ -9,14 +9,14 @@ use Function::Parameters {
     fun => 'function',
     method => 'method',
     elrond => {
-        attrs => ':lvalue',
+        attributes => ':lvalue',
     },
 };
 
-is eval('use Function::Parameters { fun => { attrs => "nope" } }; 1'), undef;
+is eval('use Function::Parameters { fun => { attributes => "nope" } }; 1'), undef;
 like $@, qr/nope.*attributes/;
 
-is eval('use Function::Parameters { fun => { attrs => ": in valid {" } }; 1'), undef;
+is eval('use Function::Parameters { fun => { attributes => ": in valid {" } }; 1'), undef;
 like $@, qr/in valid.*attributes/;
 
 elrond hobbard($ref) { $$ref }

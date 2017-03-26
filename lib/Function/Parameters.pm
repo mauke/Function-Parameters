@@ -280,7 +280,7 @@ sub import {
         $clean{name} =~ /\A(?:optional|required|prohibited)\z/
             or confess qq["$clean{name}" doesn't look like a valid name attribute (one of optional, required, prohibited)];
 
-        $clean{attrs} = join ' ', map delete $type{$_} // (), qw(attributes attrs);
+        $clean{attrs} = delete $type{attributes} // '';
         _assert_valid_attributes $clean{attrs} if $clean{attrs};
 
         if (!exists $type{reify_type}) {

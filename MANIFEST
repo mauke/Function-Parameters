@@ -25,7 +25,7 @@ t/00-load.t
 t/01-compiles.t
 t/02-compiles.t
 t/03-compiles.t
-t/attrs.t
+t/attributes.t
 t/bonus.t
 t/checkered.t
 t/checkered_2.t
