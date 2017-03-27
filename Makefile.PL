@@ -57,6 +57,13 @@ my %settings = %{do "./$settings_file" or die "Internal error: can't do $setting
     $settings{dist}{COMPRESS} ||= 'gzip -9f';
     $settings{dist}{SUFFIX}   ||= '.gz';
 
+    my $version = $settings{VERSION} || MM->parse_version($settings{VERSION_FROM});
+    if ($version =~ s/-TRIAL[0-9]*\z//) {
+        $settings{META_MERGE}{release_status} ||= 'unstable';
+        $settings{META_MERGE}{version} ||= $version;
+        $settings{XS_VERSION} ||= $version;
+    }
+
     $settings{META_MERGE}{'meta-spec'}{version} ||= 2;
     $settings{META_MERGE}{dynamic_config} ||= 0;
 
