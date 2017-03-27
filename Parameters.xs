@@ -333,8 +333,13 @@ static void my_sv_cat_c(pTHX_ SV *sv, U32 c) {
 
 #define MY_UNI_IDFIRST(C) isIDFIRST_uni(C)
 #define MY_UNI_IDCONT(C)  isALNUM_uni(C)
-#define MY_UNI_IDFIRST_utf8(P) isIDFIRST_utf8((const unsigned char *)(P))
-#define MY_UNI_IDCONT_utf8(P)  isALNUM_utf8((const unsigned char *)(P))
+#if HAVE_PERL_VERSION(5, 25, 9)
+#define MY_UNI_IDFIRST_utf8(P, Z) isIDFIRST_utf8_safe((const unsigned char *)(P), (const unsigned char *)(Z))
+#define MY_UNI_IDCONT_utf8(P, Z)  isWORDCHAR_utf8_safe((const unsigned char *)(P), (const unsigned char *)(Z))
+#else
+#define MY_UNI_IDFIRST_utf8(P, Z) isIDFIRST_utf8((const unsigned char *)(P))
+#define MY_UNI_IDCONT_utf8(P, Z)  isALNUM_utf8((const unsigned char *)(P))
+#endif
 
 static SV *my_scan_word(pTHX_ Sentinel sen, bool allow_package) {
     bool at_start, at_substart;
@@ -2207,11 +2212,11 @@ static int kw_flags_enter(pTHX_ Sentinel **ppsen, const char *kw_ptr, STRLEN kw_
                         croak("%s: internal error: $^H{'%s%.*s'}: expected '$', found '%.*s'", MY_PKG, HINTK_SHIFT_, (int)kw_len, kw_ptr, (int)(sv_p_end - p), p);
                     }
                     p++;
-                    if (p >= sv_p_end || !MY_UNI_IDFIRST_utf8(p)) {
+                    if (p >= sv_p_end || !MY_UNI_IDFIRST_utf8(p, sv_p_end)) {
                         croak("%s: internal error: $^H{'%s%.*s'}: expected idfirst, found '%.*s'", MY_PKG, HINTK_SHIFT_, (int)kw_len, kw_ptr, (int)(sv_p_end - p), p);
                     }
                     p += UTF8SKIP(p);
-                    while (p < sv_p_end && MY_UNI_IDCONT_utf8(p)) {
+                    while (p < sv_p_end && MY_UNI_IDCONT_utf8(p, sv_p_end)) {
                         p += UTF8SKIP(p);
                     }
                     v_end = p;
