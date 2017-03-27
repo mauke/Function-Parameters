@@ -1,6 +1,6 @@
 Revision history for Function-Parameters
 
-2.000000  2017-03-27
+2.000002  2017-03-27
           - default to strict mode
           - allow types with multiple arguments (e.g. 'Tuple[Int, String]')
           - implement new 'auto' type reifier and use it by default
