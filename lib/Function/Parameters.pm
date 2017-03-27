@@ -684,8 +684,18 @@ value, write C<$param = undef>. There is a special shortcut syntax for
 this case: C<$param = undef> can also be written C<$param => (with no following
 expression).
 
+ fun foo($x = undef, $y = undef, $z = undef) {
+     # three arguments, all optional
+     ...
+ }
+
+ fun foo($x=, $y=, $z=) {
+     # shorter syntax, same meaning
+     ...
+ }
+
 Optional parameters must come at the end. It is not possible to have a required
-parameter following an optional one.
+parameter after an optional one.
 
 =head3 Slurpy/rest parameters
 
@@ -955,6 +965,18 @@ works like
 (except you also get the usual C<Function::Parameters> features such as
 checking the number of arguments, etc).
 
+C<$orig> and C<$self> both count as invocants and you can override their names
+like this:
+
+ around foo($original, $object: $x, $y, $z) {
+     # $original is a reference to the wrapped method;
+     # $object is the object we're being called on
+     ...
+ }
+
+If you use C<:> to pick your own invocant names in the parameter list of
+C<around>, you must specify exactly two variables.
+
 =head3 Prototypes and attributes
 
 You can specify attributes (see L<perlsub/Subroutine Attributes>) for your
@@ -994,7 +1016,7 @@ a wrapper module that enables C<Function::Parameters> automatically, just call
 C<< Function::Parameters->import >> from your own C<import> method (and
 C<< Function::Parameters->unimport >> from your C<unimport>, as required).
 
-=head3 Gory details about importing
+=head3 Gory details of importing
 
 At the lowest layer C<use Function::Parameters ...> takes a list of one or more
 hash references. Each key is a keyword to be defined as specified by the
@@ -1451,6 +1473,21 @@ used to be passed as a second argument. This problem has been fixed and the
 second argument has been removed. (Technically this is a core perl bug
 (L<RT #129239|https://rt.perl.org/Public/Bug/Display.html?id=129239>) that
 wasn't so much fixed as worked around in C<Function::Parameters>.)
+
+If you want your type reifier to be compatible with both versions, you can do
+this:
+
+ sub my_reifier {
+     my ($type, $package) = @_;
+     $package //= caller;
+     ...
+ }
+
+Or using C<Function::Parameters> itself:
+
+ fun my_reifier($type, $package = caller) {
+     ...
+ }
 
 =back
 
