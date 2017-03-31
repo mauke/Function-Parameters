@@ -169,6 +169,7 @@ my %type_map = (
 
     around             => {
         defaults    => 'method',
+        name        => 'required',
         install_sub => 'around',
         shift       => ['$orig', '$self'],
         runtime     => 1,
@@ -177,6 +178,7 @@ my %type_map = (
         map +(
             $_ => {
                 defaults    => 'method',
+                name        => 'required',
                 install_sub => $_,
                 runtime     => 1,
             }
@@ -976,6 +978,7 @@ If you use C<:> to pick your own invocant names in the parameter list of
 C<around>, you must specify exactly two variables.
 
 These modifiers also differ from C<fun> and C<method> (and C<sub>) in that they
+require a function name (there are no anonymous method modifiers) and they
 take effect at runtime, not compile time. When you say C<fun foo() {}>, the
 C<foo> function is defined right after the closing C<}> of the function body is
 parsed. But with e.g. C<before foo() {}>, the declaration becomes a normal
@@ -1305,11 +1308,12 @@ Equivalent to:
      install_sub => 'around',
      shift       => ['$orig', '$self'],
      runtime     => 1,
+     name        => 'required',
  }
 
 i.e. just like L<C<method>|/C<method>> but with a custom installer
-(C<'around'>), two implicit first parameters, and only taking effect at
-runtime.
+(C<'around'>), two implicit first parameters, only taking effect at
+runtime, and a method name is required.
 
 =item C<before>
 
@@ -1319,10 +1323,11 @@ Equivalent to:
      defaults    => 'method',
      install_sub => 'before',
      runtime     => 1,
+     name        => 'required',
  }
 
 i.e. just like L<C<method>|/C<method>> but with a custom installer
-(C<'before'>) and only taking effect at runtime.
+(C<'before'>), only taking effect at runtime, and a method name is required.
 
 =item C<after>
 
@@ -1332,10 +1337,11 @@ Equivalent to:
      defaults    => 'method',
      install_sub => 'after',
      runtime     => 1,
+     name        => 'required',
  }
 
 i.e. just like L<C<method>|/C<method>> but with a custom installer
-(C<'after'>) and only taking effect at runtime.
+(C<'after'>), only taking effect at runtime, and a method name is required.
 
 =item C<augment>
 
@@ -1345,10 +1351,11 @@ Equivalent to:
      defaults    => 'method',
      install_sub => 'augment',
      runtime     => 1,
+     name        => 'required',
  }
 
 i.e. just like L<C<method>|/C<method>> but with a custom installer
-(C<'augment'>) and only taking effect at runtime.
+(C<'augment'>), only taking effect at runtime, and a method name is required.
 
 =item C<override>
 
@@ -1358,10 +1365,11 @@ Equivalent to:
      defaults    => 'method',
      install_sub => 'override',
      runtime     => 1,
+     name        => 'required',
  }
 
 i.e. just like L<C<method>|/C<method>> but with a custom installer
-(C<'override'>) and only taking effect at runtime.
+(C<'override'>), only taking effect at runtime, and a method name is required.
 
 =back
 

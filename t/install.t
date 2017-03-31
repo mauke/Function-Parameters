@@ -2,7 +2,7 @@
 use strict;
 use warnings FATAL => 'all';
 
-use Test::More tests => 20;
+use Test::More tests => 22;
 
 use constant MODIFIERS => qw(
     before after around augment override
@@ -11,6 +11,9 @@ use constant MODIFIERS => qw(
 use Function::Parameters qw(:modifiers :std), {
     map +("${_}_c" => { defaults => $_, runtime => 0 }), MODIFIERS
 };
+
+is eval 'before () {}', undef;
+like $@, qr/\bexpecting a function name\b/;
 
 my $test_pkg;
 {
