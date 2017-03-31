@@ -1,5 +1,18 @@
 Revision history for Function-Parameters
 
+2.000003  2017-03-31
+          - fix a bug where method modifiers would inadvertently declare subs
+            (e.g. 'before foo() {}' acting like 'sub foo;
+            BEGIN { &before('foo', sub {}) }'), breaking Pkg->can($method) and
+            thus Class::Method::Modifiers (RT #120804)
+          - make method modifiers take effect at runtime because otherwise
+            you'd have to wrap every with()/extends() in a BEGIN block to make
+            consumed/inherited methods visible to modifiers (RT #120804)
+          - make method modifiers require a name (what would an anonymous
+            modifier modify?)
+          - (hopefully) improve the error message you get for trying to add any
+            parameters after a slurpy
+
 2.000002  2017-03-27
           - default to strict mode
           - allow types with multiple arguments (e.g. 'Tuple[Int, String]')
