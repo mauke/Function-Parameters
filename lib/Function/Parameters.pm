@@ -1453,6 +1453,85 @@ Equivalent to C<< 'before', 'after', 'around', 'augment', 'override' >>.
 
 =back
 
+For example, when you say
+
+ use Function::Parameters qw(:modifiers);
+
+C<:modifiers> is an import tag that L<expands to|/C<':modifiers'>>
+
+ use Function::Parameters qw(before after around augment override);
+
+Each of those is another import tag. Stepping through the first one:
+
+ use Function::Parameters qw(before);
+
+is L<equivalent to|/C<'before'>>:
+
+ use Function::Parameters { before => 'before' };
+
+This says to define the keyword C<before> according to the
+L<configuration bundle C<before>|/C<before>>:
+
+ use Function::Parameters {
+     before => {
+         defaults    => 'method',
+         install_sub => 'before',
+         runtime     => 1,
+         name        => 'required',
+     },
+ };
+
+The C<< defaults => 'method' >> part L<pulls in|/Configuration bundles> the
+contents of the L<C<'method'> configuration bundle|/C<method>> (which is the
+same as L<C<'method_strict'>|/C<method_strict>>):
+
+ use Function::Parameters {
+     before => {
+         defaults    => 'function_strict',
+         attributes  => ':method',
+         shift       => '$self',
+         invocant    => 1,
+         install_sub => 'before',
+         runtime     => 1,
+         name        => 'required',
+     },
+ };
+
+This in turn uses the
+L<C<'function_strict'> configuration bundle|/C<function_strict>> (which is
+empty because it consists of default values only):
+
+ use Function::Parameters {
+     before => {
+         attributes  => ':method',
+         shift       => '$self',
+         invocant    => 1,
+         install_sub => 'before',
+         runtime     => 1,
+         name        => 'required',
+     },
+ };
+
+But if we wanted to be completely explicit, we could write this as:
+
+ use Function::Parameters {
+     before => {
+         check_argument_count => 1,
+         check_argument_types => 1,
+         default_arguments    => 1,
+         named_parameters     => 1,
+         reify_type           => 'auto',
+         types                => 1,
+
+         attributes  => ':method',
+         shift       => '$self',
+         invocant    => 1,
+         install_sub => 'before',
+         runtime     => 1,
+         name        => 'required',
+     },
+ };
+
 =head2 Incompatibilites with version 1 of C<Function::Parameters>
 
 =over
