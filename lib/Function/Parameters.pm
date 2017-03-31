@@ -1451,7 +1451,8 @@ C<Function::Parameters> is loaded.)
 
 Parameter lists used to be optional. The syntax C<fun foo { ... }> would accept
 any number of arguments. This syntax has been removed; you now have to write
-C<fun foo(@) { ... }> to accept (and ignore) all arguments.
+C<fun foo(@) { ... }> to accept (and ignore) all arguments. On the other hand,
+if you meant for the function to take no arguments, write C<fun foo() { ... }>.
 
 =item *
 
