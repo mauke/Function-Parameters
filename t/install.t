@@ -9,7 +9,7 @@ use constant MODIFIERS => qw(
 );
 
 use Function::Parameters qw(:modifiers :std), {
-    map +("${_}_r" => { defaults => $_, runtime => 1 }), MODIFIERS
+    map +("${_}_c" => { defaults => $_, runtime => 0 }), MODIFIERS
 };
 
 my $test_pkg;
@@ -40,28 +40,28 @@ my $test_pkg;
     BEGIN { ::is getT, undef; }
     ::is getT, '';
 
-    around k_1($x) {
+    around_c k_1($x) {
         TRACE "k_1($orig, $self, $x | @_)";
     }
-    around_r k_2($x) {
+    around k_2($x) {
         TRACE "k_2($orig, $self, $x | @_)";
     }
     BEGIN { ::is getT, ' around(k_1) k_1(A, B, C | C)'; }
     ::is getT, ' around(k_2) k_2(A, B, C | C)';
 
-    before k_3($x, $y) {
+    before_c k_3($x, $y) {
         TRACE "k_3($self, $x, $y | @_)";
     }
-    before_r k_4($x, $y) {
+    before k_4($x, $y) {
         TRACE "k_4($self, $x, $y | @_)";
     }
     BEGIN { ::is getT, ' before(k_3) k_3(A, B, C | B C)'; }
     ::is getT, ' before(k_4) k_4(A, B, C | B C)';
 
-    after k_5($x, $y) {
+    after_c k_5($x, $y) {
         TRACE "k_5($self, $x, $y | @_)";
     }
-    after_r k_6($x, $y) {
+    after k_6($x, $y) {
         TRACE "k_6($self, $x, $y | @_)";
     }
     BEGIN { ::is getT, ' after(k_5) k_5(A, B, C | B C)'; }

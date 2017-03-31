@@ -171,12 +171,14 @@ my %type_map = (
         defaults    => 'method',
         install_sub => 'around',
         shift       => ['$orig', '$self'],
+        runtime     => 1,
     },
     (
         map +(
             $_ => {
                 defaults    => 'method',
                 install_sub => $_,
+                runtime     => 1,
             }
         ), qw(
             before after augment override
@@ -936,11 +938,9 @@ C<before>, C<after>, C<around>, C<augment>, or C<override> function
 
 works like
 
- BEGIN {
-     &before('foo', method ($x, $y, $z) {
-         ...
-     });
- }
+ &before('foo', method ($x, $y, $z) {
+     ...
+ });
 
 C<after>, C<augment>, and C<override> work the same way.
 
@@ -953,14 +953,12 @@ C<@_> into C<$self> (as C<method> does), it shifts off I<two> values:
 
 works like
 
- BEGIN {
-     &around('foo', sub :method {
-         my $orig = shift;
-         my $self = shift;
-         my ($x, $y, $z) = @_;
-         ...
-     });
- }
+ &around('foo', sub :method {
+     my $orig = shift;
+     my $self = shift;
+     my ($x, $y, $z) = @_;
+     ...
+ });
 
 (except you also get the usual C<Function::Parameters> features such as
 checking the number of arguments, etc).
@@ -976,6 +974,13 @@ like this:
 
 If you use C<:> to pick your own invocant names in the parameter list of
 C<around>, you must specify exactly two variables.
+
+These modifiers also differ from C<fun> and C<method> (and C<sub>) in that they
+take effect at runtime, not compile time. When you say C<fun foo() {}>, the
+C<foo> function is defined right after the closing C<}> of the function body is
+parsed. But with e.g. C<before foo() {}>, the declaration becomes a normal
+function call (to the C<before> function in the current package), which is
+performed at runtime.
 
 =head3 Prototypes and attributes
 
@@ -1299,10 +1304,12 @@ Equivalent to:
      defaults    => 'method',
      install_sub => 'around',
      shift       => ['$orig', '$self'],
+     runtime     => 1,
  }
 
 i.e. just like L<C<method>|/C<method>> but with a custom installer
-(C<'around'>) and two implicit first parameters.
+(C<'around'>), two implicit first parameters, and only taking effect at
+runtime.
 
 =item C<before>
 
@@ -1311,10 +1318,11 @@ Equivalent to:
  {
      defaults    => 'method',
      install_sub => 'before',
+     runtime     => 1,
  }
 
 i.e. just like L<C<method>|/C<method>> but with a custom installer
-(C<'before'>).
+(C<'before'>) and only taking effect at runtime.
 
 =item C<after>
 
@@ -1323,10 +1331,11 @@ Equivalent to:
  {
      defaults    => 'method',
      install_sub => 'after',
+     runtime     => 1,
  }
 
 i.e. just like L<C<method>|/C<method>> but with a custom installer
-(C<'after'>).
+(C<'after'>) and only taking effect at runtime.
 
 =item C<augment>
 
@@ -1335,10 +1344,11 @@ Equivalent to:
  {
      defaults    => 'method',
      install_sub => 'augment',
+     runtime     => 1,
  }
 
 i.e. just like L<C<method>|/C<method>> but with a custom installer
-(C<'augment'>).
+(C<'augment'>) and only taking effect at runtime.
 
 =item C<override>
 
@@ -1347,10 +1357,11 @@ Equivalent to:
  {
      defaults    => 'method',
      install_sub => 'override',
+     runtime     => 1,
  }
 
 i.e. just like L<C<method>|/C<method>> but with a custom installer
-(C<'override'>).
+(C<'override'>) and only taking effect at runtime.
 
 =back
 
