@@ -1491,7 +1491,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
     }
 
     /* surprise predeclaration! */
-    if (saw_name && !(spec->flags & FLAG_RUNTIME)) {
+    if (saw_name && !spec->install_sub && !(spec->flags & FLAG_RUNTIME)) {
         /* 'sub NAME (PROTO);' to make name/proto known to perl before it
            starts parsing the body */
         const I32 sub_ix = start_subparse(FALSE, 0);

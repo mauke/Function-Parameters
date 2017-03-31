@@ -2,7 +2,7 @@
 use strict;
 use warnings FATAL => 'all';
 
-use Test::More tests => 8;
+use Test::More tests => 20;
 
 use constant MODIFIERS => qw(
     before after around augment override
@@ -12,8 +12,10 @@ use Function::Parameters qw(:modifiers :std), {
     map +("${_}_r" => { defaults => $_, runtime => 1 }), MODIFIERS
 };
 
+my $test_pkg;
 {
     package NotMain;
+    BEGIN { $test_pkg = __PACKAGE__; }
 
     my $TRACE;
     fun TRACE($str) {
@@ -64,4 +66,15 @@ use Function::Parameters qw(:modifiers :std), {
     }
     BEGIN { ::is getT, ' after(k_5) k_5(A, B, C | B C)'; }
     ::is getT, ' after(k_6) k_6(A, B, C | B C)';
+}
+
+BEGIN {
+    for my $i (1 .. 6) {
+        my $m = "k_$i";
+        is $test_pkg->can($m), undef, "$test_pkg->can($m) is undef at compile time";
+    }
+}
+for my $i (1 .. 6) {
+    my $m = "k_$i";
+    is $test_pkg->can($m), undef, "$test_pkg->can($m) is undef at runtime";
 }
