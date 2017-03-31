@@ -85,6 +85,6 @@ my $o = bless {} => 'Foo';
         'arrays or hashes cannot be named';
 
     eval 'my $meth = method ($foo, @bar, :$baz) { }';
-    like $@, qr/\bbar\b.+\bbaz\b/,
+    like $@, qr/"\$baz\" can't appear after slurpy parameter "\@bar"/,
         'named parameters cannot be combined with slurpy positionals';
 }

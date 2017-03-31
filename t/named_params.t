@@ -9,13 +9,14 @@ use Function::Parameters qw(:strict);
 
 sub compile_fail {
     my ($src, $re, $name) = @_;
-    is eval $src, undef;
-    like $@, $re, $name || ();
+    my $tb = Test::More->builder;
+    $tb->is_eq(eval $src, undef);
+    $tb->like($@, $re, $name || ());
 }
 
 
 compile_fail 'fun (:$n1, $p1) {}', qr/\bpositional\b.+\bnamed\b/;
-compile_fail 'fun (@rest, :$n1) {}', qr/\@rest\b.+\$n1\b/;
+compile_fail 'fun (@rest, :$n1) {}', qr/"\$n1" can't appear after slurpy parameter "\@rest"/;
 compile_fail 'fun (:$n1, :$n1) {}', qr/\$n1\b.+\btwice\b/;
 compile_fail 'method (:$ni:) {}', qr/\binvocant\b.+\$ni\b.+\bnamed\b/;
 

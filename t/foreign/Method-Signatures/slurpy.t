@@ -18,7 +18,7 @@ use Test::More;
     method slurpy_last($this, @that) { return $this, \@that; }
 
     ok !eval q[fun slurpy_first(@that, $this) { return $this, \@that; }];
-    like $@, qr{\@that\b.+\$this\b};
+    like $@, qr{\$this\b.+\@that\b};
 #    TODO: {
 #        local $TODO = "error message incorrect inside an eval";
 
@@ -27,7 +27,7 @@ use Test::More;
 #    }
 
     ok !eval q[fun slurpy_middle($this, @that, $other) { return $this, \@that, $other }];
-    like $@, qr{\@that\b.+\$other\b};
+    like $@, qr{\$other\b.+\@that\b};
 #    TODO: {
 #        local $TODO = "error message incorrect inside an eval";
 
@@ -46,7 +46,7 @@ use Test::More;
 #    }
 
     ok !eval q[fun slurpy_two($this, @that, @other) { return $this, \@that, \@other }];
-    like $@, qr{\@that\b.+\@other\b};
+    like $@, qr{\@other\b.+\@that\b};
 }
 
 

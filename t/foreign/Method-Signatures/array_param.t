@@ -20,12 +20,12 @@ use Test::More tests => 3;
     eval q{
          method two_array_params ($a, @b, @c) {}
     };
-    like($@, qr{\btwo_array_params\b.+\@b\b.+\@c\b}, "Two array params");
+    like($@, qr{\btwo_array_params\b.+\@c\b.+\@b\b}, "Two array params");
 
     eval q{
          method two_slurpy_params ($a, %b, $c, @d, $e) {}
     };
-    like($@, qr{\btwo_slurpy_params\b.+%b\b.+\$c\b}, "Two slurpy params");
+    like($@, qr{\btwo_slurpy_params\b.+\$c\b.+%b\b}, "Two slurpy params");
 }
 
 is(Bla->new->array_param_at_end(1, 2, 3, 4), "1|2|3 4", "Array parameter at end");

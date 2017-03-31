@@ -1312,7 +1312,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
             /* external constraints */
             if (param_spec->slurpy.name) {
-                croak("In %"SVf": I was expecting \")\" after \"%"SVf"\", not \"%"SVf"\"", SVfARG(declarator), SVfARG(param_spec->slurpy.name), SVfARG(name));
+                croak("In %"SVf": \"%"SVf"\" can't appear after slurpy parameter \"%"SVf"\"", SVfARG(declarator), SVfARG(name), SVfARG(param_spec->slurpy.name));
             }
             if (sigil != '$') {
                 assert(!init_sentinel->op);

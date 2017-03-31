@@ -7,10 +7,10 @@ use Dir::Self;
 
 for my $fail (
     map [__DIR__ . "/strict_$_->[0].fail", @$_[1 .. $#$_]],
-    ['1', qr/expect.*\).*after.*"\@y".*"\$z"/],
-    ['2', qr/expect.*\).*after.*"\@x".*"\$y"/],
-    ['3', qr/expect.*\).*after.*"%y".*"\$z"/],
-    ['4', qr/expect.*\).*after.*"\@y".*"\@z"/],
+    ['1', qr/"\$z" can't appear after slurpy parameter "\@y\"/],
+    ['2', qr/"\$y" can't appear after slurpy parameter "\@x\"/],
+    ['3', qr/"\$z" can't appear after slurpy parameter "%y\"/],
+    ['4', qr/"\@z" can't appear after slurpy parameter "\@y\"/],
     ['5', qr/Invalid.*rarity/],
 ) {
     my ($file, $pat) = @$fail;
