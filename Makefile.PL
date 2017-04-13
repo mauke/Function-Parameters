@@ -23,6 +23,7 @@ sub find_tests_recursively_in {
         keys %seen
 }
 
+$::MAINT_MODE = !-f 'META.yml';
 my $settings_file = 'Makefile_PL_settings';
 my %settings = %{do "./$settings_file" or die "Internal error: can't do $settings_file: ", $@ || $!};
 
@@ -80,7 +81,7 @@ my %settings = %{do "./$settings_file" or die "Internal error: can't do $setting
     }
 }
 
-(do './maint/eumm-fixup.pl' || die $@ || $!)->(\%settings) if !-f 'META.yml';
+(do './maint/eumm-fixup.pl' || die $@ || $!)->(\%settings) if $::MAINT_MODE;
 
 (my $mm_version = ExtUtils::MakeMaker->VERSION) =~ tr/_//d;
 
