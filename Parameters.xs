@@ -107,6 +107,8 @@ See http://dev.perl.org/licenses/ for more information.
 
 WARNINGS_ENABLE
 
+#define HAVE_BUG_129090 (HAVE_PERL_VERSION(5, 21, 7) && !HAVE_PERL_VERSION(5, 25, 4))
+
 #define HINTK_KEYWORDS MY_PKG "/keywords"
 #define HINTK_FLAGS_   MY_PKG "/flags:"
 #define HINTK_SHIFT_   MY_PKG "/shift:"
@@ -1498,14 +1500,26 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
         SAVEFREESV(PL_compcv);
 
         SvREFCNT_inc_simple_void(PL_compcv);
+        {
+#if HAVE_BUG_129090
+            CV *const outside = CvOUTSIDE(PL_compcv);
+            CvOUTSIDE(PL_compcv) = NULL;
+#endif
 
-        newATTRSUB(
-            sub_ix,
-            mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(saw_name)),
-            proto ? mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(proto)) : NULL,
-            NULL,
-            NULL
-        );
+            CV *const cv = newATTRSUB(
+                sub_ix,
+                mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(saw_name)),
+                proto ? mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(proto)) : NULL,
+                NULL,
+                NULL
+            );
+
+            if (cv) {
+#if HAVE_BUG_129090
+                CvOUTSIDE(cv) = outside;
+#endif
+            }
+        }
     }
 
     if (builtin_attrs & MY_ATTR_LVALUE) {
@@ -2072,6 +2086,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
         );
 
         if (cv) {
+            assert(cv != CvOUTSIDE(cv));
             register_info(aTHX_ PTR2UV(CvROOT(cv)), declarator, param_spec);
         }
 
