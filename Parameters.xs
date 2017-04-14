@@ -1500,26 +1500,21 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
         SAVEFREESV(PL_compcv);
 
         SvREFCNT_inc_simple_void(PL_compcv);
+
+#if HAVE_BUG_129090
         {
-#if HAVE_BUG_129090
             CV *const outside = CvOUTSIDE(PL_compcv);
+            SvREFCNT_dec(outside);
             CvOUTSIDE(PL_compcv) = NULL;
-#endif
-
-            CV *const cv = newATTRSUB(
-                sub_ix,
-                mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(saw_name)),
-                proto ? mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(proto)) : NULL,
-                NULL,
-                NULL
-            );
-
-            if (cv) {
-#if HAVE_BUG_129090
-                CvOUTSIDE(cv) = outside;
-#endif
-            }
         }
+#endif
+        newATTRSUB(
+            sub_ix,
+            mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(saw_name)),
+            proto ? mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(proto)) : NULL,
+            NULL,
+            NULL
+        );
     }
 
     if (builtin_attrs & MY_ATTR_LVALUE) {
