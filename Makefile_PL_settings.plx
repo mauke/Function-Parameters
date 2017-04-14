@@ -1,4 +1,3 @@
-# vi:set ft=perl:
 use strict;
 use warnings;
 

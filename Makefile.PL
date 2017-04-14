@@ -24,7 +24,7 @@ sub find_tests_recursively_in {
 }
 
 $::MAINT_MODE = !-f 'META.yml';
-my $settings_file = 'Makefile_PL_settings';
+my $settings_file = 'Makefile_PL_settings.plx';
 my %settings = %{do "./$settings_file" or die "Internal error: can't do $settings_file: ", $@ || $!};
 
 {

@@ -2,7 +2,7 @@ Changes
 MANIFEST
 MANIFEST.SKIP
 Makefile.PL
-Makefile_PL_settings
+Makefile_PL_settings.plx
 Parameters.xs
 README
 hax/COP_SEQ_RANGE_HIGH_set.c.inc
