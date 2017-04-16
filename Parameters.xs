@@ -1504,8 +1504,12 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 #if HAVE_BUG_129090
         {
             CV *const outside = CvOUTSIDE(PL_compcv);
-            SvREFCNT_dec(outside);
-            CvOUTSIDE(PL_compcv) = NULL;
+            if (outside) {
+                CvOUTSIDE(PL_compcv) = NULL;
+                if (!CvWEAKOUTSIDE(PL_compcv)) {
+                    SvREFCNT_dec_NN(outside);
+                }
+            }
         }
 #endif
         newATTRSUB(
