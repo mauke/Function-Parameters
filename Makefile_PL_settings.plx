@@ -32,15 +32,15 @@ return {
         'Hash::Util'  => 0.07,
         'Test::More'  => 0,
         'Test::Fatal' => 0,
-        !$::MAINT_MODE ? () : (
-            'Test::Pod' => 1.22,
-        ),
     },
     PREREQ_PM => {
         'Carp'         => 0,
         'Scalar::Util' => 0,
         'XSLoader'     => 0,
         'warnings'     => 0,
+    },
+    DEVELOP_REQUIRES => {
+        'Test::Pod' => 1.22,
     },
 
     depend => {

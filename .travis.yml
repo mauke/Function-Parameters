@@ -1,4 +1,5 @@
 language: perl
+install: cpanm --quiet --installdeps --with-develop --notest .
 perl:
     - "5.14"
     - "5.16"

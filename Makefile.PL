@@ -69,6 +69,9 @@ my %settings = %{do "./$settings_file" or die "Internal error: can't do $setting
     $settings{META_MERGE}{dynamic_config} ||= 0;
 
     push @{$settings{META_MERGE}{no_index}{directory}}, 'xt';
+    if (my $dev = delete $settings{DEVELOP_REQUIRES}) {
+        @{$settings{META_MERGE}{prereqs}{develop}{requires}}{keys %$dev} = values %$dev;
+    }
 
     if (my $bonus = delete $settings{bonus}) {
         if (my $account = delete $bonus->{github}) {
