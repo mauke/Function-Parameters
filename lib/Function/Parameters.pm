@@ -7,8 +7,8 @@ use Carp qw(croak confess);
 use Scalar::Util qw(blessed);
 
 sub _croak {
-    my (undef, $file, $line) = caller 1;
-    die @_, " at $file line $line.\n";
+    local($Carp::CarpLevel) = 1;
+    confess("@_");
 }
 
 use XSLoader;
