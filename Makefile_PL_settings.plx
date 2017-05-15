@@ -1,11 +1,19 @@
 use strict;
 use warnings;
 
-if (eval { require Moose }) {
-    if (!eval { package A_Moose_User; Moose->import; 1 }) {
+{
+    my $broken;
+    if (eval { require Moose }) {
+        if (!eval { package A_Moose_User; Moose->import; 1 }) {
+            $broken = 'import ';
+        }
+    } elsif ($@ !~ /^Can't locate Moose\.pm /) {
+        $broken = 'require';
+    }
+    if ($broken) {
         print STDERR <<"EOT";
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!! Error: You seem to have Moose but I can't "use" it (import dies).  !!!
+!!! Error: You seem to have Moose but I can't "use" it ($broken dies). !!!
 !!! This would cause confusing test errors, so I'm bailing out. Sorry. !!!
 !!! Maybe try upgrading Moose?                                         !!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
