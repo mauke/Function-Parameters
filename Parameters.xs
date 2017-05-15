@@ -107,7 +107,7 @@ See http://dev.perl.org/licenses/ for more information.
 
 WARNINGS_ENABLE
 
-#define HAVE_BUG_129090 (HAVE_PERL_VERSION(5, 21, 7) && !HAVE_PERL_VERSION(5, 25, 4))
+#define HAVE_BUG_129090 (HAVE_PERL_VERSION(5, 21, 7) && !HAVE_PERL_VERSION(5, 25, 5))
 
 #define HINTK_KEYWORDS MY_PKG "/keywords"
 #define HINTK_FLAGS_   MY_PKG "/flags:"
