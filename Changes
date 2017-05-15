@@ -1,5 +1,11 @@
 Revision history for Function-Parameters
 
+2.000007  2017-05-15
+          - no real code changes
+          - extend bug #129090 workaround to perl 5.25.5
+          - try to detect broken Moose installs earlier
+          - fix declaration of developer dependencies
+
 2.000006  2017-04-16
           - work around core bug #129090 / #131146 in perl 5.22 and 5.24:
             perl -e 'use Function::Parameters; \&f; fun f() { eval "" }' hangs
