@@ -1643,10 +1643,6 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                 var = newASSIGNOP(OPf_STACKED, var, 0, newOP(OP_SHIFT, 0));
 
                 op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, var)));
-
-                if (param_spec->positional_required.data[0].type && (spec->flags & FLAG_CHECK_TARGS)) {
-                    op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, mktypecheckp(aTHX_ declarator, 0, &param_spec->positional_required.data[0]))));
-                }
             }
         } else {
             OP *const rhs = op_convert_list(OP_SPLICE, 0,
