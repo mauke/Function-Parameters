@@ -189,7 +189,7 @@ static void spv_push(VEC(SpecParam) *ps, SV *name, SV *type) {
 
 DEFSTRUCT(KWSpec) {
     unsigned flags;
-    I32 reify_type;
+    SV *reify_type;
     VEC(SpecParam) shift;
     SV *attrs;
     SV *install_sub;
@@ -608,6 +608,8 @@ static SV *call_from_curstash(pTHX_ Sentinel sen, SV *sv, SV **args, size_t narg
     I32 want;
     dSP;
 
+    assert(sv != NULL);
+
     if ((flags & G_WANT) == 0) {
         flags |= G_SCALAR;
     }
@@ -651,21 +653,9 @@ static SV *call_from_curstash(pTHX_ Sentinel sen, SV *sv, SV **args, size_t narg
 }
 
 static SV *reify_type(pTHX_ Sentinel sen, const SV *declarator, const KWSpec *spec, SV *name) {
-    AV *type_reifiers;
-    SV *t, *sv, **psv;
+    SV *t;
 
-    type_reifiers = get_av(MY_PKG "::type_reifiers", 0);
-    assert(type_reifiers != NULL);
-
-    if (spec->reify_type < 0 || spec->reify_type > av_len(type_reifiers)) {
-        croak("In %"SVf": internal error: reify_type [%ld] out of range [%ld]", SVfARG(declarator), (long)spec->reify_type, (long)(av_len(type_reifiers) + 1));
-    }
-
-    psv = av_fetch(type_reifiers, spec->reify_type, 0);
-    assert(psv != NULL);
-    sv = *psv;
-
-    t = call_from_curstash(aTHX_ sen, sv, &name, 1, 0);
+    t = call_from_curstash(aTHX_ sen, spec->reify_type, &name, 1, 0);
 
     if (!sv_isobject(t)) {
         croak("In %"SVf": invalid type '%"SVf"' (%"SVf" is not a type object)", SVfARG(declarator), SVfARG(name), SVfARG(t));
@@ -2177,7 +2167,7 @@ static int kw_flags_enter(pTHX_ Sentinel **ppsen, const char *kw_ptr, STRLEN kw_
 
             Newx(*ppspec, 1, KWSpec);
             (*ppspec)->flags = 0;
-            (*ppspec)->reify_type = 0;
+            (*ppspec)->reify_type = NULL;
             spv_init(&(*ppspec)->shift);
             (*ppspec)->attrs = sentinel_mortalize(**ppsen, newSVpvs(""));
             (*ppspec)->install_sub = NULL;
@@ -2204,7 +2194,13 @@ static int kw_flags_enter(pTHX_ Sentinel **ppsen, const char *kw_ptr, STRLEN kw_
             (*ppspec)->flags = SvIV(*psv);
 
             FETCH_HINTK_INTO(REIFY_, kw_ptr, kw_len, psv);
-            (*ppspec)->reify_type = SvIV(*psv);
+            {
+                SV *sv = *psv;
+                if (!sv || !SvROK(sv) || SvTYPE(SvRV(sv)) != SVt_PVCV) {
+                    croak("%s: internal error: $^H{'%s%.*s'} not a coderef: %"SVf, MY_PKG, HINTK_REIFY_, (int)kw_len, kw_ptr, SVfARG(sv));
+                }
+                (*ppspec)->reify_type = sv;
+            }
 
             FETCH_HINTK_INTO(SHIFT_, kw_ptr, kw_len, psv);
             {

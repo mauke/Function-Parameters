@@ -231,11 +231,6 @@ for my $v (values %import_map) {
     }
 }
 
-our @type_reifiers = (
-    \&_reify_type_auto,
-    \&_reify_type_moose,
-);
-
 our @shifty_types;
 
 sub import {
@@ -287,7 +282,7 @@ sub import {
         _assert_valid_attributes $clean{attrs} if $clean{attrs};
 
         if (!exists $type{reify_type}) {
-            $clean{reify_type} = 0;
+            $clean{reify_type} = \&_reify_type_auto;
         } else {
             my $rt = delete $type{reify_type} // '(undef)';
             if (!ref $rt) {
@@ -299,7 +294,7 @@ sub import {
                 confess qq{"$rt" doesn't look like a type reifier};
             }
 
-            $clean{reify_type} = _find_or_add_idx \@type_reifiers, $rt;
+            $clean{reify_type} = $rt;
         }
 
         if (!exists $type{install_sub}) {
