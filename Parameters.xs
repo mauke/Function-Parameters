@@ -2283,24 +2283,8 @@ static int kw_flags_enter(pTHX_ Sentinel **ppsen, const char *kw_ptr, STRLEN kw_
             FETCH_HINTK_INTO(INSTALL_, kw_ptr, kw_len, psv);
             {
                 SV *sv = *psv;
-                STRLEN sv_len;
-                const char *const sv_p = SvPVutf8(sv, sv_len);
-                if (sv_len) {
-                    if (isDIGIT(*sv_p)) {
-                        IV ix = SvIV(sv);
-                        AV *sub_installers = get_av(MY_PKG "::sub_installers", 0);
-                        assert(sub_installers != NULL);
-
-                        if (ix < 0 || ix > av_len(sub_installers)) {
-                            croak("%s: internal error: $^H{'%s%.*s'}: ix [%ld] out of range [%ld]", MY_PKG, HINTK_INSTALL_, (int)kw_len, kw_ptr, (long)ix, (long)(av_len(sub_installers) + 1));
-                        }
-
-                        psv = av_fetch(sub_installers, ix, 0);
-                        if (!psv || !SvROK(*psv) || SvTYPE(SvRV(*psv)) != SVt_PVCV) {
-                            croak("%s: internal error: $^H{'%s%.*s'}: ix [%ld] is not a sub", MY_PKG, HINTK_INSTALL_, (int)kw_len, kw_ptr, (long)ix);
-                        }
-                        sv = *psv;
-                    }
+                if (SvTRUE(sv)) {
+                    assert(SvROK(sv) || !(isDIGIT(*SvPV_nolen(sv))));
                     (*ppspec)->install_sub = sv;
                 }
             }

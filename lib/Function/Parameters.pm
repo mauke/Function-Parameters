@@ -236,8 +236,6 @@ our @type_reifiers = (
     \&_reify_type_moose,
 );
 
-our @sub_installers;
-
 our @shifty_types;
 
 sub import {
@@ -312,8 +310,6 @@ sub import {
                 _assert_valid_identifier $is;
             } elsif (ref $is ne 'CODE') {
                 confess qq{"$is" doesn't look like a sub installer};
-            } else {
-                $is = _find_or_add_idx \@sub_installers, $is;
             }
 
             $clean{install_sub} = $is;
