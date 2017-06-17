@@ -1,14 +1,8 @@
 Changes
-MANIFEST
-MANIFEST.SKIP
-Makefile.PL
-Makefile_PL_settings.plx
-Parameters.xs
-README
-hax/COP_SEQ_RANGE_HIGH_set.c.inc
-hax/COP_SEQ_RANGE_LOW_set.c.inc
 hax/block_end.c.inc
 hax/block_start.c.inc
+hax/COP_SEQ_RANGE_HIGH_set.c.inc
+hax/COP_SEQ_RANGE_LOW_set.c.inc
 hax/intro_my.c.inc
 hax/newDEFSVOP.c.inc
 hax/op_convert_list.c.inc
@@ -21,6 +15,12 @@ hax/pad_leavemy.c.inc
 hax/scalarseq.c.inc
 lib/Function/Parameters.pm
 lib/Function/Parameters/Info.pm
+Makefile.PL
+Makefile_PL_settings.plx
+MANIFEST
+MANIFEST.SKIP
+Parameters.xs
+README
 t/00-load.t
 t/01-compiles.t
 t/02-compiles.t
@@ -39,6 +39,7 @@ t/eating_strict_error.fail
 t/eating_strict_error.t
 t/eating_strict_error_2.fail
 t/elsewhere.t
+t/eval.t
 t/foreign/Fun/anon.t
 t/foreign/Fun/basic.t
 t/foreign/Fun/closure-proto.t
