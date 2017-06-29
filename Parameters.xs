@@ -112,6 +112,7 @@ WARNINGS_ENABLE
 #define HINTK_CONFIG MY_PKG "/config"
 #define HINTSK_FLAGS "flags"
 #define HINTSK_SHIFT "shift"
+#define HINTSK_SHIF2 "shift_types"
 #define HINTSK_ATTRS "attrs"
 #define HINTSK_REIFY "reify"
 #define HINTSK_INSTL "instl"
@@ -2204,7 +2205,7 @@ static int kw_flags_enter(pTHX_ Sentinel **ppsen, const char *kw_ptr, STRLEN kw_
             const char *const sv_p = SvPVutf8(sv, sv_len);
             const char *const sv_p_end = sv_p + sv_len;
             const char *p = sv_p;
-            AV *shifty_types = NULL;
+            AV *shift_types = NULL;
             SV *type = NULL;
 
             while (p < sv_p_end) {
@@ -2241,14 +2242,18 @@ static int kw_flags_enter(pTHX_ Sentinel **ppsen, const char *kw_ptr, STRLEN kw_
                         p++;
                     }
 
-                    if (!shifty_types) {
-                        shifty_types = get_av(MY_PKG "::shifty_types", 0);
-                        assert(shifty_types != NULL);
+                    if (!shift_types) {
+                        SV *sv2;
+                        FETCH_HINTSK_INTO(SHIF2, &sv);
+                        if (!(SvROK(sv) && (sv2 = SvRV(sv), SvTYPE(sv2) == SVt_PVAV))) {
+                            croak("%s: internal error: $^H{'%s'}{'%.*s'}{'%s'} not an arrayref: %"SVf, MY_PKG, HINTK_CONFIG, (int)kw_len, kw_ptr, HINTSK_SHIF2, SVfARG(sv));
+                        }
+                        shift_types = (AV *)sv2;
                     }
-                    if (tix < 0 || tix > av_len(shifty_types)) {
-                        croak("%s: internal error: $^H{'%s'}{'%.*s'}{'%s'}: tix [%ld] out of range [%ld]", MY_PKG, HINTK_CONFIG, (int)kw_len, kw_ptr, HINTSK_SHIFT, (long)tix, (long)(av_len(shifty_types) + 1));
+                    if (tix < 0 || tix > av_len(shift_types)) {
+                        croak("%s: internal error: $^H{'%s'}{'%.*s'}{'%s'}: tix [%ld] out of range [%ld]", MY_PKG, HINTK_CONFIG, (int)kw_len, kw_ptr, HINTSK_SHIFT, (long)tix, (long)(av_len(shift_types) + 1));
                     }
-                    ptype = av_fetch(shifty_types, tix, 0);
+                    ptype = av_fetch(shift_types, tix, 0);
                     if (!ptype) {
                         croak("%s: internal error: $^H{'%s'}{'%.*s'}{'%s'}: tix [%ld] doesn't exist", MY_PKG, HINTK_CONFIG, (int)kw_len, kw_ptr, HINTSK_SHIFT, (long)tix);
                     }
@@ -2317,6 +2322,7 @@ static void my_boot(pTHX) {
     newCONSTSUB(stash, "HINTK_CONFIG", newSVpvs(HINTK_CONFIG));
     newCONSTSUB(stash, "HINTSK_FLAGS", newSVpvs(HINTSK_FLAGS));
     newCONSTSUB(stash, "HINTSK_SHIFT", newSVpvs(HINTSK_SHIFT));
+    newCONSTSUB(stash, "HINTSK_SHIF2", newSVpvs(HINTSK_SHIF2));
     newCONSTSUB(stash, "HINTSK_ATTRS", newSVpvs(HINTSK_ATTRS));
     newCONSTSUB(stash, "HINTSK_REIFY", newSVpvs(HINTSK_REIFY));
     newCONSTSUB(stash, "HINTSK_INSTL", newSVpvs(HINTSK_INSTL));

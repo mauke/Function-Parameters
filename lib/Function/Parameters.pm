@@ -231,8 +231,6 @@ for my $v (values %import_map) {
     }
 }
 
-our @shifty_types;
-
 sub import {
     my $class = shift;
 
@@ -314,6 +312,7 @@ sub import {
             my $shift = delete $type{shift} // [];
             $shift = [$shift] if !ref $shift;
             my $str = '';
+            my @shifty_types;
             for my $item (@$shift) {
                 my ($name, $type);
                 if (ref $item) {
@@ -332,6 +331,7 @@ sub import {
                 }
                 $str .= ' ';
             }
+            $clean{shift_types} = \@shifty_types;
             $str
         };
 
@@ -370,6 +370,9 @@ sub import {
             HINTSK_ATTRS, => $type->{attrs},
             HINTSK_REIFY, => $type->{reify_type},
             HINTSK_INSTL, => $type->{install_sub},
+            !@{$type->{shift_types}} ? () : (
+                HINTSK_SHIF2, => $type->{shift_types},
+            ),
         };
     }
     $^H{+HINTK_CONFIG} = \%config;
