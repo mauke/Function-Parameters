@@ -101,7 +101,7 @@ See http://dev.perl.org/licenses/ for more information.
  #include "hax/block_end.c.inc"
 
  #include "hax/op_convert_list.c.inc"  /* < 5.22 */
-
+ #include "hax/STATIC_ASSERT_STMT.c.inc"
 #endif
 
 
@@ -109,12 +109,12 @@ WARNINGS_ENABLE
 
 #define HAVE_BUG_129090 (HAVE_PERL_VERSION(5, 21, 7) && !HAVE_PERL_VERSION(5, 25, 5))
 
-#define HINTK_KEYWORDS MY_PKG "/keywords"
-#define HINTK_FLAGS_   MY_PKG "/flags:"
-#define HINTK_SHIFT_   MY_PKG "/shift:"
-#define HINTK_ATTRS_   MY_PKG "/attrs:"
-#define HINTK_REIFY_   MY_PKG "/reify:"
-#define HINTK_INSTALL_ MY_PKG "/install:"
+#define HINTK_CONFIG MY_PKG "/config"
+#define HINTSK_FLAGS "flags"
+#define HINTSK_SHIFT "shift"
+#define HINTSK_ATTRS "attrs"
+#define HINTSK_REIFY "reify"
+#define HINTSK_INSTL "instl"
 
 #define DEFSTRUCT(T) typedef struct T T; struct T
 
@@ -2123,173 +2123,163 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 }
 
 static int kw_flags_enter(pTHX_ Sentinel **ppsen, const char *kw_ptr, STRLEN kw_len, KWSpec **ppspec) {
-    HV *hints;
-    SV **psv;
-    const char *kwa_p, *kw_active;
-    STRLEN kw_active_len;
-    bool kw_is_utf8;
+    HV *hints, *config;
 
     /* don't bother doing anything fancy after a syntax error */
     if (PL_parser && PL_parser->error_count) {
         return FALSE;
     }
 
+    STATIC_ASSERT_STMT(~(STRLEN)0 > (U32)I32_MAX);
+    if (kw_len > (STRLEN)I32_MAX) {
+        return FALSE;
+    }
+
     if (!(hints = GvHV(PL_hintgv))) {
         return FALSE;
     }
-    if (!(psv = hv_fetchs(hints, HINTK_KEYWORDS, 0))) {
-        return FALSE;
+
+    {
+        SV **psv, *sv, *sv2;
+        I32 kw_xlen = kw_len;
+
+        if (!(psv = hv_fetchs(hints, HINTK_CONFIG, 0))) {
+            return FALSE;
+        }
+        sv = *psv;
+        if (!(SvROK(sv) && (sv2 = SvRV(sv), SvTYPE(sv2) == SVt_PVHV))) {
+            croak("%s: internal error: $^H{'%s'} not a hashref: %"SVf, MY_PKG, HINTK_CONFIG, SVfARG(sv));
+        }
+        if (lex_bufutf8()) {
+            kw_xlen = -kw_xlen;
+        }
+        if (!(psv = hv_fetch((HV *)sv2, kw_ptr, kw_xlen, 0))) {
+            return FALSE;
+        }
+        sv = *psv;
+        if (!(SvROK(sv) && (sv2 = SvRV(sv), SvTYPE(sv2) == SVt_PVHV))) {
+            croak("%s: internal error: $^H{'%s'}{'%.*s'} not a hashref: %"SVf, MY_PKG, HINTK_CONFIG, (int)kw_len, kw_ptr, SVfARG(sv));
+        }
+        config = (HV *)sv2;
     }
-    kw_active = SvPV(*psv, kw_active_len);
-    if (kw_active_len <= kw_len) {
-        return FALSE;
-    }
 
-    kw_is_utf8 = lex_bufutf8();
+    ENTER;
+    SAVETMPS;
 
-    for (
-        kwa_p = kw_active;
-        (kwa_p = strchr(kwa_p, *kw_ptr)) &&
-        kwa_p < kw_active + kw_active_len - kw_len;
-        kwa_p++
-    ) {
-        if (
-            (kwa_p == kw_active || kwa_p[-1] == ' ') &&
-            kwa_p[kw_len] == ' ' &&
-            memcmp(kw_ptr, kwa_p, kw_len) == 0
-        ) {
-            ENTER;
-            SAVETMPS;
+    Newx(*ppsen, 1, Sentinel);
+    ***ppsen = NULL;
+    SAVEDESTRUCTOR_X(sentinel_clear_void, *ppsen);
 
-            Newx(*ppsen, 1, Sentinel);
-            ***ppsen = NULL;
-            SAVEDESTRUCTOR_X(sentinel_clear_void, *ppsen);
+    Newx(*ppspec, 1, KWSpec);
+    (*ppspec)->flags = 0;
+    (*ppspec)->reify_type = NULL;
+    spv_init(&(*ppspec)->shift);
+    (*ppspec)->attrs = sentinel_mortalize(**ppsen, newSVpvs(""));
+    (*ppspec)->install_sub = NULL;
+    sentinel_register(**ppsen, *ppspec, kws_free_void);
 
-            Newx(*ppspec, 1, KWSpec);
-            (*ppspec)->flags = 0;
-            (*ppspec)->reify_type = NULL;
-            spv_init(&(*ppspec)->shift);
-            (*ppspec)->attrs = sentinel_mortalize(**ppsen, newSVpvs(""));
-            (*ppspec)->install_sub = NULL;
-            sentinel_register(**ppsen, *ppspec, kws_free_void);
-
-#define FETCH_HINTK_INTO(NAME, PTR, LEN, X) STMT_START { \
-    const char *fk_ptr_; \
-    STRLEN fk_len_; \
-    I32 fk_xlen_; \
-    SV *fk_sv_; \
-    fk_sv_ = sentinel_mortalize(**ppsen, newSVpvs(HINTK_ ## NAME)); \
-    sv_catpvn(fk_sv_, PTR, LEN); \
-    fk_ptr_ = SvPV(fk_sv_, fk_len_); \
-    fk_xlen_ = fk_len_; \
-    if (kw_is_utf8) { \
-        fk_xlen_ = -fk_xlen_; \
+#define FETCH_HINTSK_INTO(NAME, PSV) STMT_START { \
+    SV **hsk_psv_; \
+    if (!(hsk_psv_ = hv_fetchs(config, HINTSK_ ## NAME, 0))) { \
+        croak("%s: internal error: $^H{'%s'}{'%.*s'}{'%s'} not set", MY_PKG, HINTK_CONFIG, (int)kw_len, kw_ptr, HINTSK_ ## NAME); \
     } \
-    if (!((X) = hv_fetch(hints, fk_ptr_, fk_xlen_, 0))) { \
-        croak("%s: internal error: $^H{'%.*s'} not set", MY_PKG, (int)fk_len_, fk_ptr_); \
-    } \
+    *(PSV) = *hsk_psv_; \
 } STMT_END
 
-            FETCH_HINTK_INTO(FLAGS_, kw_ptr, kw_len, psv);
-            (*ppspec)->flags = SvIV(*psv);
+    {
+        SV *sv;
 
-            FETCH_HINTK_INTO(REIFY_, kw_ptr, kw_len, psv);
-            {
-                SV *sv = *psv;
-                if (!sv || !SvROK(sv) || SvTYPE(SvRV(sv)) != SVt_PVCV) {
-                    croak("%s: internal error: $^H{'%s%.*s'} not a coderef: %"SVf, MY_PKG, HINTK_REIFY_, (int)kw_len, kw_ptr, SVfARG(sv));
+        FETCH_HINTSK_INTO(FLAGS, &sv);
+        (*ppspec)->flags = SvIV(sv);
+
+        FETCH_HINTSK_INTO(REIFY, &sv);
+        if (!sv || !SvROK(sv) || SvTYPE(SvRV(sv)) != SVt_PVCV) {
+            croak("%s: internal error: $^H{'%s'}{'%.*s'}{'%s'} not a coderef: %"SVf, MY_PKG, HINTK_CONFIG, (int)kw_len, kw_ptr, HINTSK_REIFY, SVfARG(sv));
+        }
+        (*ppspec)->reify_type = sv;
+
+        FETCH_HINTSK_INTO(SHIFT, &sv);
+        {
+            STRLEN sv_len;
+            const char *const sv_p = SvPVutf8(sv, sv_len);
+            const char *const sv_p_end = sv_p + sv_len;
+            const char *p = sv_p;
+            AV *shifty_types = NULL;
+            SV *type = NULL;
+
+            while (p < sv_p_end) {
+                const char *const v_start = p, *v_end;
+                if (*p != '$') {
+                    croak("%s: internal error: $^H{'%s'}{'%.*s'}{'%s'}: expected '$', found '%.*s'", MY_PKG, HINTK_CONFIG, (int)kw_len, kw_ptr, HINTSK_SHIFT, (int)(sv_p_end - p), p);
                 }
-                (*ppspec)->reify_type = sv;
-            }
+                p++;
+                if (p >= sv_p_end || !MY_UNI_IDFIRST_utf8(p, sv_p_end)) {
+                    croak("%s: internal error: $^H{'%s'}{'%.*s'}{'%s'}: expected idfirst, found '%.*s'", MY_PKG, HINTK_CONFIG, (int)kw_len, kw_ptr, HINTSK_SHIFT, (int)(sv_p_end - p), p);
+                }
+                p += UTF8SKIP(p);
+                while (p < sv_p_end && MY_UNI_IDCONT_utf8(p, sv_p_end)) {
+                    p += UTF8SKIP(p);
+                }
+                v_end = p;
+                if (v_end == v_start + 2 && v_start[1] == '_') {
+                    croak("%s: internal error: $^H{'%s'}{'%.*s'}{'%s'}: can't use global $_ as a parameter", MY_PKG, HINTK_CONFIG, (int)kw_len, kw_ptr, HINTSK_SHIFT);
+                }
+                {
+                    size_t i, lim = (*ppspec)->shift.used;
+                    for (i = 0; i < lim; i++) {
+                        if (my_sv_eq_pvn(aTHX_ (*ppspec)->shift.data[i].name, v_start, v_end - v_start)) {
+                            croak("%s: internal error: $^H{'%s'}{'%.*s'}{'%s'}: %"SVf" can't appear twice", MY_PKG, HINTK_CONFIG, (int)kw_len, kw_ptr, HINTSK_SHIFT, SVfARG((*ppspec)->shift.data[i].name));
+                        }
+                    }
+                }
+                if (p < sv_p_end && *p == '/') {
+                    SSize_t tix = 0;
+                    SV **ptype;
+                    p++;
+                    while (p < sv_p_end && isDIGIT(*p)) {
+                        tix = tix * 10 + (*p - '0');
+                        p++;
+                    }
 
-            FETCH_HINTK_INTO(SHIFT_, kw_ptr, kw_len, psv);
-            {
-                SV *const sv = *psv;
-                STRLEN sv_len;
-                const char *const sv_p = SvPVutf8(sv, sv_len);
-                const char *const sv_p_end = sv_p + sv_len;
-                const char *p = sv_p;
-                AV *shifty_types = NULL;
-                SV *type = NULL;
+                    if (!shifty_types) {
+                        shifty_types = get_av(MY_PKG "::shifty_types", 0);
+                        assert(shifty_types != NULL);
+                    }
+                    if (tix < 0 || tix > av_len(shifty_types)) {
+                        croak("%s: internal error: $^H{'%s'}{'%.*s'}{'%s'}: tix [%ld] out of range [%ld]", MY_PKG, HINTK_CONFIG, (int)kw_len, kw_ptr, HINTSK_SHIFT, (long)tix, (long)(av_len(shifty_types) + 1));
+                    }
+                    ptype = av_fetch(shifty_types, tix, 0);
+                    if (!ptype) {
+                        croak("%s: internal error: $^H{'%s'}{'%.*s'}{'%s'}: tix [%ld] doesn't exist", MY_PKG, HINTK_CONFIG, (int)kw_len, kw_ptr, HINTSK_SHIFT, (long)tix);
+                    }
+                    type = *ptype;
+                    if (!sv_isobject(type)) {
+                        croak("%s: internal error: $^H{'%s'}{'%.*s'}{'%s'}: tix [%ld] is not an object (%"SVf")", MY_PKG, HINTK_CONFIG, (int)kw_len, kw_ptr, HINTSK_SHIFT, (long)tix, SVfARG(type));
+                    }
+                }
 
-                while (p < sv_p_end) {
-                    const char *const v_start = p, *v_end;
-                    if (*p != '$') {
-                        croak("%s: internal error: $^H{'%s%.*s'}: expected '$', found '%.*s'", MY_PKG, HINTK_SHIFT_, (int)kw_len, kw_ptr, (int)(sv_p_end - p), p);
+                spv_push(&(*ppspec)->shift, sentinel_mortalize(**ppsen, newSVpvn_utf8(v_start, v_end - v_start, TRUE)), type);
+                if (p < sv_p_end) {
+                    if (*p != ' ') {
+                        croak("%s: internal error: $^H{'%s'}{'%.*s'}{'%s'}: expected ' ', found '%.*s'", MY_PKG, HINTK_CONFIG, (int)kw_len, kw_ptr, HINTSK_SHIFT, (int)(sv_p_end - p), p);
                     }
                     p++;
-                    if (p >= sv_p_end || !MY_UNI_IDFIRST_utf8(p, sv_p_end)) {
-                        croak("%s: internal error: $^H{'%s%.*s'}: expected idfirst, found '%.*s'", MY_PKG, HINTK_SHIFT_, (int)kw_len, kw_ptr, (int)(sv_p_end - p), p);
-                    }
-                    p += UTF8SKIP(p);
-                    while (p < sv_p_end && MY_UNI_IDCONT_utf8(p, sv_p_end)) {
-                        p += UTF8SKIP(p);
-                    }
-                    v_end = p;
-                    if (v_end == v_start + 2 && v_start[1] == '_') {
-                        croak("%s: internal error: $^H{'%s%.*s'}: can't use global $_ as a parameter", MY_PKG, HINTK_SHIFT_, (int)kw_len, kw_ptr);
-                    }
-                    {
-                        size_t i, lim = (*ppspec)->shift.used;
-                        for (i = 0; i < lim; i++) {
-                            if (my_sv_eq_pvn(aTHX_ (*ppspec)->shift.data[i].name, v_start, v_end - v_start)) {
-                                croak("%s: internal error: $^H{'%s%.*s'}: %"SVf" can't appear twice", MY_PKG, HINTK_SHIFT_, (int)kw_len, kw_ptr, SVfARG((*ppspec)->shift.data[i].name));
-                            }
-                        }
-                    }
-                    if (p < sv_p_end && *p == '/') {
-                        SSize_t tix = 0;
-                        SV **ptype;
-                        p++;
-                        while (p < sv_p_end && isDIGIT(*p)) {
-                            tix = tix * 10 + (*p - '0');
-                            p++;
-                        }
-
-                        if (!shifty_types) {
-                            shifty_types = get_av(MY_PKG "::shifty_types", 0);
-                            assert(shifty_types != NULL);
-                        }
-                        if (tix < 0 || tix > av_len(shifty_types)) {
-                            croak("%s: internal error: $^H{'%s%.*s'}: tix [%ld] out of range [%ld]", MY_PKG, HINTK_SHIFT_, (int)kw_len, kw_ptr, (long)tix, (long)(av_len(shifty_types) + 1));
-                        }
-                        ptype = av_fetch(shifty_types, tix, 0);
-                        if (!ptype) {
-                            croak("%s: internal error: $^H{'%s%.*s'}: tix [%ld] doesn't exist", MY_PKG, HINTK_SHIFT_, (int)kw_len, kw_ptr, (long)tix);
-                        }
-                        type = *ptype;
-                        if (!sv_isobject(type)) {
-                            croak("%s: internal error: $^H{'%s%.*s'}: tix [%ld] is not an object (%"SVf")", MY_PKG, HINTK_SHIFT_, (int)kw_len, kw_ptr, (long)tix, SVfARG(type));
-                        }
-                    }
-
-                    spv_push(&(*ppspec)->shift, sentinel_mortalize(**ppsen, newSVpvn_utf8(v_start, v_end - v_start, TRUE)), type);
-                    if (p < sv_p_end) {
-                        if (*p != ' ') {
-                            croak("%s: internal error: $^H{'%s%.*s'}: expected ' ', found '%.*s'", MY_PKG, HINTK_SHIFT_, (int)kw_len, kw_ptr, (int)(sv_p_end - p), p);
-                        }
-                        p++;
-                    }
                 }
             }
+        }
 
-            FETCH_HINTK_INTO(ATTRS_, kw_ptr, kw_len, psv);
-            SvSetSV((*ppspec)->attrs, *psv);
+        FETCH_HINTSK_INTO(ATTRS, &sv);
+        SvSetSV((*ppspec)->attrs, sv);
 
-            FETCH_HINTK_INTO(INSTALL_, kw_ptr, kw_len, psv);
-            {
-                SV *sv = *psv;
-                if (SvTRUE(sv)) {
-                    assert(SvROK(sv) || !(isDIGIT(*SvPV_nolen(sv))));
-                    (*ppspec)->install_sub = sv;
-                }
-            }
-
-#undef FETCH_HINTK_INTO
-            return TRUE;
+        FETCH_HINTSK_INTO(INSTL, &sv);
+        if (SvTRUE(sv)) {
+            assert(SvROK(sv) || !(isDIGIT(*SvPV_nolen(sv))));
+            (*ppspec)->install_sub = sv;
         }
     }
-    return FALSE;
+#undef FETCH_HINTSK_INTO
+
+    return TRUE;
 }
 
 static int (*next_keyword_plugin)(pTHX_ char *, STRLEN, OP **);
@@ -2324,12 +2314,12 @@ static void my_boot(pTHX) {
     newCONSTSUB(stash, "FLAG_TYPES_OK",     newSViv(FLAG_TYPES_OK));
     newCONSTSUB(stash, "FLAG_CHECK_TARGS",  newSViv(FLAG_CHECK_TARGS));
     newCONSTSUB(stash, "FLAG_RUNTIME",      newSViv(FLAG_RUNTIME));
-    newCONSTSUB(stash, "HINTK_KEYWORDS", newSVpvs(HINTK_KEYWORDS));
-    newCONSTSUB(stash, "HINTK_FLAGS_",   newSVpvs(HINTK_FLAGS_));
-    newCONSTSUB(stash, "HINTK_SHIFT_",   newSVpvs(HINTK_SHIFT_));
-    newCONSTSUB(stash, "HINTK_ATTRS_",   newSVpvs(HINTK_ATTRS_));
-    newCONSTSUB(stash, "HINTK_REIFY_",   newSVpvs(HINTK_REIFY_));
-    newCONSTSUB(stash, "HINTK_INSTALL_", newSVpvs(HINTK_INSTALL_));
+    newCONSTSUB(stash, "HINTK_CONFIG", newSVpvs(HINTK_CONFIG));
+    newCONSTSUB(stash, "HINTSK_FLAGS", newSVpvs(HINTSK_FLAGS));
+    newCONSTSUB(stash, "HINTSK_SHIFT", newSVpvs(HINTSK_SHIFT));
+    newCONSTSUB(stash, "HINTSK_ATTRS", newSVpvs(HINTSK_ATTRS));
+    newCONSTSUB(stash, "HINTSK_REIFY", newSVpvs(HINTSK_REIFY));
+    newCONSTSUB(stash, "HINTSK_INSTL", newSVpvs(HINTSK_INSTL));
 
     next_keyword_plugin = PL_keyword_plugin;
     PL_keyword_plugin = my_keyword_plugin;

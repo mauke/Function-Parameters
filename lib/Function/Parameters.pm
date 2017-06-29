@@ -348,6 +348,7 @@ sub import {
         $spec{$name} = \%clean;
     }
 
+    my %config = %{$^H{+HINTK_CONFIG} // {}};
     for my $kw (keys %spec) {
         my $type = $spec{$kw};
 
@@ -363,26 +364,28 @@ sub import {
         $flags |= FLAG_NAMED_PARAMS if $type->{named_parameters};
         $flags |= FLAG_TYPES_OK     if $type->{types};
         $flags |= FLAG_RUNTIME      if $type->{runtime};
-        $^H{HINTK_FLAGS_   . $kw} = $flags;
-        $^H{HINTK_SHIFT_   . $kw} = $type->{shift};
-        $^H{HINTK_ATTRS_   . $kw} = $type->{attrs};
-        $^H{HINTK_REIFY_   . $kw} = $type->{reify_type};
-        $^H{HINTK_INSTALL_ . $kw} = $type->{install_sub};
-        $^H{+HINTK_KEYWORDS} .= "$kw ";
+        $config{$kw} = {
+            HINTSK_FLAGS, => $flags,
+            HINTSK_SHIFT, => $type->{shift},
+            HINTSK_ATTRS, => $type->{attrs},
+            HINTSK_REIFY, => $type->{reify_type},
+            HINTSK_INSTL, => $type->{install_sub},
+        };
     }
+    $^H{+HINTK_CONFIG} = \%config;
 }
 
 sub unimport {
     my $class = shift;
 
     if (!@_) {
-        delete $^H{+HINTK_KEYWORDS};
+        delete $^H{+HINTK_CONFIG};
         return;
     }
 
-    for my $kw (@_) {
-        $^H{+HINTK_KEYWORDS} =~ s/(?<![^ ])\Q$kw\E //g;
-    }
+    my %config = %{$^H{+HINTK_CONFIG}};
+    delete @config{@_};
+    $^H{+HINTK_CONFIG} = \%config;
 }
 
 

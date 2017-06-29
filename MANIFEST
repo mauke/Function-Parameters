@@ -13,6 +13,7 @@ hax/pad_block_start.c.inc
 hax/pad_findmy_pvs.c.inc
 hax/pad_leavemy.c.inc
 hax/scalarseq.c.inc
+hax/STATIC_ASSERT_STMT.c.inc
 lib/Function/Parameters.pm
 lib/Function/Parameters/Info.pm
 Makefile.PL
