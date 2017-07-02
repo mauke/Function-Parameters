@@ -155,6 +155,7 @@ t/types_moose_2.t
 t/types_moose_3.t
 t/types_moosex.t
 t/types_moosex_2.t
+t/types_msg.t
 t/types_parse.t
 t/unicode.t
 t/unicode2.t

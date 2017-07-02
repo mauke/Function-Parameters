@@ -100,7 +100,7 @@ our $tester;
         foreach (@vals)
         {
             my $tag = @vals ? ' (#' . $count++ . ')' : '';
-            like exception { $tester->$method($_) }, qr/method \Q$method\E.+parameter 2\b.+\$bar\b.+Validation failed for '[^']+' with value\b/,
+            like exception { $tester->$method($_) }, qr/method \Q$method\E.+parameter 1\b.+\$bar\b.+Validation failed for '[^']+' with value\b/,
                     "call with bad value for $name dies";
         }
     }
@@ -111,25 +111,25 @@ our $tester;
     my $method = 'check_mixed_type_first';
     is eval qq{ method $method (Int \$bar, \$baz) {} 42 }, 42;
     is exception { $tester->$method(0, 'thing') }, undef, 'call with good values (type, notype) passes';
-    like exception { $tester->$method('thing1', 'thing2') }, qr/method \Q$method\E.+parameter 2\b.+\$bar\b.+Validation failed for '[^']+' with value\b/,
+    like exception { $tester->$method('thing1', 'thing2') }, qr/method \Q$method\E.+parameter 1\b.+\$bar\b.+Validation failed for '[^']+' with value\b/,
             'call with bad values (type, notype) dies';
 
     $method = 'check_mixed_type_second';
     is eval qq{ method $method (\$bar, Int \$baz) {} 42 }, 42;
     is exception { $tester->$method('thing', 1) }, undef, 'call with good values (notype, type) passes';
-    like exception { $tester->$method('thing1', 'thing2') }, qr/method \Q$method\E.+parameter 3\b.+\$baz\b.+Validation failed for '[^']+' with value\b/,
+    like exception { $tester->$method('thing1', 'thing2') }, qr/method \Q$method\E.+parameter 2\b.+\$baz\b.+Validation failed for '[^']+' with value\b/,
             'call with bad values (notype, type) dies';
 
     $method = 'check_multiple_types';
     is eval qq{ method $method (Int \$bar, Int \$baz) {} 42 }, 42;
     is exception { $tester->$method(1, 1) }, undef, 'call with good values (type, type) passes';
     # with two types, and bad values for both, they should fail in order of declaration
-    like exception { $tester->$method('thing1', 'thing2') }, qr/method \Q$method\E.+parameter 2\b.+\$bar\b.+Validation failed for '[^']+' with value\b/,
+    like exception { $tester->$method('thing1', 'thing2') }, qr/method \Q$method\E.+parameter 1\b.+\$bar\b.+Validation failed for '[^']+' with value\b/,
             'call with bad values (type, type) dies';
 
     # want to try one with undef as well to make sure we don't get an uninitialized warning
 
-    like exception { $tester->check_int(undef) }, qr/method check_int.+parameter 2\b.+\$bar\b.+Validation failed for '[^']+' with value\b/,
+    like exception { $tester->check_int(undef) }, qr/method check_int.+parameter 1\b.+\$bar\b.+Validation failed for '[^']+' with value\b/,
             'call with bad values (undef) dies';
 
 

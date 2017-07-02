@@ -859,11 +859,17 @@ static OP *mkcroak(pTHX_ OP *msg) {
     return xcroak;
 }
 
-static OP *mktypecheck(pTHX_ const SV *declarator, int nr, SV *name, PADOFFSET padoff, SV *type) {
+static OP *mktypecheckv(pTHX_ const SV *declarator, size_t nr, SV *name, PADOFFSET padoff, SV *type, int is_invocant) {
     /* $type->check($value) or F:P::_croak "...: " . $type->get_message($value) */
     OP *chk, *err, *msg, *xcroak;
 
-    err = mkconstsv(aTHX_ newSVpvf("In %"SVf": parameter %d (%"SVf"): ", SVfARG(declarator), nr, SVfARG(name)));
+    err = mkconstsv(
+        aTHX_
+        is_invocant == -1
+            ? newSVpvf("In %"SVf": invocant (%"SVf"): ", SVfARG(declarator), SVfARG(name))
+            : newSVpvf("In %"SVf": %s %lu (%"SVf"): ", SVfARG(declarator), is_invocant ? "invocant" : "parameter", (unsigned long)nr, SVfARG(name))
+    );
+
     {
         OP *args = NULL;
 
@@ -906,8 +912,16 @@ static OP *mktypecheck(pTHX_ const SV *declarator, int nr, SV *name, PADOFFSET p
     return chk;
 }
 
-static OP *mktypecheckp(pTHX_ const SV *declarator, int nr, const Param *param) {
+static OP *mktypecheck(pTHX_ const SV *declarator, size_t nr, SV *name, PADOFFSET padoff, SV *type) {
+    return mktypecheckv(aTHX_ declarator, nr, name, padoff, type, 0);
+}
+
+static OP *mktypecheckp(pTHX_ const SV *declarator, size_t nr, const Param *param) {
     return mktypecheck(aTHX_ declarator, nr, param->name, param->padoff, param->type);
+}
+
+static OP *mktypecheckpv(pTHX_ const SV *declarator, size_t nr, const Param *param, int is_invocant) {
+    return mktypecheckv(aTHX_ declarator, nr, param->name, param->padoff, param->type, is_invocant);
 }
 
 enum {
@@ -1981,11 +1995,13 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
             Param *cur = &param_spec->positional_required.data[i];
 
             if (cur->type) {
+                const bool is_invocant = i < param_spec->shift;
+                const size_t shift = param_spec->shift;
                 assert(cur->padoff != NOT_IN_PAD);
-                op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, mktypecheckp(aTHX_ declarator, base + i, cur))));
+                op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, mktypecheckpv(aTHX_ declarator, base + i - (is_invocant ? 0 : shift), cur, !is_invocant ? 0 : shift == 1 ? -1 : 1))));
             }
         }
-        base += i;
+        base += i - param_spec->shift;
 
         for (i = 0, lim = param_spec->positional_optional.used; i < lim; i++) {
             Param *cur = &param_spec->positional_optional.data[i].param;
