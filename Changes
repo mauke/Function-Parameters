@@ -1,5 +1,15 @@
 Revision history for Function-Parameters
 
+2.001001  2017-07-12
+          - fix duplicate type check on invocant:
+                method foo(T $self: $x) { ... }
+                # every call to foo() performs T->check($self) twice
+          - clean up how type errors refer to parameters (now it's
+            "parameter $N" for non-invocant parameters and "invocant $N" for
+            invocants (or just "invocant" if there is exactly one))
+          - rewrite pragma implementation and the way %^H is used
+          - remove several internal package variables
+
 2.000007  2017-05-15
           - no real code changes
           - extend bug #129090 workaround to perl 5.25.5
