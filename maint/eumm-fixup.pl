@@ -131,4 +131,15 @@ maint_distcheck :
 create_distdir : distcheck
 __EOT__
     $opt->{postamble}{text} .= $maint_distcheck;
+
+    my $dist_readme = <<'__EOT__';
+
+distdir : $(DISTVNAME)/README.md
+
+$(DISTVNAME)/README.md : create_distdir
+	pod2markdown 'lib/$(subst ::,/,$(NAME)).pm' '$@'
+	cd '$(DISTVNAME)' && $(PERLRUN) -MExtUtils::Manifest=maniadd -e 'maniadd { "README.md" => "generated from $(NAME) POD (added by maint/eumm-fixup.pl)" }'
+__EOT__
+    $opt->{postamble}{text} .= $dist_readme;
+    $opt->{META_MERGE}{prereqs}{develop}{requires}{'Pod::Markdown'} ||= '3.005';
 }
