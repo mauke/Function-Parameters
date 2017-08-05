@@ -21,7 +21,6 @@ Makefile_PL_settings.plx
 MANIFEST
 MANIFEST.SKIP
 Parameters.xs
-README
 README.md
 t/00-load.t
 t/01-compiles.t
