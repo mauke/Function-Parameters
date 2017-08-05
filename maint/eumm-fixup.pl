@@ -127,6 +127,8 @@ distcheck : maint_distcheck
 .PHONY: maint_distcheck
 maint_distcheck :
 	$(PERLRUN) maint/distcheck.pl '$(VERSION)' '$(TO_INST_PM)'
+
+create_distdir : distcheck
 __EOT__
     $opt->{postamble}{text} .= $maint_distcheck;
 }
