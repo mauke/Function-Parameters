@@ -136,8 +136,8 @@ __EOT__
 
 pure_all :: README.md
 
-README.md : lib/$(subst ::,/,$(NAME)).pm
-	pod2markdown '$<' '$@'
+README.md : lib/$(subst ::,/,$(NAME)).pm maint/pod2markdown.pl
+	$(PERLRUN) maint/pod2markdown.pl < '$<' > '$@.~tmp~' && mv -- '$@.~tmp~' '$@'
 __EOT__
     $opt->{postamble}{text} .= $readme_md;
     $opt->{META_MERGE}{prereqs}{develop}{requires}{'Pod::Markdown'} ||= '3.005';

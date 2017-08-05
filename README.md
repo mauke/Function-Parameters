@@ -4,45 +4,47 @@ Function::Parameters - define functions and methods with parameter lists ("subro
 
 # SYNOPSIS
 
-    use Function::Parameters;
+```perl
+use Function::Parameters;
 
-    # plain function
-    fun foo($x, $y, $z = 5) {
-        return $x + $y + $z;
-    }
-    print foo(1, 2), "\n";  # 8
+# plain function
+fun foo($x, $y, $z = 5) {
+    return $x + $y + $z;
+}
+print foo(1, 2), "\n";  # 8
 
-    # method with implicit $self
-    method bar($label, $n) {
-        return "$label: " . ($n * $self->scale);
-    }
+# method with implicit $self
+method bar($label, $n) {
+    return "$label: " . ($n * $self->scale);
+}
 
-    # named arguments: order doesn't matter in the call
-    fun create_point(:$x, :$y, :$color) {
-        print "creating a $color point at ($x, $y)\n";
-    }
-    create_point(
-        color => "red",
-        x     => 10,
-        y     => 5,
+# named arguments: order doesn't matter in the call
+fun create_point(:$x, :$y, :$color) {
+    print "creating a $color point at ($x, $y)\n";
+}
+create_point(
+    color => "red",
+    x     => 10,
+    y     => 5,
+);
+
+package Derived {
+    use Function::Parameters qw(:std :modifiers);
+    use Moo;
+
+    extends 'Base';
+
+    has 'go_big' => (
+        is => 'ro',
     );
 
-    package Derived {
-        use Function::Parameters qw(:std :modifiers);
-        use Moo;
-
-        extends 'Base';
-
-        has 'go_big' => (
-            is => 'ro',
-        );
-
-        # "around" method with implicit $orig and $self
-        around size() {
-            return $self->$orig() * 2 if $self->go_big;
-            return $self->$orig();
-        }
+    # "around" method with implicit $orig and $self
+    around size() {
+        return $self->$orig() * 2 if $self->go_big;
+        return $self->$orig();
     }
+}
+```
 
 # DESCRIPTION
 
@@ -66,23 +68,29 @@ or file.
 
 You can also disable `Function::Parameters` within a block:
 
-    {
-        no Function::Parameters;  # disable all keywords
-        ...
-    }
+```perl
+{
+    no Function::Parameters;  # disable all keywords
+    ...
+}
+```
 
 Or explicitly list the keywords you want to disable:
 
-    {
-        no Function::Parameters qw(method);
-        # 'method' is a normal identifier here
-        ...
-    }
+```perl
+{
+    no Function::Parameters qw(method);
+    # 'method' is a normal identifier here
+    ...
+}
+```
 
 You can also explicitly list the keywords you want to enable:
 
-    use Function::Parameters qw(fun);  # provides 'fun' but not 'method'
-    use Function::Parameters qw(method);  # provides 'method' but not 'fun'
+```perl
+use Function::Parameters qw(fun);  # provides 'fun' but not 'method'
+use Function::Parameters qw(method);  # provides 'method' but not 'fun'
+```
 
 ### Simple parameter lists
 
@@ -90,14 +98,16 @@ By default you get two keywords, `fun` and `method` (but see
 ["Customizing and extending"](#customizing-and-extending) below). `fun` is very similar to `sub`. You can
 use it to define both named and anonymous functions:
 
-    fun left_pad($str, $n) {
-        return sprintf '%*s', $n, $str;
-    }
+```perl
+fun left_pad($str, $n) {
+    return sprintf '%*s', $n, $str;
+}
 
-    print left_pad("hello", 10), "\n";
+print left_pad("hello", 10), "\n";
 
-    my $twice = fun ($x) { $x * 2 };
-    print $twice->(21), "\n";
+my $twice = fun ($x) { $x * 2 };
+print $twice->(21), "\n";
+```
 
 In the simplest case the parameter list is just a comma-separated list of zero
 or more scalar variables (enclosed in parentheses, following the function name,
@@ -109,11 +119,13 @@ exception is thrown.
 
 Apart from that, the parameter variables are defined and initialized as if by:
 
-    sub left_pad {
-        sub left_pad;
-        my ($str, $n) = @_;
-        ...
-    }
+```perl
+sub left_pad {
+    sub left_pad;
+    my ($str, $n) = @_;
+    ...
+}
+```
 
 In particular, `@_` is still available in functions defined by `fun` and
 holds the original argument list.
@@ -122,10 +134,12 @@ The inner `sub left_pad;` declaration is intended to illustrate that the name
 of the function being defined is in scope in its own body, meaning you can call
 it recursively without having to use parentheses:
 
-    fun fac($n) {
-        return 1 if $n < 2;
-        return $n * fac $n - 1;
-    }
+```perl
+fun fac($n) {
+    return 1 if $n < 2;
+    return $n * fac $n - 1;
+}
+```
 
 In a normal `sub` the last line would have had to be written
 `return $n * fac($n - 1);`.
@@ -133,16 +147,18 @@ In a normal `sub` the last line would have had to be written
 `method` is almost the same as `fun` but automatically creates a `$self`
 variable as the first parameter (which is removed from `@_`):
 
-    method foo($x, $y) {
-       ...
-    }
+```perl
+method foo($x, $y) {
+   ...
+}
 
-    # works like:
-    sub foo :method {
-       my $self = shift;
-       my ($x, $y) = @_;
-       ...
-    }
+# works like:
+sub foo :method {
+   my $self = shift;
+   my ($x, $y) = @_;
+   ...
+}
+```
 
 As you can see, the `:method` attribute is also added automatically (see
 ["method" in attributes](https://metacpan.org/pod/attributes#method) for details).
@@ -152,16 +168,20 @@ invocant of the method. You can override it on a case-by-case basis by putting
 a variable name followed by a `:` (colon) as the first thing in the parameter
 list:
 
-    method new($class: $x, $y) {
-        return bless { x => $x, y => $y }, $class;
-    }
+```perl
+method new($class: $x, $y) {
+    return bless { x => $x, y => $y }, $class;
+}
+```
 
 Here the invocant is named `$class`, not `$self`. It looks a bit weird but
 still works the same way if the remaining parameter list is empty:
 
-    method from_env($class:) {
-        return $class->new($ENV{x}, $ENV{y});
-    }
+```perl
+method from_env($class:) {
+    return $class->new($ENV{x}, $ENV{y});
+}
+```
 
 ### Default arguments
 
@@ -170,19 +190,23 @@ everything applies to `method` as well.)
 
 You can make some arguments optional by giving them default values.
 
-    fun passthrough($x, $y = 42, $z = []) {
-        return ($x, $y, $z);
-    }
+```perl
+fun passthrough($x, $y = 42, $z = []) {
+    return ($x, $y, $z);
+}
+```
 
 In this example the first parameter `$x` is required but `$y` and `$z` are
 optional.
 
-    passthrough('a', 'b', 'c', 'd')   # error: Too many arguments
-    passthrough('a', 'b', 'c')        # returns ('a', 'b', 'c')
-    passthrough('a', 'b')             # returns ('a', 'b', [])
-    passthrough('a', undef)           # returns ('a', undef, [])
-    passthrough('a')                  # returns ('a', 42, [])
-    passthrough()                     # error: Too few arguments
+```perl
+passthrough('a', 'b', 'c', 'd')   # error: Too many arguments
+passthrough('a', 'b', 'c')        # returns ('a', 'b', 'c')
+passthrough('a', 'b')             # returns ('a', 'b', [])
+passthrough('a', undef)           # returns ('a', undef, [])
+passthrough('a')                  # returns ('a', 42, [])
+passthrough()                     # error: Too few arguments
+```
 
 Default arguments are evaluated whenever a corresponding real argument is not
 passed in by the caller. `undef` counts as a real argument; you can't use the
@@ -193,38 +217,44 @@ reference (they're not shared between calls).
 Default arguments are evaluated as part of the function body, allowing for
 silliness such as:
 
-    fun weird($name = return "nope") {
-        print "Hello, $name!\n";
-        return $name;
-    }
+```perl
+fun weird($name = return "nope") {
+    print "Hello, $name!\n";
+    return $name;
+}
 
-    weird("Larry");  # prints "Hello, Larry!" and returns "Larry"
-    weird();         # returns "nope" immediately; function body doesn't run
+weird("Larry");  # prints "Hello, Larry!" and returns "Larry"
+weird();         # returns "nope" immediately; function body doesn't run
+```
 
 Preceding parameters are in scope for default arguments:
 
-    fun dynamic_default($x, $y = length $x) {
-       return "$x/$y";
-    }
+```perl
+fun dynamic_default($x, $y = length $x) {
+   return "$x/$y";
+}
 
-    dynamic_default("hello", 0)  # returns "hello/0"
-    dynamic_default("hello")     # returns "hello/5"
-    dynamic_default("abc")       # returns "abc/3"
+dynamic_default("hello", 0)  # returns "hello/0"
+dynamic_default("hello")     # returns "hello/5"
+dynamic_default("abc")       # returns "abc/3"
+```
 
 If you just want to make a parameter optional without giving it a special
 value, write `$param = undef`. There is a special shortcut syntax for
 this case: `$param = undef` can also be written `$param =` (with no following
 expression).
 
-    fun foo($x = undef, $y = undef, $z = undef) {
-        # three arguments, all optional
-        ...
-    }
+```perl
+fun foo($x = undef, $y = undef, $z = undef) {
+    # three arguments, all optional
+    ...
+}
 
-    fun foo($x=, $y=, $z=) {
-        # shorter syntax, same meaning
-        ...
-    }
+fun foo($x=, $y=, $z=) {
+    # shorter syntax, same meaning
+    ...
+}
+```
 
 Optional parameters must come at the end. It is not possible to have a required
 parameter after an optional one.
@@ -234,12 +264,14 @@ parameter after an optional one.
 The last parameter of a function or method can be an array. This lets you slurp
 up any number of arguments the caller passes (0 or more).
 
-    fun scale($factor, @values) {
-        return map { $_ * $factor } @values;
-    }
+```perl
+fun scale($factor, @values) {
+    return map { $_ * $factor } @values;
+}
 
-    scale(10, 1 .. 4)  # returns (10, 20, 30, 40)
-    scale(10)          # returns ()
+scale(10, 1 .. 4)  # returns (10, 20, 30, 40)
+scale(10)          # returns ()
+```
 
 You can also use a hash, but then the number of arguments has to be even.
 
@@ -248,23 +280,27 @@ You can also use a hash, but then the number of arguments has to be even.
 As soon as your functions take more than three arguments, it gets harder to
 keep track of what argument means what:
 
-    foo($handle, $w, $h * 2 + 15, 1, 24, 'icon');
-    # what do these arguments mean?
+```perl
+foo($handle, $w, $h * 2 + 15, 1, 24, 'icon');
+# what do these arguments mean?
+```
 
 `Function::Parameters` offers an alternative for these kinds of situations in
 the form of named parameters. Unlike the parameters described previously, which
 are identified by position, these parameters are identified by name:
 
-    fun create_point(:$x, :$y, :$color) {
-        ...
-    }
+```perl
+fun create_point(:$x, :$y, :$color) {
+    ...
+}
 
-    # Case 1
-    create_point(
-        x     => 50,
-        y     => 50,
-        color => 0xff_00_00,
-    );
+# Case 1
+create_point(
+    x     => 50,
+    y     => 50,
+    color => 0xff_00_00,
+);
+```
 
 To create a named parameter, put a `:` (colon) in front of it in the parameter
 list. When the function is called, the arguments have to be supplied in the
@@ -272,80 +308,90 @@ form of a hash initializer (a list of alternating keys/values). As with a hash,
 the order of key/value pairs doesn't matter (except in the case of duplicate
 keys, where the last occurrence wins):
 
-    # Case 2
-    create_point(
-        color => 0xff_00_00,
-        x     => 50,
-        y     => 50,
-    );
+```perl
+# Case 2
+create_point(
+    color => 0xff_00_00,
+    x     => 50,
+    y     => 50,
+);
 
-    # Case 3
-    create_point(
-        x     => 200,
-        color => 0x12_34_56,
-        color => 0xff_00_00,
-        x     => 50,
-        y     => 50,
-    );
+# Case 3
+create_point(
+    x     => 200,
+    color => 0x12_34_56,
+    color => 0xff_00_00,
+    x     => 50,
+    y     => 50,
+);
+```
 
 Case 1, Case 2, and Case 3 all mean the same thing.
 
 As with positional parameters, you can make named parameters optional by
 supplying a [default argument](#default-arguments):
 
-    fun create_point(:$x, :$y, :$color = 0x00_00_00) {
-        ...
-    }
+```perl
+fun create_point(:$x, :$y, :$color = 0x00_00_00) {
+    ...
+}
 
-    create_point(x => 0, y => 64)  # color => 0x00_00_00 is implicit
+create_point(x => 0, y => 64)  # color => 0x00_00_00 is implicit
+```
 
 If you want to accept any key/value pairs, you can add a
-[rest parameter](#slurpy-rest-parameters) (hashes are particularly useful):
+[rest parameter](#slurpyrest-parameters) (hashes are particularly useful):
 
-    fun accept_all_keys(:$name, :$age, %rest) {
-        ...
-    }
+```perl
+fun accept_all_keys(:$name, :$age, %rest) {
+    ...
+}
 
-    accept_all_keys(
-        age     => 42,
-        gender  => 2,
-        name    => "Jamie",
-        marbles => [],
-    );
-    # $name = "Jamie";
-    # $age = 42;
-    # %rest = (
-    #     gender  => 2,
-    #     marbles => [],
-    # );
+accept_all_keys(
+    age     => 42,
+    gender  => 2,
+    name    => "Jamie",
+    marbles => [],
+);
+# $name = "Jamie";
+# $age = 42;
+# %rest = (
+#     gender  => 2,
+#     marbles => [],
+# );
+```
 
 You can combine positional and named parameters but all positional parameters
 have to come first:
 
-    method output(
-       $data,
-       :$handle       = $self->output_handle,
-       :$separator    = $self->separator,
-       :$quote_fields = 0,
-    ) {
-        ...
-    }
+```perl
+method output(
+   $data,
+   :$handle       = $self->output_handle,
+   :$separator    = $self->separator,
+   :$quote_fields = 0,
+) {
+    ...
+}
 
-    $obj->output(["greetings", "from", "space"]);
-    $obj->output(
-       ["a", "random", "example"],
-       quote_fields => 1,
-       separator    => ";",
-    );
+$obj->output(["greetings", "from", "space"]);
+$obj->output(
+   ["a", "random", "example"],
+   quote_fields => 1,
+   separator    => ";",
+);
+```
 
 ### Unnamed parameters
 
 If your function doesn't use a particular parameter at all, you can omit its
 name and just write a sigil in the parameter list:
 
-    register_callback('click', fun ($target, $) {
-        ...
-    });
+```perl
+register_callback('click', fun ($target, $) {
+    ...
+});
+```
 
 Here we're calling a hypothetical `register_callback` function that registers
 our coderef to be called in response to a `click` event. It will pass two
@@ -357,7 +403,7 @@ This case typically occurs when your functions have to conform to an externally
 imposed interface, e.g. because they're called by someone else. It can happen
 with callbacks or methods that don't need all of the arguments they get.
 
-You can use unnamed [slurpy parameters](#slurpy-rest-parameters) to accept and
+You can use unnamed [slurpy parameters](#slurpyrest-parameters) to accept and
 ignore all following arguments. In particular, `fun foo(@)` is a lot like
 `sub foo` in that it accepts and ignores any number of arguments (apart from
 leaving them in `@_`).
@@ -367,13 +413,15 @@ leaving them in `@_`).
 It is possible to automatically check the types of arguments passed to your
 function. There are two ways to do this.
 
-1.
+1. <!-- -->
 
-        use Types::Standard qw(Str Int ArrayRef);
+    ```perl
+    use Types::Standard qw(Str Int ArrayRef);
 
-        fun foo(Str $label, ArrayRef[Int] $counts) {
-            ...
-        }
+    fun foo(Str $label, ArrayRef[Int] $counts) {
+        ...
+    }
+    ```
 
     In this variant you simply put the name of a type in front of a parameter. The
     way this works is that `Function::Parameters` parses the type using very
@@ -403,17 +451,19 @@ function. There are two ways to do this.
     `get_message` is called on values that fail the `check` test; it should
     return a string that describes the error.
 
-2.
+2. <!-- -->
 
-        my ($my_type, $some_other_type);
-        BEGIN {
-            $my_type = Some::Constraint::Class->new;
-            $some_other_type = Some::Other::Class->new;
-        }
+    ```perl
+    my ($my_type, $some_other_type);
+    BEGIN {
+        $my_type = Some::Constraint::Class->new;
+        $some_other_type = Some::Other::Class->new;
+    }
 
-        fun foo(($my_type) $label, ($some_other_type) $counts) {
-            ...
-        }
+    fun foo(($my_type) $label, ($some_other_type) $counts) {
+        ...
+    }
+    ```
 
     In this variant you enclose an arbitrary Perl expression in `(` `)`
     (parentheses) and put it in front of a parameter. This expression is evaluated
@@ -426,22 +476,30 @@ function. There are two ways to do this.
 [`Moo`](https://metacpan.org/pod/Moo) or [`Moose`](https://metacpan.org/pod/Moose). They're not exported by default, so you
 have to say
 
-    use Function::Parameters qw(:modifiers);
+```perl
+use Function::Parameters qw(:modifiers);
+```
 
 to get them. This line gives you method modifiers _only_; `fun` and `method`
 are not defined. To get both the standard keywords and method modifiers, you
 can either write two `use` lines:
 
-    use Function::Parameters;
-    use Function::Parameters qw(:modifiers);
+```perl
+use Function::Parameters;
+use Function::Parameters qw(:modifiers);
+```
 
 or explicitly list the keywords you want:
 
-    use Function::Parameters qw(fun method :modifiers);
+```perl
+use Function::Parameters qw(fun method :modifiers);
+```
 
 or add the `:std` import tag (which gives you the default import behavior):
 
-    use Function::Parameters qw(:std :modifiers);
+```perl
+use Function::Parameters qw(:std :modifiers);
+```
 
 This defines the following additional keywords: `before`, `after`, `around`,
 `augment`, `override`. These work mostly like `method`, but they don't
@@ -449,33 +507,41 @@ install the function into your package themselves. Instead they invoke whatever
 `before`, `after`, `around`, `augment`, or `override` function
 (respectively) is in scope to do the job.
 
-    before foo($x, $y, $z) {
-        ...
-    }
+```perl
+before foo($x, $y, $z) {
+    ...
+}
+```
 
 works like
 
-    &before('foo', method ($x, $y, $z) {
-        ...
-    });
+```perl
+&before('foo', method ($x, $y, $z) {
+    ...
+});
+```
 
 `after`, `augment`, and `override` work the same way.
 
 `around` is slightly different: Instead of shifting off the first element of
 `@_` into `$self` (as `method` does), it shifts off _two_ values:
 
-    around foo($x, $y, $z) {
-        ...
-    }
+```perl
+around foo($x, $y, $z) {
+    ...
+}
+```
 
 works like
 
-    &around('foo', sub :method {
-        my $orig = shift;
-        my $self = shift;
-        my ($x, $y, $z) = @_;
-        ...
-    });
+```perl
+&around('foo', sub :method {
+    my $orig = shift;
+    my $self = shift;
+    my ($x, $y, $z) = @_;
+    ...
+});
+```
 
 (except you also get the usual `Function::Parameters` features such as
 checking the number of arguments, etc).
@@ -483,11 +549,13 @@ checking the number of arguments, etc).
 `$orig` and `$self` both count as invocants and you can override their names
 like this:
 
-    around foo($original, $object: $x, $y, $z) {
-        # $original is a reference to the wrapped method;
-        # $object is the object we're being called on
-        ...
-    }
+```perl
+around foo($original, $object: $x, $y, $z) {
+    # $original is a reference to the wrapped method;
+    # $object is the object we're being called on
+    ...
+}
+```
 
 If you use `:` to pick your own invocant names in the parameter list of
 `around`, you must specify exactly two variables.
@@ -505,19 +573,23 @@ performed at runtime.
 You can specify attributes (see ["Subroutine Attributes" in perlsub](https://metacpan.org/pod/perlsub#Subroutine-Attributes)) for your
 functions using the usual syntax:
 
-    fun deref($x) :lvalue {
-       ${$x}
-    }
+```perl
+fun deref($x) :lvalue {
+   ${$x}
+}
 
-    my $silly;
-    deref(\$silly) = 42;
+my $silly;
+deref(\$silly) = 42;
+```
 
 To specify a prototype (see ["Prototypes" in perlsub](https://metacpan.org/pod/perlsub#Prototypes)), use the `prototype`
 attribute:
 
-    fun mypush($aref, @values) :prototype(\@@) {
-        push @{$aref}, @values;
-    }
+```perl
+fun mypush($aref, @values) :prototype(\@@) {
+    push @{$aref}, @values;
+}
+```
 
 ### Introspection
 
@@ -546,14 +618,16 @@ hash references. Each key is a keyword to be defined as specified by the
 corresponding value, which must be another hash reference containing
 configuration options.
 
-    use Function::Parameters
-        {
-            keyword_1 => { ... },
-            keyword_2 => { ... },
-        },
-        {
-            keyword_3 => { ... },
-        };
+```perl
+use Function::Parameters
+    {
+        keyword_1 => { ... },
+        keyword_2 => { ... },
+    },
+    {
+        keyword_3 => { ... },
+    };
+```
 
 If you don't specify a particular option, its default value is used. The
 available configuration options are:
@@ -705,17 +779,19 @@ available configuration options are:
 
 You can get the same effect as `use Function::Parameters;` by saying:
 
-    use Function::Parameters {
-        fun => {
-            # 'fun' uses default settings only
-        },
-        method => {
-            attributes => ':method',
-            shift      => '$self',
-            invocant   => 1,
-            # the rest is defaults
-        },
-    };
+```perl
+use Function::Parameters {
+    fun => {
+        # 'fun' uses default settings only
+    },
+    method => {
+        attributes => ':method',
+        shift      => '$self',
+        invocant   => 1,
+        # the rest is defaults
+    },
+};
+```
 
 ### Configuration bundles
 
@@ -736,10 +812,12 @@ The following bundles are available:
 
     Equivalent to:
 
-        {
-            defaults => 'function_strict',
-            strict   => 0,
-        }
+    ```perl
+    {
+        defaults => 'function_strict',
+        strict   => 0,
+    }
+    ```
 
     i.e. just like [`function_strict`](#function_strict) but with
     [`strict`](#strict) checks turned off.
@@ -754,21 +832,25 @@ The following bundles are available:
 
     Equivalent to:
 
-        {
-            defaults   => 'function_strict',
-            attributes => ':method',
-            shift      => '$self',
-            invocant   => 1,
-        }
+    ```perl
+    {
+        defaults   => 'function_strict',
+        attributes => ':method',
+        shift      => '$self',
+        invocant   => 1,
+    }
+    ```
 
 - `method_lax`
 
     Equivalent to:
 
-        {
-            defaults => 'method_strict',
-            strict   => 0,
-        }
+    ```perl
+    {
+        defaults => 'method_strict',
+        strict   => 0,
+    }
+    ```
 
     i.e. just like [`method_strict`](#method_strict) but with
     [`strict`](#strict) checks turned off.
@@ -783,10 +865,12 @@ The following bundles are available:
 
     Equivalent to:
 
-        {
-            defaults => 'method_strict',
-            shift    => '$class',
-        }
+    ```perl
+    {
+        defaults => 'method_strict',
+        shift    => '$class',
+    }
+    ```
 
     i.e. just like [`method_strict`](#method_strict) but the implicit first
     parameter is called `$class`, not `$self`.
@@ -795,10 +879,12 @@ The following bundles are available:
 
     Equivalent to:
 
-        {
-            defaults => 'classmethod_strict',
-            strict   => 0,
-        }
+    ```perl
+    {
+        defaults => 'classmethod_strict',
+        strict   => 0,
+    }
+    ```
 
     i.e. just like [`classmethod_strict`](#classmethod_strict) but with
     [`strict`](#strict) checks turned off.
@@ -812,13 +898,15 @@ The following bundles are available:
 
     Equivalent to:
 
-        {
-            defaults    => 'method',
-            install_sub => 'around',
-            shift       => ['$orig', '$self'],
-            runtime     => 1,
-            name        => 'required',
-        }
+    ```perl
+    {
+        defaults    => 'method',
+        install_sub => 'around',
+        shift       => ['$orig', '$self'],
+        runtime     => 1,
+        name        => 'required',
+    }
+    ```
 
     i.e. just like [`method`](#method) but with a custom installer
     (`'around'`), two implicit first parameters, only taking effect at
@@ -828,12 +916,14 @@ The following bundles are available:
 
     Equivalent to:
 
-        {
-            defaults    => 'method',
-            install_sub => 'before',
-            runtime     => 1,
-            name        => 'required',
-        }
+    ```perl
+    {
+        defaults    => 'method',
+        install_sub => 'before',
+        runtime     => 1,
+        name        => 'required',
+    }
+    ```
 
     i.e. just like [`method`](#method) but with a custom installer
     (`'before'`), only taking effect at runtime, and a method name is required.
@@ -842,12 +932,14 @@ The following bundles are available:
 
     Equivalent to:
 
-        {
-            defaults    => 'method',
-            install_sub => 'after',
-            runtime     => 1,
-            name        => 'required',
-        }
+    ```perl
+    {
+        defaults    => 'method',
+        install_sub => 'after',
+        runtime     => 1,
+        name        => 'required',
+    }
+    ```
 
     i.e. just like [`method`](#method) but with a custom installer
     (`'after'`), only taking effect at runtime, and a method name is required.
@@ -856,12 +948,14 @@ The following bundles are available:
 
     Equivalent to:
 
-        {
-            defaults    => 'method',
-            install_sub => 'augment',
-            runtime     => 1,
-            name        => 'required',
-        }
+    ```perl
+    {
+        defaults    => 'method',
+        install_sub => 'augment',
+        runtime     => 1,
+        name        => 'required',
+    }
+    ```
 
     i.e. just like [`method`](#method) but with a custom installer
     (`'augment'`), only taking effect at runtime, and a method name is required.
@@ -870,29 +964,35 @@ The following bundles are available:
 
     Equivalent to:
 
-        {
-            defaults    => 'method',
-            install_sub => 'override',
-            runtime     => 1,
-            name        => 'required',
-        }
+    ```perl
+    {
+        defaults    => 'method',
+        install_sub => 'override',
+        runtime     => 1,
+        name        => 'required',
+    }
+    ```
 
     i.e. just like [`method`](#method) but with a custom installer
     (`'override'`), only taking effect at runtime, and a method name is required.
 
 You can get the same effect as `use Function::Parameters;` by saying:
 
-    use Function::Parameters {
-        fun    => { defaults => 'function' },
-        method => { defaults => 'method' },
-    };
+```perl
+use Function::Parameters {
+    fun    => { defaults => 'function' },
+    method => { defaults => 'method' },
+};
+```
 
 or:
 
-    use Function::Parameters {
-        fun    => 'function',
-        method => 'method',
-    };
+```perl
+use Function::Parameters {
+    fun    => 'function',
+    method => 'method',
+};
+```
 
 ### Import tags
 
@@ -946,11 +1046,15 @@ list. The following import tags are available:
 
     Equivalent to `'fun', 'method'`. This is what's used by default:
 
-        use Function::Parameters;
+    ```perl
+    use Function::Parameters;
+    ```
 
     is the same as:
 
-        use Function::Parameters qw(:std);
+    ```perl
+    use Function::Parameters qw(:std);
+    ```
 
 - `':modifiers'`
 
@@ -958,82 +1062,98 @@ list. The following import tags are available:
 
 For example, when you say
 
-    use Function::Parameters qw(:modifiers);
+```perl
+use Function::Parameters qw(:modifiers);
+```
 
 `:modifiers` is an import tag that [expands to](#modifiers)
 
-    use Function::Parameters qw(before after around augment override);
+```perl
+use Function::Parameters qw(before after around augment override);
+```
 
 Each of those is another import tag. Stepping through the first one:
 
-    use Function::Parameters qw(before);
+```perl
+use Function::Parameters qw(before);
+```
 
 is [equivalent to](#before):
 
-    use Function::Parameters { before => 'before' };
+```perl
+use Function::Parameters { before => 'before' };
+```
 
 This says to define the keyword `before` according to the
 [configuration bundle `before`](#before):
 
-    use Function::Parameters {
-        before => {
-            defaults    => 'method',
-            install_sub => 'before',
-            runtime     => 1,
-            name        => 'required',
-        },
-    };
+```perl
+use Function::Parameters {
+    before => {
+        defaults    => 'method',
+        install_sub => 'before',
+        runtime     => 1,
+        name        => 'required',
+    },
+};
+```
 
 The `defaults => 'method'` part [pulls in](#configuration-bundles) the
 contents of the [`'method'` configuration bundle](#method) (which is the
 same as [`'method_strict'`](#method_strict)):
 
-    use Function::Parameters {
-        before => {
-            defaults    => 'function_strict',
-            attributes  => ':method',
-            shift       => '$self',
-            invocant    => 1,
-            install_sub => 'before',
-            runtime     => 1,
-            name        => 'required',
-        },
-    };
+```perl
+use Function::Parameters {
+    before => {
+        defaults    => 'function_strict',
+        attributes  => ':method',
+        shift       => '$self',
+        invocant    => 1,
+        install_sub => 'before',
+        runtime     => 1,
+        name        => 'required',
+    },
+};
+```
 
 This in turn uses the
 [`'function_strict'` configuration bundle](#function_strict) (which is
 empty because it consists of default values only):
 
-    use Function::Parameters {
-        before => {
-            attributes  => ':method',
-            shift       => '$self',
-            invocant    => 1,
-            install_sub => 'before',
-            runtime     => 1,
-            name        => 'required',
-        },
-    };
+```perl
+use Function::Parameters {
+    before => {
+        attributes  => ':method',
+        shift       => '$self',
+        invocant    => 1,
+        install_sub => 'before',
+        runtime     => 1,
+        name        => 'required',
+    },
+};
+```
 
 But if we wanted to be completely explicit, we could write this as:
 
-    use Function::Parameters {
-        before => {
-            check_argument_count => 1,
-            check_argument_types => 1,
-            default_arguments    => 1,
-            named_parameters     => 1,
-            reify_type           => 'auto',
-            types                => 1,
+```perl
+use Function::Parameters {
+    before => {
+        check_argument_count => 1,
+        check_argument_types => 1,
+        default_arguments    => 1,
+        named_parameters     => 1,
+        reify_type           => 'auto',
+        types                => 1,
 
-            attributes  => ':method',
-            shift       => '$self',
-            invocant    => 1,
-            install_sub => 'before',
-            runtime     => 1,
-            name        => 'required',
-        },
-    };
+        attributes  => ':method',
+        shift       => '$self',
+        invocant    => 1,
+        install_sub => 'before',
+        runtime     => 1,
+        name        => 'required',
+    },
+};
+```
 
 ## Incompatibilites with version 1 of `Function::Parameters`
 
@@ -1063,24 +1183,30 @@ wasn't so much fixed as worked around in `Function::Parameters`.)
     If you want your type reifier to be compatible with both versions, you can do
     this:
 
-        sub my_reifier {
-            my ($type, $package) = @_;
-            $package //= caller;
-            ...
-        }
+    ```perl
+    sub my_reifier {
+        my ($type, $package) = @_;
+        $package //= caller;
+        ...
+    }
+    ```
 
     Or using `Function::Parameters` itself:
 
-        fun my_reifier($type, $package = caller) {
-            ...
-        }
+    ```perl
+    fun my_reifier($type, $package = caller) {
+        ...
+    }
+    ```
 
 # SUPPORT AND DOCUMENTATION
 
 After installing, you can find documentation for this module with the
 perldoc command.
 
-    perldoc Function::Parameters
+```sh
+perldoc Function::Parameters
+```
 
 You can also look for information at
 [https://metacpan.org/pod/Function%3A%3AParameters](https://metacpan.org/pod/Function%3A%3AParameters).

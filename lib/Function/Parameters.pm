@@ -467,6 +467,8 @@ __END__
 
 =encoding UTF-8
 
+=for meta.language perl
+
 =head1 NAME
 
 Function::Parameters - define functions and methods with parameter lists ("subroutine signatures")
@@ -1591,6 +1593,8 @@ Or using C<Function::Parameters> itself:
 
 After installing, you can find documentation for this module with the
 perldoc command.
+
+=for meta.language sh
 
     perldoc Function::Parameters
 
