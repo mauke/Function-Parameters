@@ -1202,14 +1202,14 @@ wasn't so much fixed as worked around in `Function::Parameters`.)
 # SUPPORT AND DOCUMENTATION
 
 After installing, you can find documentation for this module with the
-perldoc command.
+[`perldoc`](https://metacpan.org/pod/perldoc) command.
 
 ```sh
 perldoc Function::Parameters
 ```
 
 You can also look for information at
-[https://metacpan.org/pod/Function%3A%3AParameters](https://metacpan.org/pod/Function%3A%3AParameters).
+[https://metacpan.org/pod/Function::Parameters](https://metacpan.org/pod/Function::Parameters).
 
 To see a list of open bugs, visit
 [https://rt.cpan.org/Public/Dist/Display.html?Name=Function-Parameters](https://rt.cpan.org/Public/Dist/Display.html?Name=Function-Parameters).
@@ -1230,10 +1230,10 @@ Lukas Mai, `<l.mai at web.de>`
 
 # COPYRIGHT & LICENSE
 
-Copyright 2010-2014, 2017 Lukas Mai.
+Copyright (C) 2010-2014, 2017 Lukas Mai.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published
 by the Free Software Foundation; or the Artistic License.
 
-See http://dev.perl.org/licenses/ for more information.
+See [http://dev.perl.org/licenses/](http://dev.perl.org/licenses/) for more information.

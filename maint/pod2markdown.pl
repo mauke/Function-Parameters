@@ -17,9 +17,9 @@ BEGIN {
             },
             @_
         );
-        $self->accept_targets('meta.language');
+        $self->accept_targets('highlighter');
         $self->{+__PACKAGE__} = {
-            meta_language => '',
+            hl_language => '',
         };
         $self
     }
@@ -27,9 +27,9 @@ BEGIN {
     sub start_for {
         my $self = shift;
         my ($attr) = @_;
-        if ($attr->{target} eq 'meta.language') {
+        if ($attr->{target} eq 'highlighter') {
             $self->_new_stack;
-            $self->_stack_state->{for_meta_language} = 1;
+            $self->_stack_state->{for_highlighter} = 1;
             return;
         }
         $self->SUPER::start_for(@_)
@@ -38,16 +38,14 @@ BEGIN {
     sub end_for {
         my $self = shift;
         my ($attr) = @_;
-        if ($self->_stack_state->{for_meta_language}) {
+        if ($self->_stack_state->{for_highlighter}) {
             my $text = $self->_pop_stack_text;
-            s/\A\s+//, s/\s+\z// for $text;
-            if ($text =~ /\A\S+\z/) {
-                $self->{+__PACKAGE__}{meta_language} = $text;
-            } else {
-                $self->{+__PACKAGE__}{meta_language} = '';
-                $self->scream($attr->{start_line}, "bad meta.language value: '$text'")
-                    if $text =~ /\S/;
-            }
+            my %settings =
+                map /\A([^=]*)=(.*)\z/s
+                    ? ($1 => $2)
+                    : (language => $_),
+                split ' ', $text;
+            $self->{+__PACKAGE__}{hl_language} = $settings{language} // '';
             return;
         }
         $self->SUPER::end_for(@_)
@@ -70,7 +68,11 @@ BEGIN {
         while ($paragraph =~ /^ *\Q$fence\E *$/m) {
             $fence .= '`';
         }
-        "$fence$self->{+__PACKAGE__}{meta_language}\n$paragraph\n$fence"
+        my $hl_language = $self->{+__PACKAGE__}{hl_language};
+        if ($hl_language !~ /\A[^`\s]\S*\z/) {
+            $hl_language = '';
+        }
+        "$fence$hl_language\n$paragraph\n$fence"
     }
 
     sub end_item_number {

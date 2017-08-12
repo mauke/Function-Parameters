@@ -467,7 +467,7 @@ __END__
 
 =encoding UTF-8
 
-=for meta.language perl
+=for highlighter language=perl
 
 =head1 NAME
 
@@ -1589,17 +1589,42 @@ Or using C<Function::Parameters> itself:
 
 =back
 
+=begin :README
+
+=head1 INSTALLATION
+
+To download and install this module, use your favorite CPAN client, e.g.
+L<C<cpan>|cpan>:
+
+=for highlighter language=sh
+
+    cpan Function::Parameters
+
+Or L<C<cpanm>|cpanm>:
+
+    cpanm Function::Parameters
+
+To do it manually, run the following commands (after downloading and unpacking
+the tarball):
+
+    perl Makefile.PL
+    make
+    make test
+    make install
+
+=end :README
+
 =head1 SUPPORT AND DOCUMENTATION
 
 After installing, you can find documentation for this module with the
-perldoc command.
+L<C<perldoc>|perldoc> command.
 
-=for meta.language sh
+=for highlighter language=sh
 
     perldoc Function::Parameters
 
 You can also look for information at
-L<https://metacpan.org/pod/Function%3A%3AParameters>.
+L<https://metacpan.org/pod/Function::Parameters>.
 
 To see a list of open bugs, visit
 L<https://rt.cpan.org/Public/Dist/Display.html?Name=Function-Parameters>.
@@ -1620,12 +1645,12 @@ Lukas Mai, C<< <l.mai at web.de> >>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2010-2014, 2017 Lukas Mai.
+Copyright (C) 2010-2014, 2017 Lukas Mai.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published
 by the Free Software Foundation; or the Artistic License.
 
-See http://dev.perl.org/licenses/ for more information.
+See L<http://dev.perl.org/licenses/> for more information.
 
 =cut

@@ -132,13 +132,24 @@ create_distdir : distcheck
 __EOT__
     $opt->{postamble}{text} .= $maint_distcheck;
 
-    my $readme_md = <<'__EOT__';
+    my $readme = <<'__EOT__';
 
-pure_all :: README.md
+pure_all :: .github/README.md
 
-README.md : lib/$(subst ::,/,$(NAME)).pm maint/pod2markdown.pl
-	$(PERLRUN) maint/pod2markdown.pl < '$<' > '$@.~tmp~' && mv -- '$@.~tmp~' '$@'
+.github/README.md : lib/$(subst ::,/,$(NAME)).pm maint/pod2markdown.pl
+	$(PERLRUN) maint/pod2markdown.pl < '$<' > '$@.~tmp~' && $(MV) -- '$@.~tmp~' '$@'
+
+distdir : $(DISTVNAME)/README
+
+$(DISTVNAME)/README : lib/$(subst ::,/,$(NAME)).pm create_distdir
+	$(TEST_F) '$@' || ( $(PERLRUN) maint/pod2readme.pl < '$<' > '$@.~tmp~' && $(MV) -- '$@.~tmp~' '$@' && cd '$(DISTVNAME)' && $(PERLRUN) -MExtUtils::Manifest=maniadd -e 'maniadd { "README" => "generated from $(NAME) POD (added by maint/eumm-fixup.pl)" }' )
+
 __EOT__
-    $opt->{postamble}{text} .= $readme_md;
-    $opt->{META_MERGE}{prereqs}{develop}{requires}{'Pod::Markdown'} ||= '3.005';
+    $opt->{postamble}{text} .= $readme;
+    for ($opt->{META_MERGE}{prereqs}{develop}{requires}{'Pod::Markdown'}) {
+        $_ = '3.005' if !$_ || $_ < '3.005';
+    }
+    for ($opt->{META_MERGE}{prereqs}{develop}{requires}{'Pod::Text'}) {
+        $_ = '4.09'  if !$_ || $_ < '4.09';
+    }
 }
