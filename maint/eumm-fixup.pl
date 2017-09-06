@@ -28,26 +28,27 @@ __EOT__
         my @otherldflags;
 
         if (-e '/dev/null') {
+            for my $libasan (qw(libasan.so)) {
+                local $ENV{LD_PRELOAD} = join ' ', $libasan, $ENV{LD_PRELOAD} || ();
+                my $out = `"$^X" -e 0 2>&1`;
+                if ($out eq '') {
+                    $preload_libasan = $libasan;
+                    last;
+                } else {
+                    warn qq{LD_PRELOAD="$ENV{LD_PRELOAD}" "$^X" failed:\n${out}Skipping ...\n};
+                }
+            }
+
             my $good_cc_flag = sub {
                 system("echo 'int main(void) { return 0; }' | \Q$Config::Config{cc}\E @_ -xc - -o /dev/null") == 0
             };
-            for my $flag (qw(-fsanitize=address -fsanitize=undefined)) {
+            for my $flag ($preload_libasan ? '-fsanitize=address' : (), '-fsanitize=undefined') {
                 if (!$good_cc_flag->($flag)) {
                     warn "!! Your C compiler ($Config::Config{cc}) doesn't seem to support '$flag'. Skipping ...\n";
                     next;
                 }
                 push @ccflags,      $flag;
                 push @otherldflags, $flag;
-            }
-
-            {
-                local $ENV{LD_PRELOAD} = 'libasan.so ' . ($ENV{LD_PRELOAD} || '');
-                my $out = `"$^X" -e 0 2>&1`;
-                if ($out eq '') {
-                    $preload_libasan = 1;
-                } else {
-                    warn qq{LD_PRELOAD="$ENV{LD_PRELOAD}" "$^X" failed:\n${out}Skipping ...\n};
-                }
             }
         }
 
@@ -57,8 +58,8 @@ OTHERLDFLAGS += @otherldflags
 __EOT__
 
         if ($preload_libasan) {
-            $opt->{postamble}{text} .= <<'__EOT__';
-FULLPERLRUN := LD_PRELOAD="libasan.so $$LD_PRELOAD" $(FULLPERLRUN)
+            $opt->{postamble}{text} .= <<"__EOT__";
+FULLPERLRUN := LD_PRELOAD="$preload_libasan \$\$LD_PRELOAD" \$(FULLPERLRUN)
 __EOT__
         }
     }
