@@ -56,5 +56,5 @@ return {
         '$(OBJECT)' => join(' ', glob 'hax/*.c.inc'),
     },
 
-    bonus => { github => 'mauke' },
+    REPOSITORY => [ github => 'mauke' ],
 };

@@ -72,15 +72,40 @@ my %settings = %{do "./$settings_file" or die "Internal error: can't do $setting
     if (my $dev = delete $settings{DEVELOP_REQUIRES}) {
         @{$settings{META_MERGE}{prereqs}{develop}{requires}}{keys %$dev} = values %$dev;
     }
+    if (my $rec = delete $settings{RECOMMENDS}) {
+        @{$settings{META_MERGE}{prereqs}{runtime}{recommends}}{keys %$rec} = values %$rec;
+    }
 
-    if (my $bonus = delete $settings{bonus}) {
-        if (my $account = delete $bonus->{github}) {
-            my $github_addr = "github.com/$account/$settings{DISTNAME}";
-            $settings{META_MERGE}{resources}{repository}{type} ||= 'git';
-            $settings{META_MERGE}{resources}{repository}{url}  ||= "git://$github_addr";
-            $settings{META_MERGE}{resources}{repository}{web}  ||= "https://$github_addr";
+    if (my $sug = delete $settings{SUGGESTS}) {
+        @{$settings{META_MERGE}{prereqs}{runtime}{suggests}}{keys %$sug} = values %$sug;
+    }
+
+    if (my $repo = delete $settings{REPOSITORY}) {
+        if (ref($repo) eq 'ARRAY') {
+            my ($type, @args) = @$repo;
+            if ($type eq 'github') {
+                my ($account, $project) = @args;
+                $project ||= '%d';
+                $project =~ s{%(L?)(.)}{
+                    my $x =
+                        $2 eq '%' ? '%' :
+                        $2 eq 'd' ? $settings{DISTNAME} :
+                        $2 eq 'm' ? $settings{NAME} :
+                        die "Internal error: unknown placeholder %$1$2";
+                    $1 ? lc($x) : $x
+                }seg;
+                my $addr = "github.com/$account/$project";
+                $repo = {
+                    type => 'git',
+                    url  => "git://$addr",
+                    web  => "https://$addr",
+                };
+            } else {
+                die "Internal error: unknown REPOSITORY type '$type'";
+            }
         }
-        die "Internal error: unknown 'bonus' keys: @{[sort keys %$bonus]}" if %$bonus;
+        ref($repo) eq 'HASH' or die "Internal error: REPOSITORY must be a hashref, not $repo";
+        @{$settings{META_MERGE}{resources}{repository}}{keys %$repo} = values %$repo;
     }
 }
 
