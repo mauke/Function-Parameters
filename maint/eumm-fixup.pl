@@ -138,6 +138,7 @@ __EOT__
 pure_all :: .github/README.md
 
 .github/README.md : lib/$(subst ::,/,$(NAME)).pm maint/pod2markdown.pl
+	mkdir -p .github
 	$(PERLRUN) maint/pod2markdown.pl < '$<' > '$@.~tmp~' && $(MV) -- '$@.~tmp~' '$@'
 
 distdir : $(DISTVNAME)/README
