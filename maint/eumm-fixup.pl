@@ -31,7 +31,7 @@ __EOT__
             for my $libasan (qw(libasan.so)) {
                 local $ENV{LD_PRELOAD} = join ' ', $libasan, $ENV{LD_PRELOAD} || ();
                 my $out = `"$^X" -e 0 2>&1`;
-                if ($out eq '') {
+                if ($out eq '' and $? == 0) {
                     $preload_libasan = $libasan;
                     last;
                 } else {
