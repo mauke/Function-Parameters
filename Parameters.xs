@@ -142,15 +142,18 @@ WARNINGS_ENABLE
     return &p->data[p->used]; \
 } static B (*N(VEC(B) *))
 
-#define DEFVECTOR_CLEAR(N, B, F) static void N(pTHX_ VEC(B) *p) { \
+#define DEFVECTOR_CLEAR_GENERIC(N, N_PARAM_, B, F, F_ARG_) static void N(N_PARAM_ VEC(B) *p) { \
     while (p->used) { \
         p->used--; \
-        F(aTHX_ &p->data[p->used]); \
+        F(F_ARG_ &p->data[p->used]); \
     } \
     Safefree(p->data); \
     p->data = NULL; \
     p->size = 0; \
-} static void N(pTHX_ VEC(B) *)
+} static void N(N_PARAM_ VEC(B) *)
+
+#define DEFVECTOR_CLEAR(N, B, F) DEFVECTOR_CLEAR_GENERIC(N, , B, F, )
+#define DEFVECTOR_CLEAR_THX(N, B, F) DEFVECTOR_CLEAR_GENERIC(N, pTHX_, B, F, aTHX_)
 
 enum {
     FLAG_NAME_OK      = 0x001,
@@ -172,7 +175,7 @@ DEFSTRUCT(SpecParam) {
 DEFVECTOR(SpecParam);
 DEFVECTOR_INIT(spv_init, SpecParam);
 
-static void sp_clear(pTHX_ SpecParam *p) {
+static void sp_clear(SpecParam *p) {
     p->name = NULL;
     p->type = NULL;
 }
@@ -198,7 +201,8 @@ DEFSTRUCT(KWSpec) {
 
 static void kws_free_void(pTHX_ void *p) {
     KWSpec *const spec = p;
-    spv_clear(aTHX_ &spec->shift);
+    PERL_UNUSED_CONTEXT;
+    spv_clear(&spec->shift);
     spec->attrs = NULL;
     spec->install_sub = NULL;
     Safefree(spec);
@@ -736,28 +740,28 @@ static Param *pv_unshift(VEC(Param) *ps, size_t n) {
     return ps->data;
 }
 
-static void p_clear(pTHX_ Param *p) {
+static void p_clear(Param *p) {
     p->name = NULL;
     p->padoff = NOT_IN_PAD;
     p->type = NULL;
 }
 
 static void pi_clear(pTHX_ ParamInit *pi) {
-    p_clear(aTHX_ &pi->param);
+    p_clear(&pi->param);
     op_guard_clear(aTHX_ &pi->init);
 }
 
 DEFVECTOR_CLEAR(pv_clear, Param, p_clear);
-DEFVECTOR_CLEAR(piv_clear, ParamInit, pi_clear);
+DEFVECTOR_CLEAR_THX(piv_clear, ParamInit, pi_clear);
 
 static void ps_clear(pTHX_ ParamSpec *ps) {
-    pv_clear(aTHX_ &ps->positional_required);
+    pv_clear(&ps->positional_required);
     piv_clear(aTHX_ &ps->positional_optional);
 
-    pv_clear(aTHX_ &ps->named_required);
+    pv_clear(&ps->named_required);
     piv_clear(aTHX_ &ps->named_optional);
 
-    p_clear(aTHX_ &ps->slurpy);
+    p_clear(&ps->slurpy);
 }
 
 static int ps_contains(pTHX_ const ParamSpec *ps, SV *sv) {
