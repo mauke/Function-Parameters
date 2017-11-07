@@ -2355,8 +2355,10 @@ static void my_boot(pTHX) {
     if (!next_keyword_plugin) {
         /* https://rt.perl.org/Public/Bug/Display.html?id=132413 */
         OP_CHECK_MUTEX_LOCK; /* delet this :-[ */
-        next_keyword_plugin = PL_keyword_plugin;
-        PL_keyword_plugin = my_keyword_plugin;
+        if (!next_keyword_plugin) {
+            next_keyword_plugin = PL_keyword_plugin;
+            PL_keyword_plugin = my_keyword_plugin;
+        }
         OP_CHECK_MUTEX_UNLOCK;
     }
 }
