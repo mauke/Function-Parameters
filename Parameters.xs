@@ -2327,6 +2327,11 @@ static int my_keyword_plugin(pTHX_ char *keyword_ptr, STRLEN keyword_len, OP **o
     return ret;
 }
 
+#ifndef OP_CHECK_MUTEX_LOCK /* < 5.15.8 */
+#define OP_CHECK_MUTEX_LOCK ((void)0)
+#define OP_CHECK_MUTEX_UNLOCK ((void)0)
+#endif
+
 static void my_boot(pTHX) {
     HV *const stash = gv_stashpvs(MY_PKG, GV_ADD);
 
@@ -2347,8 +2352,13 @@ static void my_boot(pTHX) {
     newCONSTSUB(stash, "HINTSK_REIFY", newSVpvs(HINTSK_REIFY));
     newCONSTSUB(stash, "HINTSK_INSTL", newSVpvs(HINTSK_INSTL));
 
-    next_keyword_plugin = PL_keyword_plugin;
-    PL_keyword_plugin = my_keyword_plugin;
+    if (!next_keyword_plugin) {
+        /* https://rt.perl.org/Public/Bug/Display.html?id=132413 */
+        OP_CHECK_MUTEX_LOCK; /* delet this :-[ */
+        next_keyword_plugin = PL_keyword_plugin;
+        PL_keyword_plugin = my_keyword_plugin;
+        OP_CHECK_MUTEX_UNLOCK;
+    }
 }
 
 #ifndef assert_
