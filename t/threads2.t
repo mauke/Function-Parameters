@@ -7,12 +7,32 @@ use Test::More
 use warnings FATAL => 'all';
 use strict;
 
-for my $t (1 .. 2) {
+use threads::shared;
+
+my $nthreads = 5;
+
+my $xvar :shared = 0;
+
+for my $t (1 .. $nthreads) {
     threads->create(sub {
+        lock $xvar;
+        $xvar++;
+        cond_wait $xvar while $xvar >= 0;
         require Function::Parameters;
     });
 }
 
-pass "we didn't crash yet";
+{
+    threads->yield;
+    lock $xvar;
+    if ($xvar < $nthreads) {
+        redo;
+    }
+
+    $xvar = -1;
+    cond_broadcast $xvar;
+}
 
 $_->join for threads->list;
+
+pass "we haven't crashed yet";
