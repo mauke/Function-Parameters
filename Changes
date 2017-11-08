@@ -1,5 +1,21 @@
 Revision history for Function-Parameters
 
+2.001002  2017-11-09
+          - Fix crash when Function::Parameters is loaded at runtime by
+            multiple threads (a stack overflow due to infinite recursion).
+            This is arguably a core bug (#132413). The current workaround
+            employed by Function::Parameters slightly abuses an internal perl
+            mutex meant for something else (protecting op checkers), but it
+            fixes the issue on perls v5.16 .. v5.26.
+            v5.14 doesn't have this API yet, so the workaround is not thread
+            safe there. It is technically possible to still run into this issue
+            if two threads initialize Function::Parameters at the exact same
+            moment (I haven't managed to reproduce this yet, so hopefully it's
+            unlikely in practice).
+            It is possible to completely avoid the problem on all versions of
+            perl and Function::Parameters by making sure the module is loaded
+            before the first thread is created.
+
 2.001001  2017-07-12
           - fix duplicate type check on invocant:
                 method foo(T $self: $x) { ... }
