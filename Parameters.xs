@@ -2327,9 +2327,21 @@ static int my_keyword_plugin(pTHX_ char *keyword_ptr, STRLEN keyword_len, OP **o
     return ret;
 }
 
-#ifndef OP_CHECK_MUTEX_LOCK /* < 5.15.8 */
-#define OP_CHECK_MUTEX_LOCK ((void)0)
-#define OP_CHECK_MUTEX_UNLOCK ((void)0)
+/* https://rt.perl.org/Public/Bug/Display.html?id=132413 */
+#ifndef wrap_keyword_plugin
+#define wrap_keyword_plugin(A, B) S_wrap_keyword_plugin(aTHX_ A, B)
+static void S_wrap_keyword_plugin(pTHX_ Perl_keyword_plugin_t new_plugin, Perl_keyword_plugin_t *old_plugin_p) {
+    PERL_UNUSED_CONTEXT;
+    if (*old_plugin_p) {
+        return;
+    }
+    MUTEX_LOCK(&PL_op_mutex);
+    if (!*old_plugin_p) {
+        *old_plugin_p = PL_keyword_plugin;
+        PL_keyword_plugin = new_plugin;
+    }
+    MUTEX_UNLOCK(&PL_op_mutex);
+}
 #endif
 
 static void my_boot(pTHX) {
@@ -2352,15 +2364,7 @@ static void my_boot(pTHX) {
     newCONSTSUB(stash, "HINTSK_REIFY", newSVpvs(HINTSK_REIFY));
     newCONSTSUB(stash, "HINTSK_INSTL", newSVpvs(HINTSK_INSTL));
 
-    if (!next_keyword_plugin) {
-        /* https://rt.perl.org/Public/Bug/Display.html?id=132413 */
-        OP_CHECK_MUTEX_LOCK; /* delet this :-[ */
-        if (!next_keyword_plugin) {
-            next_keyword_plugin = PL_keyword_plugin;
-            PL_keyword_plugin = my_keyword_plugin;
-        }
-        OP_CHECK_MUTEX_UNLOCK;
-    }
+    wrap_keyword_plugin(my_keyword_plugin, &next_keyword_plugin);
 }
 
 #ifndef assert_
