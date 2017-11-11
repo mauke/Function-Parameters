@@ -1,5 +1,11 @@
 Revision history for Function-Parameters
 
+2.001003  2017-11-11
+          - Fix threaded initialization issue better. This is the same issue
+            that was fixed in 2.001002, but now we use PL_op_mutex instead of
+            PL_check_mutex. This has the advantage of also being thread-safe on
+            v5.14.
+
 2.001002  2017-11-09
           - Fix crash when Function::Parameters is loaded at runtime by
             multiple threads (a stack overflow due to infinite recursion).
