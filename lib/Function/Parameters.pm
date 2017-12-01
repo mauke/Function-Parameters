@@ -8,7 +8,8 @@ use Scalar::Util qw(blessed);
 
 sub _croak {
     my (undef, $file, $line) = caller 1;
-    die @_, " at $file line $line.\n";
+    push @_, " at $file line $line.\n" unless $_[-1] =~ /\n\z/;
+    die @_;
 }
 
 use XSLoader;
