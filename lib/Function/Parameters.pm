@@ -342,6 +342,7 @@ sub import {
         $clean{runtime}              = _delete_default \%type, 'runtime',              0;
         $clean{check_argument_count} = _delete_default \%type, 'check_argument_count', 1;
         $clean{check_argument_types} = _delete_default \%type, 'check_argument_types', 1;
+        $clean{coerce_argument_types} = _delete_default \%type, 'coerce_argument_types', 0;
 
         %type and confess "Invalid keyword property: @{[sort keys %type]}";
 
@@ -360,6 +361,7 @@ sub import {
         $flags |= FLAG_DEFAULT_ARGS if $type->{default_arguments};
         $flags |= FLAG_CHECK_NARGS  if $type->{check_argument_count};
         $flags |= FLAG_CHECK_TARGS  if $type->{check_argument_types};
+        $flags |= FLAG_COERCE_TARGS if $type->{coerce_argument_types};
         $flags |= FLAG_INVOCANT     if $type->{invocant};
         $flags |= FLAG_NAMED_PARAMS if $type->{named_parameters};
         $flags |= FLAG_TYPES_OK     if $type->{types};
@@ -1068,6 +1070,13 @@ L<type constraints|/Type constraints> are parsed but silently ignored. If true,
 an exception is thrown if an argument fails a type check.
 
 Default: C<1>
+
+=item C<coerce_argument_types>
+
+(boolean) Whether functions declared with this keyword should coerce the values
+of the arguments they are called with to the types declared.
+
+Default: C<0>
 
 =item C<default_arguments>
 

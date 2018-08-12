@@ -657,6 +657,13 @@ available configuration options are:
 
     Default: `1`
 
+- `coerce_argument_types`
+
+    (boolean) Whether functions declared with this keyword should coerce the values
+    of the arguments they are called with to the types declared.
+
+    Default: `0`
+
 - `default_arguments`
 
     (boolean) Whether functions declared with this keyword should allow default

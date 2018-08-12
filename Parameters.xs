@@ -164,7 +164,8 @@ enum {
     FLAG_NAMED_PARAMS = 0x020,
     FLAG_TYPES_OK     = 0x040,
     FLAG_CHECK_TARGS  = 0x080,
-    FLAG_RUNTIME      = 0x100
+    FLAG_RUNTIME      = 0x100,
+    FLAG_COERCE_TARGS = 0x200
 };
 
 DEFSTRUCT(SpecParam) {
@@ -926,6 +927,63 @@ static OP *mktypecheckp(pTHX_ const SV *declarator, size_t nr, const Param *para
 
 static OP *mktypecheckpv(pTHX_ const SV *declarator, size_t nr, const Param *param, int is_invocant) {
     return mktypecheckv(aTHX_ declarator, nr, param->name, param->padoff, param->type, is_invocant);
+}
+
+static OP *mkhascoercion(pTHX_ SV *type) {
+    OP *can = NULL;
+    OP *hascoercion = NULL;
+    OP *expr;
+
+    can = op_append_elem(
+        OP_LIST, can,
+        mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(type))
+    );
+    can = op_append_elem(
+        OP_LIST, can,
+        mkconstpvs("has_coercion")
+    );
+    can = op_convert_list(
+        OP_ENTERSUB, OPf_STACKED,
+        op_append_elem(OP_LIST, can, newMETHOP(OP_METHOD, 0, mkconstpvs("can")))
+    );
+        
+    hascoercion = op_append_elem(
+        OP_LIST, hascoercion,
+        mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(type))
+    );
+    hascoercion = op_convert_list(
+        OP_ENTERSUB, OPf_STACKED,
+        op_append_elem(OP_LIST, hascoercion, newMETHOP(OP_METHOD, 0, mkconstpvs("has_coercion")))
+    );
+
+    expr = newLOGOP(OP_AND, 0, can, hascoercion);
+
+    return expr;
+}
+
+static OP *mktypecoercep(pTHX_ const Param *param) {
+    PADOFFSET padoff = param->padoff;
+    SV* type = param->type;
+
+    /* $type->can('has_coercion') && $type->has_coercion ? $type->coerce($value) : $value */
+    OP *expr, *cond, *hascoercion, *coerce;
+
+    hascoercion = mkhascoercion(aTHX_ type);
+
+    {
+        OP *args = NULL;
+        args = op_append_elem(OP_LIST, args, mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(type)));
+        args = op_append_elem(OP_LIST, args, my_var(aTHX_ 0, padoff));
+        coerce = op_convert_list(
+            OP_ENTERSUB, OPf_STACKED,
+            op_append_elem(OP_LIST, args, newMETHOP(OP_METHOD, 0, mkconstpvs("coerce")))
+        );
+    }
+
+    cond = newCONDOP(0, hascoercion, coerce, my_var(aTHX_ 0, padoff));
+    expr = newASSIGNOP(OPf_STACKED, my_var(aTHX_ 0, padoff), 0, cond);
+
+    return expr;
 }
 
 enum {
@@ -2002,6 +2060,18 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                 const bool is_invocant = i < param_spec->shift;
                 const size_t shift = param_spec->shift;
                 assert(cur->padoff != NOT_IN_PAD);
+
+                if (spec->flags & FLAG_COERCE_TARGS) {
+                    op_guard_update(
+                        prelude_sentinel,
+                        op_append_list(
+                            OP_LINESEQ,
+                            prelude_sentinel->op,
+                            newSTATEOP(0, NULL, mktypecoercep(aTHX_ cur))
+                        )
+                    );
+                }
+
                 op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, mktypecheckpv(aTHX_ declarator, base + i - (is_invocant ? 0 : shift), cur, !is_invocant ? 0 : shift == 1 ? -1 : 1))));
             }
         }
@@ -2012,6 +2082,18 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
             if (cur->type) {
                 assert(cur->padoff != NOT_IN_PAD);
+
+                if (spec->flags & FLAG_COERCE_TARGS) {
+                    op_guard_update(
+                        prelude_sentinel,
+                        op_append_list(
+                            OP_LINESEQ,
+                            prelude_sentinel->op,
+                            newSTATEOP(0, NULL, mktypecoercep(aTHX_ cur))
+                        )
+                    );
+                }
+
                 op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, mktypecheckp(aTHX_ declarator, base + i, cur))));
             }
         }
@@ -2022,6 +2104,18 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
             if (cur->type) {
                 assert(cur->padoff != NOT_IN_PAD);
+
+                if (spec->flags & FLAG_COERCE_TARGS) {
+                    op_guard_update(
+                        prelude_sentinel,
+                        op_append_list(
+                            OP_LINESEQ,
+                            prelude_sentinel->op,
+                            newSTATEOP(0, NULL, mktypecoercep(aTHX_ cur))
+                        )
+                    );
+                }
+
                 op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, mktypecheckp(aTHX_ declarator, base + i, cur))));
             }
         }
@@ -2032,16 +2126,93 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
 
             if (cur->type) {
                 assert(cur->padoff != NOT_IN_PAD);
+
+                if (spec->flags & FLAG_COERCE_TARGS) {
+                    op_guard_update(
+                        prelude_sentinel,
+                        op_append_list(
+                            OP_LINESEQ,
+                            prelude_sentinel->op,
+                            newSTATEOP(0, NULL, mktypecoercep(aTHX_ cur))
+                        )
+                    );
+                }
+
                 op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, mktypecheckp(aTHX_ declarator, base + i, cur))));
             }
         }
         base += i;
 
         if (param_spec->slurpy.type) {
+            /* coerce for @rest / values %rest */
             /* $type->valid($_) or croak $type->get_message($_) for @rest / values %rest */
             OP *check, *list, *loop;
 
             assert(param_spec->slurpy.padoff != NOT_IN_PAD);
+
+            if (spec->flags & FLAG_COERCE_TARGS) {
+                OP *hascoercion = NULL;
+                OP *coerce = NULL;
+                OP *loop_coerce, *block, *expr;
+                OP *var;
+
+                hascoercion = mkhascoercion(aTHX_ param_spec->slurpy.type);
+
+                if (SvPV_nolen(param_spec->slurpy.name)[0] == '@') {
+                    expr = newRANGE(
+                        0,
+                        mkconstiv(aTHX_ 0),
+                        newBINOP(
+                            OP_SUBTRACT,
+                            0,
+                            my_var_g(aTHX_ OP_PADAV, 0, param_spec->slurpy.padoff),
+                            mkconstiv(aTHX_ 1))
+                    );
+
+                    coerce = op_append_elem(
+                        OP_LIST, coerce,
+                        mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(param_spec->slurpy.type))
+                    );
+                    coerce = op_append_elem(
+                        OP_LIST, coerce,
+                        newBINOP(OP_AELEM, 0, my_var_g(aTHX_ OP_PADAV, 0, param_spec->slurpy.padoff), newDEFSVOP())
+                    );
+                    coerce = op_convert_list(
+                        OP_ENTERSUB, OPf_STACKED,
+                        op_append_elem(OP_LIST, coerce, newMETHOP(OP_METHOD, 0, mkconstpvs("coerce")))
+                    );
+
+                    var = newBINOP(OP_AELEM, 0, my_var_g(aTHX_ OP_PADAV, 0, param_spec->slurpy.padoff), newDEFSVOP());
+                } else {
+                    expr = newUNOP(OP_KEYS, 0, my_var_g(aTHX_ OP_PADHV, 0, param_spec->slurpy.padoff));
+
+                    coerce = op_append_elem(
+                        OP_LIST, coerce,
+                        mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(param_spec->slurpy.type))
+                    );
+                    coerce = op_append_elem(
+                        OP_LIST, coerce,
+                        newBINOP(OP_HELEM, 0, my_var_g(aTHX_ OP_PADHV, 0, param_spec->slurpy.padoff), newDEFSVOP())
+                    );
+                    coerce = op_convert_list(
+                        OP_ENTERSUB, OPf_STACKED,
+                        op_append_elem(OP_LIST, coerce, newMETHOP(OP_METHOD, 0, mkconstpvs("coerce")))
+                    );
+                    var = newBINOP(OP_HELEM, 0, my_var_g(aTHX_ OP_PADHV, 0, param_spec->slurpy.padoff), newDEFSVOP());
+                }
+
+                block = newASSIGNOP(OPf_STACKED, var, 0, coerce);
+                loop_coerce = newFOROP(0, NULL, expr, block, NULL);
+
+                op_guard_update(
+                    prelude_sentinel,
+                    op_append_list(
+                        OP_LINESEQ,
+                        prelude_sentinel->op,
+                        newSTATEOP(0, NULL, newCONDOP(0, hascoercion, loop_coerce, NULL))
+                    )
+                );
+            }
 
             check = mktypecheck(aTHX_ declarator, base, param_spec->slurpy.name, NOT_IN_PAD, param_spec->slurpy.type);
 
@@ -2356,6 +2527,7 @@ static void my_boot(pTHX) {
     newCONSTSUB(stash, "FLAG_TYPES_OK",     newSViv(FLAG_TYPES_OK));
     newCONSTSUB(stash, "FLAG_CHECK_TARGS",  newSViv(FLAG_CHECK_TARGS));
     newCONSTSUB(stash, "FLAG_RUNTIME",      newSViv(FLAG_RUNTIME));
+    newCONSTSUB(stash, "FLAG_COERCE_TARGS", newSViv(FLAG_COERCE_TARGS));
     newCONSTSUB(stash, "HINTK_CONFIG", newSVpvs(HINTK_CONFIG));
     newCONSTSUB(stash, "HINTSK_FLAGS", newSVpvs(HINTSK_FLAGS));
     newCONSTSUB(stash, "HINTSK_SHIFT", newSVpvs(HINTSK_SHIFT));
