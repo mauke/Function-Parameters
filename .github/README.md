@@ -441,8 +441,8 @@ function. There are two ways to do this.
     types natively; it simply uses whatever is in scope.
 
     You don't have to define these functions yourself. You can also import them
-    from a type library such as [`Types::Standard`](https://metacpan.org/pod/Types::Standard) or
-    [`MooseX::Types::Moose`](https://metacpan.org/pod/MooseX::Types::Moose).
+    from a type library such as [`Types::Standard`](https://metacpan.org/pod/Types%3A%3AStandard) or
+    [`MooseX::Types::Moose`](https://metacpan.org/pod/MooseX%3A%3ATypes%3A%3AMoose).
 
     The only requirement is that the returned value (here referred to as `$tc`,
     for "type constraint") is an object that provides `$tc->check($value)`
@@ -599,7 +599,7 @@ at runtime. It is not exported, so you have to call it by its full name.
 It takes a reference to a function and returns either `undef` (if it knows
 nothing about the function) or an object that describes the parameter list of
 the given function. See
-[`Function::Parameters::Info`](https://metacpan.org/pod/Function::Parameters::Info) for details.
+[`Function::Parameters::Info`](https://metacpan.org/pod/Function%3A%3AParameters%3A%3AInfo) for details.
 
 ## Customizing and extending
 
@@ -723,9 +723,9 @@ available configuration options are:
     been Perl source code.
 
     `'moose'` stands for a built-in type reifier that loads
-    [`Moose::Util::TypeConstraints`](https://metacpan.org/pod/Moose::Util::TypeConstraints) and just
+    [`Moose::Util::TypeConstraints`](https://metacpan.org/pod/Moose%3A%3AUtil%3A%3ATypeConstraints) and just
     forwards to
-    [`find_or_create_isa_type_constraint`](https://metacpan.org/pod/Moose::Util::TypeConstraints#find_or_create_isa_type_constraint-type_name).
+    [`find_or_create_isa_type_constraint`](https://metacpan.org/pod/Moose%3A%3AUtil%3A%3ATypeConstraints#find_or_create_isa_type_constraint-type_name).
 
     Default: `'auto'`
 
@@ -1219,10 +1219,10 @@ To report a new bug, send an email to
 
 # SEE ALSO
 
-[Function::Parameters::Info](https://metacpan.org/pod/Function::Parameters::Info),
+[Function::Parameters::Info](https://metacpan.org/pod/Function%3A%3AParameters%3A%3AInfo),
 [Moose](https://metacpan.org/pod/Moose),
 [Moo](https://metacpan.org/pod/Moo),
-[Type::Tiny](https://metacpan.org/pod/Type::Tiny)
+[Type::Tiny](https://metacpan.org/pod/Type%3A%3ATiny)
 
 # AUTHOR
 
