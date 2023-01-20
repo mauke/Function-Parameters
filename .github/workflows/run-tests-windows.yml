@@ -18,7 +18,7 @@ jobs:
 
         steps:
             - uses: actions/checkout@v3
-            - run: choco install strawberryperl --version ${{ matrix.perl-version }} -y
+            - run: choco install strawberryperl --version ${{ matrix.perl-version }} --allow-downgrade -y
             - name: "set PATH"
               shell: cmd
               run: '>> %GITHUB_PATH% echo "C:\strawberry\c\bin;C:\strawberry\perl\site\bin;C:\strawberry\perl\bin"'
