@@ -5,23 +5,14 @@ on:
 jobs:
     perl_tester:
         runs-on: windows-latest
-        name: "perl v${{ matrix.perl-version }}"
-
-        strategy:
-            fail-fast: false
-            matrix:
-                perl-version:
-                    - "5.26.3.1"
-                    - "5.28.2.1"
-                    - "5.30.3.1"
-                    - "5.32.1.1"
+        name: "strawberry perl"
 
         steps:
             - uses: actions/checkout@v3
-            - run: choco install strawberryperl --version ${{ matrix.perl-version }} --side-by-side -y --install-args=INSTALLDIR="C:\strawber2"
+            - run: choco install strawberryperl -y
             - name: "set PATH"
               shell: cmd
-              run: '>> %GITHUB_PATH% echo "C:\strawber2\c\bin;C:\strawber2\perl\site\bin;C:\strawber2\perl\bin"'
+              run: '>> %GITHUB_PATH% echo "C:\strawberry\c\bin;C:\strawberry\perl\site\bin;C:\strawberry\perl\bin"'
             - name: "cpanm --installdeps"
               uses: perl-actions/install-with-cpanm@v1
               with:
