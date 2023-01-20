@@ -5,7 +5,7 @@ use warnings;
     my $broken;
     if (eval { require Moose }) {
         if (!eval { package A_Moose_User; Moose->import; 1 }) {
-            $broken = 'import ';
+            $broken = 'import';
         }
     } elsif ($@ !~ /^Can't locate Moose\.pm /) {
         $broken = 'require';
@@ -36,7 +36,7 @@ return {
         'constant'    => 0,
         'strict'      => 0,
         'utf8'        => 0,
-        'Dir::Self'   => 0,
+        'FindBin'     => 0,
         'Hash::Util'  => 0.07,
         'Test::More'  => 0,
         'Test::Fatal' => 0,

@@ -2,8 +2,8 @@
 
 use strict;
 use warnings FATAL => 'all';
-use Dir::Self;
-use lib __DIR__ . '/lib';
+use FindBin;
+use lib "$FindBin::Bin/lib";
 
 use Test::More;
 use Test::Fatal;

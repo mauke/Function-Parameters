@@ -8,8 +8,8 @@ use Test::More
 ;
 use Test::Fatal;
 
-use Dir::Self;
-use lib __DIR__ . '/lib';
+use FindBin;
+use lib "$FindBin::Bin/lib";
 
 {
     package TestClass;

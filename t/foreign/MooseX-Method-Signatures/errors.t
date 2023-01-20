@@ -3,8 +3,8 @@ use strict;
 use warnings FATAL => 'all';
 use Test::More;
 
-use Dir::Self;
-use lib __DIR__ . "/lib";
+use FindBin;
+use lib "$FindBin::Bin/lib";
 
 eval "use InvalidCase01;";
 ok($@, "Got an error");

@@ -3,10 +3,10 @@ use strict;
 
 use Test::More tests => 10;
 
-use Dir::Self;
+use FindBin;
 
 for my $fail (
-    map [__DIR__ . "/strict_$_->[0].fail", @$_[1 .. $#$_]],
+    map ["$FindBin::Bin/strict_$_->[0].fail", @$_[1 .. $#$_]],
     ['1', qr/"\$z" can't appear after slurpy parameter "\@y\"/],
     ['2', qr/"\$y" can't appear after slurpy parameter "\@x\"/],
     ['3', qr/"\$z" can't appear after slurpy parameter "%y\"/],
@@ -19,7 +19,7 @@ for my $fail (
     my $exc = $@;
     my $err = $!;
 
-    is $done, undef, "faulty code doesn't load";
+    is $done, undef, "faulty code doesn't load - $file";
     $exc or die "$file: $err" if $err;
     like $exc, $pat;
 }

@@ -3,7 +3,7 @@ use strict;
 
 use Test::More tests => 12;
 
-use Dir::Self;
+use FindBin;
 
 use Function::Parameters {
     func => {
@@ -38,7 +38,7 @@ is $baz->(11), 23;
 is $baz->(-0.5), 0;
 
 for my $fail (
-    map [__DIR__ . "/name_$_->[0].fail", @$_[1 .. $#$_]],
+    map ["$FindBin::Bin/name_$_->[0].fail", @$_[1 .. $#$_]],
     ['1', qr/expect.*function.*name/],
     ['2', qr/expect.*parameter.*list/],
     ['3', qr/expect.*function.*name/],
@@ -49,7 +49,7 @@ for my $fail (
     my $exc = $@;
     my $err = $!;
 
-    is $done, undef, "faulty code doesn't load";
+    is $done, undef, "faulty code doesn't load - $file";
     $exc or die "$file: $err";
     like $exc, $pat;
 }

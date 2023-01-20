@@ -4,8 +4,8 @@ use warnings FATAL => 'all';
 
 use Test::More;
 
-use Dir::Self;
-use lib __DIR__ . '/lib';
+use FindBin;
+use lib "$FindBin::Bin/lib";
 
 ok !eval { require Bad };
 #TODO: {
