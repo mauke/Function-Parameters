@@ -28,12 +28,13 @@ __EOT__
         my @otherldflags;
 
         if (-e '/dev/null') {
-            for my $libasan (qw(libasan.so)) {
-                local $ENV{LD_PRELOAD} = join ' ', $libasan, $ENV{LD_PRELOAD} || ();
+            {
+                my $libasan_path = `\Q$Config::Config{cc}\E -print-file-name=libasan.so` || 'libasan.so';
+                chomp $libasan_path;
+                local $ENV{LD_PRELOAD} = $libasan_path . ' ' . ($ENV{LD_PRELOAD} || '');
                 my $out = `"$^X" -e 0 2>&1`;
                 if ($? == 0 && $out eq '') {
-                    $preload_libasan = $libasan;
-                    last;
+                    $preload_libasan = $libasan_path;
                 } else {
                     warn qq{LD_PRELOAD="$ENV{LD_PRELOAD}" "$^X" failed:\n${out}Skipping ...\n};
                 }
@@ -121,6 +122,7 @@ multitest :
 __EOT__
     $multitest =~ s/<PERL_PATTERN>/$perl_pattern/g;
     $opt->{postamble}{text} .= $multitest;
+    $opt->{macro}{SHELL} ||= '/bin/bash';
 
     my $maint_distcheck = <<'__EOT__';
 
