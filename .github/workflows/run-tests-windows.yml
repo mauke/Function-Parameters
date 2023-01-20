@@ -18,10 +18,10 @@ jobs:
 
         steps:
             - uses: actions/checkout@v3
-            - run: choco install strawberryperl --version ${{ matrix.perl-version }} --allow-downgrade -y
+            - run: choco install strawberryperl --version ${{ matrix.perl-version }} --side-by-side -y --install-args=INSTALLDIR="C:\strawber2"
             - name: "set PATH"
               shell: cmd
-              run: '>> %GITHUB_PATH% echo "C:\strawberry\c\bin;C:\strawberry\perl\site\bin;C:\strawberry\perl\bin"'
+              run: '>> %GITHUB_PATH% echo "C:\strawber2\c\bin;C:\strawber2\perl\site\bin;C:\strawber2\perl\bin"'
             - name: "cpanm --installdeps"
               uses: perl-actions/install-with-cpanm@v1
               with:
