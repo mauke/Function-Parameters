@@ -1,0 +1,31 @@
+name: "run tests (windows)"
+on:
+    [push, pull_request, workflow_dispatch]
+
+jobs:
+    perl_tester:
+        runs-on: windows-latest
+        name: "perl v${{ matrix.perl-version }}"
+
+        strategy:
+            fail-fast: false
+            matrix:
+                perl-version:
+                    - "5.26.3.1"
+                    - "5.28.2.1"
+                    - "5.30.3.1"
+                    - "5.32.1.1"
+
+        steps:
+            - uses: actions/checkout@v3
+            - run: choco install strawberryperl --version ${{ matrix.perl-version }} -y
+            - name: "set PATH"
+              shell: cmd
+              run: '>> %GITHUB_PATH% echo "C:\strawberry\c\bin;C:\strawberry\perl\site\bin;C:\strawberry\perl\bin"'
+            - name: "cpanm --installdeps"
+              uses: perl-actions/install-with-cpanm@v1
+              with:
+                  sudo: false
+                  args: "--installdeps --with-develop --notest ."
+            - run: perl Makefile.PL
+            - run: gmake test
