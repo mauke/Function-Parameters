@@ -36,4 +36,6 @@ jobs:
           perl-version: ${{ matrix.perl-version }}
       - run: cpanm --installdeps --with-develop --notest .
       - run: perl Makefile.PL
+      - run: cpanm --installdeps --with-develop --notest .
+      - run: perl Makefile.PL
       - run: make test
