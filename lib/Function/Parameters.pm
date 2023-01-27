@@ -1645,7 +1645,7 @@ Lukas Mai, C<< <l.mai at web.de> >>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright (C) 2010-2014, 2017 Lukas Mai.
+Copyright (C) 2010-2014, 2017, 2023 Lukas Mai.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

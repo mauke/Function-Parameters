@@ -1,5 +1,5 @@
 /*
-Copyright 2012, 2014 Lukas Mai.
+Copyright 2012, 2014, 2023 Lukas Mai.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published
@@ -926,6 +926,17 @@ static OP *mktypecheckp(pTHX_ const SV *declarator, size_t nr, const Param *para
 
 static OP *mktypecheckpv(pTHX_ const SV *declarator, size_t nr, const Param *param, int is_invocant) {
     return mktypecheckv(aTHX_ declarator, nr, param->name, param->padoff, param->type, is_invocant);
+}
+
+static OP *mkanonsub(pTHX_ CV *cv) {
+    #if HAVE_PERL_VERSION(5, 37, 5)
+        return newSVOP(OP_ANONCODE, OPf_REF, (SV *)cv);
+    #else
+        return newUNOP(
+            OP_REFGEN, 0,
+            newSVOP(OP_ANONCODE, 0, (SV *)cv)
+        );
+    #endif
 }
 
 enum {
@@ -2113,10 +2124,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                         op_append_elem(
                             OP_LIST,
                             mkconstsv(aTHX_ SvREFCNT_inc_simple_NN(saw_name)),
-                            newUNOP(
-                                OP_REFGEN, 0,
-                                newSVOP(OP_ANONCODE, 0, (SV *)cv)
-                            )
+                            mkanonsub(aTHX_ cv)
                         ),
                         newCVREF(
                             OPf_WANT_SCALAR,
@@ -2132,13 +2140,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
             return KEYWORD_PLUGIN_STMT;
         }
 
-        *pop = newUNOP(
-            OP_REFGEN, 0,
-            newSVOP(
-                OP_ANONCODE, 0,
-                (SV *)cv
-            )
-        );
+        *pop = mkanonsub(aTHX_ cv);
         return KEYWORD_PLUGIN_EXPR;
     }
 }
