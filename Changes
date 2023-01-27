@@ -1,5 +1,9 @@
 Revision history for Function-Parameters
 
+2.001005  2023-01-27
+          - Fix failures with perl 5.37.5 .. 5.37.6 caused by new internal
+            opcode structure for anonymous subs.
+
 2.001004  2023-01-20
           - Drop Dir::Self test dependency (use FindBin instead).
 

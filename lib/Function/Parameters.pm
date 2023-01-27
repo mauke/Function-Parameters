@@ -13,7 +13,7 @@ sub _croak {
 
 use XSLoader;
 BEGIN {
-    our $VERSION = '2.001004';
+    our $VERSION = '2.001005';
     #$VERSION =~ s/-TRIAL[0-9]*\z//;
     XSLoader::load;
 }
