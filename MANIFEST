@@ -142,6 +142,7 @@ t/strict_2.fail
 t/strict_3.fail
 t/strict_4.fail
 t/strict_5.fail
+t/stringy_h.t
 t/threads.t
 t/threads2.t
 t/types_auto.t
