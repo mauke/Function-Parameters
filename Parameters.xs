@@ -2170,7 +2170,32 @@ static int kw_flags_enter(pTHX_ Sentinel **ppsen, const char *kw_ptr, STRLEN kw_
             return FALSE;
         }
         sv = *psv;
-        if (!(SvROK(sv) && (sv2 = SvRV(sv), SvTYPE(sv2) == SVt_PVHV))) {
+        if (!SvROK(sv)) {
+            /* something is wrong: $^H{'Function::Parameters/config'} has turned into a string */
+            SV *msg;
+            dSP;
+
+            ENTER;
+            SAVETMPS;
+
+            PUSHMARK(SP);
+            mXPUSHp(MY_PKG, sizeof MY_PKG - 1);
+            mXPUSHi(0);
+            msg = Perl_newSVpvf(aTHX_ "%s: $^H{'%s'} is not a reference; skipping: %"SVf, MY_PKG, HINTK_CONFIG, SVfARG(sv));
+            mXPUSHs(msg);
+            PUTBACK;
+            call_pv("warnings::warnif_at_level", G_VOID);
+
+            FREETMPS;
+            LEAVE;
+
+            /* don't warn twice within the same scope */
+            hv_delete(hints, HINTK_CONFIG, sizeof HINTK_CONFIG - 1, G_DISCARD);
+
+            return FALSE;
+        }
+        sv2 = SvRV(sv);
+        if (SvTYPE(sv2) != SVt_PVHV) {
             croak("%s: internal error: $^H{'%s'} not a hashref: %"SVf, MY_PKG, HINTK_CONFIG, SVfARG(sv));
         }
         if (lex_bufutf8()) {

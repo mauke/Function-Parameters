@@ -2,6 +2,7 @@ package Function::Parameters;
 
 use v5.14.0;
 use warnings;
+use warnings::register;
 
 use Carp qw(croak confess);
 use Scalar::Util qw(blessed);
@@ -1569,7 +1570,7 @@ Type reifiers used to see the wrong package in
 L<C<caller>|perlfunc/caller EXPR>. As a workaround the correct calling package
 used to be passed as a second argument. This problem has been fixed and the
 second argument has been removed. (Technically this is a core perl bug
-(L<RT #129239|https://rt.perl.org/Public/Bug/Display.html?id=129239>) that
+(L<GH #15597|https://github.com/Perl/perl5/issues/15597>) that
 wasn't so much fixed as worked around in C<Function::Parameters>.)
 
 If you want your type reifier to be compatible with both versions, you can do
@@ -1586,6 +1587,40 @@ Or using C<Function::Parameters> itself:
  fun my_reifier($type, $package = caller) {
      ...
  }
+
+=back
+
+=head1 DIAGNOSTICS
+
+=over
+
+=item Function::Parameters: $^H{'Function::Parameters/config'} is not a reference; skipping: HASH(...)
+
+Function::Parameters relies on being able to put references in C<%^H> (the
+lexical compilation context) and pull them out again at compile time. You may
+see the warning above if what used to be a reference got turned into a plain
+string. In this case, Function::Parameters gives up and automatically disables
+itself, as if by C<no Function::Parameters;>.
+
+You can disable the warning by saying C<no warnings 'Function::Parameters';>.
+
+Currently the only case I'm aware of where this happens with core perl is
+embedded code blocks in regexes that are compiled at runtime (in a scope where
+L<C<use re 'eval'>|re> is active):
+
+    use strict;
+    use warnings;
+    use Function::Parameters;
+    use re 'eval';
+
+    my $code = '(?{ print "embedded code\n"; })';
+    my $regex = qr/$code/;
+
+In my opinion, this is a bug in perl: L<GH
+#20950|https://github.com/Perl/perl5/issues/20950>.
+
+This case used to be a hard error in versions 2.001005 and before of this
+module.
 
 =back
 
@@ -1651,6 +1686,6 @@ This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published
 by the Free Software Foundation; or the Artistic License.
 
-See L<http://dev.perl.org/licenses/> for more information.
+See L<https://dev.perl.org/licenses/> for more information.
 
 =cut
