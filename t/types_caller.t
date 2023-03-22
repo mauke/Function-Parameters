@@ -52,7 +52,7 @@ use Function::Parameters {
     package SineWeave;
 #line 666 "abc.def"
     fun foo(time [ time [ time ] ] $x) {}
-#line 46 "t/types_caller.t"
+#line 56 "t/types_caller.t"
 }
 
 {
