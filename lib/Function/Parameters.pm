@@ -19,6 +19,10 @@ BEGIN {
     XSLoader::load;
 }
 
+sub _warn_config_not_a_reference {
+    warnings::warnif sprintf q{%s: $^H{'%s'} is not a reference; skipping: %s}, __PACKAGE__, HINTK_CONFIG, $^H{+HINTK_CONFIG};
+}
+
 sub _assert_valid_identifier {
     my ($name, $with_dollar) = @_;
     my $bonus = $with_dollar ? '\$' : '';

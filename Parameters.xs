@@ -2172,22 +2172,10 @@ static int kw_flags_enter(pTHX_ Sentinel **ppsen, const char *kw_ptr, STRLEN kw_
         sv = *psv;
         if (!SvROK(sv)) {
             /* something is wrong: $^H{'Function::Parameters/config'} has turned into a string */
-            SV *msg;
             dSP;
 
-            ENTER;
-            SAVETMPS;
-
             PUSHMARK(SP);
-            mXPUSHp(MY_PKG, sizeof MY_PKG - 1);
-            mXPUSHi(0);
-            msg = Perl_newSVpvf(aTHX_ "%s: $^H{'%s'} is not a reference; skipping: %"SVf, MY_PKG, HINTK_CONFIG, SVfARG(sv));
-            mXPUSHs(msg);
-            PUTBACK;
-            call_pv("warnings::warnif_at_level", G_VOID);
-
-            FREETMPS;
-            LEAVE;
+            call_pv(MY_PKG "::_warn_config_not_a_reference", G_VOID);
 
             /* don't warn twice within the same scope */
             hv_delete(hints, HINTK_CONFIG, sizeof HINTK_CONFIG - 1, G_DISCARD);
