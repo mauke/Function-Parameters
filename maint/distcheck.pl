@@ -21,8 +21,11 @@ if ($version =~ /(-TRIAL[0-9]*)\z/) {
     my $contents = slurp $file;
 
     $contents =~ m{
-        \n
-        \n
+        (?:
+            \A \n?
+        |
+            \n \n
+        )
         \Q$version\E \s+ \d{4}-\d{2}-\d{2} \n
         [^\n\w]* \w
     }x or push @errors, "$file doesn't seem to contain an entry for $version";

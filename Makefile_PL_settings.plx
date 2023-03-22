@@ -52,7 +52,6 @@ return {
     },
 
     depend => {
-        Makefile    => '$(VERSION_FROM)',
         '$(OBJECT)' => join(' ', glob 'hax/*.c.inc'),
     },
 

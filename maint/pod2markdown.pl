@@ -17,7 +17,7 @@ BEGIN {
             },
             @_
         );
-        $self->accept_targets('highlighter');
+        $self->accept_targets('highlighter', 'github-markdown');
         $self->{+__PACKAGE__} = {
             hl_language => '',
         };

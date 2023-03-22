@@ -12,7 +12,7 @@ sub MY::postamble {
 sub {
     my ($opt) = @_;
 
-    $opt->{depend}{Makefile} .= ' ' . __FILE__;
+    $opt->{depend}{Makefile} .= ' $(VERSION_FROM) ' . __FILE__;
 
     $opt->{test}{TESTS} .= ' ' . find_tests_recursively_in 'xt';
 
@@ -155,7 +155,8 @@ $(DISTVNAME)/README : lib/$(subst ::,/,$(NAME)).pm create_distdir
 	$(TEST_F) '$@' || ( $(PERLRUN) maint/pod2readme.pl < '$<' > '$@.~tmp~' && $(MV) -- '$@.~tmp~' '$@' && cd '$(DISTVNAME)' && $(PERLRUN) -MExtUtils::Manifest=maniadd -e 'maniadd { "README" => "generated from $(NAME) POD (added by maint/eumm-fixup.pl)" }' )
 
 __EOT__
-    $opt->{postamble}{text} .= $readme;
+    $opt->{postamble}{text} .= $readme
+        unless $^O eq 'MSWin32';
     for ($opt->{META_MERGE}{prereqs}{develop}{requires}{'Pod::Markdown'}) {
         $_ = '3.005' if !$_ || $_ < '3.005';
     }
