@@ -1,5 +1,12 @@
 Revision history for Function-Parameters
 
+2.001006  2023-03-27
+          - Work around perl core issue GH#20950 (use re "eval" doesn't capture
+            lexical %^H environment like eval() does and stringifies it
+            instead) by downgrading the previous hard error to a warning (in
+            the new category 'Function::Parameters') and switching
+            Function::Parameters off in the affected scope.
+
 2.001005  2023-01-27
           - Fix failures with perl 5.37.5 .. 5.37.6 caused by new internal
             opcode structure for anonymous subs.
@@ -16,7 +23,7 @@ Revision history for Function-Parameters
 2.001002  2017-11-09
           - Fix crash when Function::Parameters is loaded at runtime by
             multiple threads (a stack overflow due to infinite recursion).
-            This is arguably a core bug (#132413). The current workaround
+            This is arguably a core bug (RT#132413). The current workaround
             employed by Function::Parameters slightly abuses an internal perl
             mutex meant for something else (protecting op checkers), but it
             fixes the issue on perls v5.16 .. v5.26.
@@ -41,12 +48,12 @@ Revision history for Function-Parameters
 
 2.000007  2017-05-15
           - no real code changes
-          - extend bug #129090 workaround to perl 5.25.5
+          - extend bug RT#129090 workaround to perl 5.25.5
           - try to detect broken Moose installs earlier
           - fix declaration of developer dependencies
 
 2.000006  2017-04-16
-          - work around core bug #129090 / #131146 in perl 5.22 and 5.24:
+          - work around core bug RT#129090 / RT#131146 in perl 5.22 and 5.24:
             perl -e 'use Function::Parameters; \&f; fun f() { eval "" }' hangs
             in the compiler (also happens with perl -d or Devel::Cover instead
             of eval) (gh #29)
