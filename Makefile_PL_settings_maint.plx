@@ -13,7 +13,6 @@ sub {
     $opt->{DEVELOP_REQUIRES} = {
         'aliased'         => 0,
         'Moose'           => 0,
-        'MooseX::Declare' => 0,
         'MooseX::Types'   => 0,
         'Sub::Name'       => 0,
         'Test::Pod'       => 1.22,
