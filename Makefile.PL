@@ -4,6 +4,11 @@ use ExtUtils::MakeMaker;
 use File::Spec ();
 use File::Find ();
 
+sub MY::postamble {
+    my ($self, %args) = @_;
+    $args{text} || ''
+}
+
 sub find_tests_recursively_in {
     my ($dir) = @_;
     -d $dir or die "$dir is not a directory";
@@ -27,6 +32,8 @@ $::MAINT_MODE = !-f 'META.yml';
 my $settings_file = 'Makefile_PL_settings.plx';
 my %settings = %{do "./$settings_file" or die "Internal error: can't do $settings_file: ", $@ || $!};
 
+(do './maint/eumm-fixup.pl' || die $@ || $!)->(\%settings) if $::MAINT_MODE;
+
 {
     $settings{depend}{Makefile} .= " $settings_file";
     $settings{LICENSE} ||= 'perl';
@@ -45,7 +52,10 @@ my %settings = %{do "./$settings_file" or die "Internal error: can't do $setting
     $settings{VERSION_FROM}  ||= $module_file;
     $settings{ABSTRACT_FROM} ||= $module_file;
 
-    $settings{test}{TESTS} ||= find_tests_recursively_in 't';
+    $settings{test}{TESTS} ||= do {
+        my $extra_test_dirs = delete $settings{EXTRA_TEST_DIRS};
+        join ' ', map find_tests_recursively_in($_), 't', @{$extra_test_dirs || []}
+    };
 
     $settings{DISTNAME} ||= do {
         my $name = $settings{NAME};
@@ -107,9 +117,11 @@ my %settings = %{do "./$settings_file" or die "Internal error: can't do $setting
         ref($repo) eq 'HASH' or die "Internal error: REPOSITORY must be a hashref, not $repo";
         @{$settings{META_MERGE}{resources}{repository}}{keys %$repo} = values %$repo;
     }
-}
 
-(do './maint/eumm-fixup.pl' || die $@ || $!)->(\%settings) if $::MAINT_MODE;
+    if (my $harness_options = delete $settings{HARNESS_OPTIONS}) {
+        $settings{postamble}{text} .= 'export HARNESS_OPTIONS := ' . join(':', @$harness_options) . "\n";
+    }
+}
 
 (my $mm_version = ExtUtils::MakeMaker->VERSION) =~ tr/_//d;
 

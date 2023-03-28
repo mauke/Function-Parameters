@@ -4,21 +4,19 @@ use warnings;
 use ExtUtils::MakeMaker 6.48 ();
 use Config ();
 
-sub MY::postamble {
-    my ($self, %args) = @_;
-    $args{text} || ''
-}
-
 sub {
     my ($opt) = @_;
 
     $opt->{depend}{Makefile} .= ' $(VERSION_FROM) ' . __FILE__;
 
-    $opt->{test}{TESTS} .= ' ' . find_tests_recursively_in 'xt';
+    push @{$opt->{EXTRA_TEST_DIRS}}, 'xt';
+
+    for my $h_o ($opt->{HARNESS_OPTIONS}) {
+        @$h_o = ('c', 'j16', grep !/^j/, @$h_o);
+    }
 
     $opt->{postamble}{text} .= <<'__EOT__';
-export RELEASE_TESTING=1
-export HARNESS_OPTIONS=c
+export RELEASE_TESTING := 1
 __EOT__
 
     if (exists $opt->{PREREQ_PM}{XSLoader}) {
@@ -157,10 +155,10 @@ $(DISTVNAME)/README : lib/$(subst ::,/,$(NAME)).pm create_distdir
 __EOT__
     $opt->{postamble}{text} .= $readme
         unless $^O eq 'MSWin32';
-    for ($opt->{META_MERGE}{prereqs}{develop}{requires}{'Pod::Markdown'}) {
+    for ($opt->{DEVELOP_REQUIRES}{'Pod::Markdown'}) {
         $_ = '3.005' if !$_ || $_ < '3.005';
     }
-    for ($opt->{META_MERGE}{prereqs}{develop}{requires}{'Pod::Text'}) {
+    for ($opt->{DEVELOP_REQUIRES}{'Pod::Text'}) {
         $_ = '4.09'  if !$_ || $_ < '4.09';
     }
 }

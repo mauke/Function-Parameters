@@ -56,4 +56,6 @@ return {
     },
 
     REPOSITORY => [ github => 'mauke' ],
+
+    HARNESS_OPTIONS => ['j4'],
 };
