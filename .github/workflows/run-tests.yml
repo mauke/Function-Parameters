@@ -46,6 +46,7 @@ jobs:
         with:
           perl-version: ${{ matrix.perl-version }}
       - run: cpanm --notest ExtUtils::MakeMaker
+      - run: cpanm --verbose --no-interactive Devel::Declare
       - run: cpanm --installdeps --with-develop --notest .
       - run: perl Makefile.PL
       - run: make test
