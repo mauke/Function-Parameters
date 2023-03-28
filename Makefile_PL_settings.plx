@@ -47,9 +47,6 @@ return {
         'XSLoader'     => 0,
         'warnings'     => 0,
     },
-    DEVELOP_REQUIRES => {
-        'Test::Pod' => 1.22,
-    },
 
     depend => {
         '$(OBJECT)' => join(' ', glob 'hax/*.c.inc'),

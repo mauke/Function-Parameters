@@ -9,6 +9,12 @@ sub {
 
     $opt->{depend}{Makefile} .= ' $(VERSION_FROM) ' . __FILE__;
 
+    {
+        my $settings_file = 'Makefile_PL_settings_maint.plx';
+        $opt->{depend}{Makefile} .= " $settings_file";
+        (do "./$settings_file" || die $@ || $!)->($opt);
+    }
+
     push @{$opt->{EXTRA_TEST_DIRS}}, 'xt';
 
     for my $h_o ($opt->{HARNESS_OPTIONS}) {
@@ -19,6 +25,7 @@ sub {
 export RELEASE_TESTING := 1
 __EOT__
 
+    my $extra_asan_options = delete $opt->{EXTRA_ASAN_OPTIONS} || '';
     if (exists $opt->{PREREQ_PM}{XSLoader}) {
         my $preload_libasan;
 
@@ -57,14 +64,8 @@ OTHERLDFLAGS += @otherldflags
 __EOT__
 
         if ($preload_libasan) {
-            my $extra_options = '';
-            if ($^V ge v5.16.0 && $^V lt v5.22.0) {
-                # Hack. ASan reports a memory leak on 5.16 .. 5.20, but I don't
-                # want integration tests to fail for now.
-                $extra_options = "LSAN_OPTIONS='exitcode=0'";
-            }
             $opt->{postamble}{text} .= <<"__EOT__";
-FULLPERLRUN := $extra_options LD_PRELOAD="$preload_libasan \$\$LD_PRELOAD" \$(FULLPERLRUN)
+FULLPERLRUN := $extra_asan_options LD_PRELOAD="$preload_libasan \$\$LD_PRELOAD" \$(FULLPERLRUN)
 __EOT__
         }
     }

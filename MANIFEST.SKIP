@@ -4,6 +4,7 @@
 ^MYMETA\.
 ^Makefile\z
 ^Makefile\.(?!PL\z)
+^Makefile_PL_settings_maint.plx\z
 ^Parameters\.(?:[iocs]|bs)\z
 ^blib/
 ^maint/
