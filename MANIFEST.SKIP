@@ -9,3 +9,4 @@
 ^maint/
 ^pm_to_blib\z
 ^untracked/
+^xt/

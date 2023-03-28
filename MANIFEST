@@ -160,4 +160,3 @@ t/types_msg.t
 t/types_parse.t
 t/unicode.t
 t/unicode2.t
-xt/pod.t
