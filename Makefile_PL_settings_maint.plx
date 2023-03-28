@@ -15,6 +15,7 @@ sub {
         'Moose'           => 0,
         'MooseX::Types'   => 0,
         'Sub::Name'       => 0,
+        'Test::Deep'      => 0,
         'Test::Pod'       => 1.22,
     };
 }
