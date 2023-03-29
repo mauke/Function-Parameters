@@ -679,6 +679,7 @@ DEFSTRUCT(Param) {
 DEFSTRUCT(ParamInit) {
     Param param;
     OpGuard init;
+    bool is_defined_or;
 };
 
 DEFVECTOR(Param);
@@ -940,8 +941,9 @@ static OP *mkanonsub(pTHX_ CV *cv) {
 }
 
 enum {
-    PARAM_INVOCANT = 0x01,
-    PARAM_NAMED    = 0x02
+    PARAM_INVOCANT   = 0x01,
+    PARAM_NAMED      = 0x02,
+    PARAM_DEFINED_OR = 0x04
 };
 
 static PADOFFSET parse_param(
@@ -953,6 +955,7 @@ static PADOFFSET parse_param(
     I32 c;
     char sigil;
     SV *name;
+    bool is_defined_or;
 
     assert(!ginit->op);
     *pflags = 0;
@@ -1048,12 +1051,33 @@ static PADOFFSET parse_param(
     lex_read_space(0);
     c = lex_peek_unichar(0);
 
+    is_defined_or = FALSE;
+    if (c == '/') {
+        lex_read_unichar(0);
+        c = lex_peek_unichar(0);
+        if (c != '/') {
+            croak("In %"SVf": unexpected '%s' after '%"SVf"' (expecting '//=' or '=')", SVfARG(declarator), c == '=' ? "/=" : "/", SVfARG(name));
+        }
+        lex_read_unichar(0);
+        c = lex_peek_unichar(0);
+
+        if (c != '=') {
+            croak("In %"SVf": unexpected '%c' after '%"SVf" //' (expecting '=')", SVfARG(declarator), (int)c, SVfARG(name));
+        }
+        *pflags |= PARAM_DEFINED_OR;
+        is_defined_or = TRUE;
+        /* fall through */
+    }
+
     if (c == '=') {
         lex_read_unichar(0);
         lex_read_space(0);
 
         c = lex_peek_unichar(0);
         if (c == ',' || c == ')') {
+            if (is_defined_or) {
+                croak("In %"SVf": unexpected '%c' after '//=' (expecting expression)", SVfARG(declarator), (int)c);
+            }
             op_guard_update(ginit, newOP(OP_UNDEF, 0));
         } else {
             if (param_spec->shift == 0 && spec->shift.used) {
@@ -1384,6 +1408,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                     pi->param.padoff = padoff;
                     pi->param.type = type;
                     pi->init = op_guard_transfer(init_sentinel);
+                    pi->is_defined_or = !!(flags & PARAM_DEFINED_OR);
                     param_spec->named_optional.used++;
                 } else {
                     if (param_spec->positional_optional.used) {
@@ -1399,6 +1424,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                     pi->param.padoff = padoff;
                     pi->param.type = type;
                     pi->init = op_guard_transfer(init_sentinel);
+                    pi->is_defined_or = !!(flags & PARAM_DEFINED_OR);
                     param_spec->positional_optional.used++;
                 } else {
                     assert(param_spec->positional_optional.used == 0);
@@ -1826,9 +1852,10 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
     /* default positional arguments */
     {
         size_t i, lim, req;
-        OP *nest;
+        OP *nest, *sequ;
 
         nest = NULL;
+        sequ = NULL;
 
         req = param_spec->positional_required.used - param_spec->shift;
         for (i = 0, lim = param_spec->positional_optional.used; i < lim; i++) {
@@ -1840,6 +1867,25 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                 if (init_op->op_type == OP_UNDEF && !(init_op->op_flags & OPf_KIDS)) {
                     continue;
                 }
+            }
+
+            if (cur->is_defined_or) {
+                init = op_guard_relinquish(&cur->init);
+                if (cur->param.padoff == NOT_IN_PAD) {
+                    OP *arg = newBINOP(
+                        OP_AELEM, 0,
+                        newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
+                        mkconstiv(aTHX_ req + i)
+                    );
+                    init = newLOGOP(OP_DOR, 0, arg, init);
+                } else {
+                    OP *var = my_var(aTHX_ 0, cur->param.padoff);
+                    init = newASSIGNOP(OPf_STACKED, var, OP_DORASSIGN, init);
+                }
+                sequ = op_append_list(OP_LINESEQ, sequ, nest);
+                nest = NULL;
+                sequ = op_append_list(OP_LINESEQ, sequ, init);
+                continue;
             }
 
             cond = newBINOP(
@@ -1858,9 +1904,11 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
             nest = newCONDOP(0, cond, nest, NULL);
         }
 
+        sequ = op_append_list(OP_LINESEQ, sequ, nest);
+
         op_guard_update(prelude_sentinel, op_append_list(
             OP_LINESEQ, prelude_sentinel->op,
-            nest
+            sequ
         ));
     }
 
@@ -1916,12 +1964,16 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
             {
                 OP *const init = cur->init.op;
                 if (!(init->op_type == OP_UNDEF && !(init->op_flags & OPf_KIDS))) {
-                    OP *cond;
+                    if (cur->is_defined_or) {
+                        expr = newLOGOP(OP_DOR, 0, expr, op_guard_relinquish(&cur->init));
+                    } else {
+                        OP *cond;
 
-                    cond = mkhvelem(aTHX_ param_spec->rest_hash, mkconstpv(aTHX_ p + 1, n - 1));
-                    cond = newUNOP(OP_EXISTS, 0, cond);
+                        cond = mkhvelem(aTHX_ param_spec->rest_hash, mkconstpv(aTHX_ p + 1, n - 1));
+                        cond = newUNOP(OP_EXISTS, 0, cond);
 
-                    expr = newCONDOP(0, cond, expr, op_guard_relinquish(&cur->init));
+                        expr = newCONDOP(0, cond, expr, op_guard_relinquish(&cur->init));
+                    }
                 }
             }
 
