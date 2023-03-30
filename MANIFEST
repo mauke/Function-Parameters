@@ -73,6 +73,7 @@ t/threads.t
 t/threads2.t
 t/types_auto.t
 t/types_caller.t
+t/types_coerce.t
 t/types_custom.t
 t/types_custom_2.t
 t/types_custom_3.t
