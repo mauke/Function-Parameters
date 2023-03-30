@@ -676,10 +676,15 @@ DEFSTRUCT(Param) {
     SV *type;
 };
 
+typedef enum {
+    ICOND_EXISTS,
+    ICOND_DEFINED
+} InitCond;
+
 DEFSTRUCT(ParamInit) {
     Param param;
     OpGuard init;
-    bool is_defined_or;
+    InitCond cond;
 };
 
 DEFVECTOR(Param);
@@ -1408,7 +1413,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                     pi->param.padoff = padoff;
                     pi->param.type = type;
                     pi->init = op_guard_transfer(init_sentinel);
-                    pi->is_defined_or = !!(flags & PARAM_DEFINED_OR);
+                    pi->cond = flags & PARAM_DEFINED_OR ? ICOND_DEFINED : ICOND_EXISTS;
                     param_spec->named_optional.used++;
                 } else {
                     if (param_spec->positional_optional.used) {
@@ -1424,7 +1429,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                     pi->param.padoff = padoff;
                     pi->param.type = type;
                     pi->init = op_guard_transfer(init_sentinel);
-                    pi->is_defined_or = !!(flags & PARAM_DEFINED_OR);
+                    pi->cond = flags & PARAM_DEFINED_OR ? ICOND_DEFINED : ICOND_EXISTS;
                     param_spec->positional_optional.used++;
                 } else {
                     assert(param_spec->positional_optional.used == 0);
@@ -1869,39 +1874,43 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                 }
             }
 
-            if (cur->is_defined_or) {
-                init = op_guard_relinquish(&cur->init);
-                if (cur->param.padoff == NOT_IN_PAD) {
-                    OP *arg = newBINOP(
-                        OP_AELEM, 0,
+            switch (cur->cond) {
+
+                case ICOND_DEFINED:
+                    init = op_guard_relinquish(&cur->init);
+                    if (cur->param.padoff == NOT_IN_PAD) {
+                        OP *arg = newBINOP(
+                            OP_AELEM, 0,
+                            newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
+                            mkconstiv(aTHX_ req + i)
+                        );
+                        init = newLOGOP(OP_DOR, 0, arg, init);
+                    } else {
+                        OP *var = my_var(aTHX_ 0, cur->param.padoff);
+                        init = newASSIGNOP(OPf_STACKED, var, OP_DORASSIGN, init);
+                    }
+                    sequ = op_append_list(OP_LINESEQ, sequ, nest);
+                    nest = NULL;
+                    sequ = op_append_list(OP_LINESEQ, sequ, init);
+                    break;
+
+                case ICOND_EXISTS:
+                    cond = newBINOP(
+                        OP_LT, 0,
                         newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
-                        mkconstiv(aTHX_ req + i)
+                        mkconstiv(aTHX_ req + i + 1)
                     );
-                    init = newLOGOP(OP_DOR, 0, arg, init);
-                } else {
-                    OP *var = my_var(aTHX_ 0, cur->param.padoff);
-                    init = newASSIGNOP(OPf_STACKED, var, OP_DORASSIGN, init);
-                }
-                sequ = op_append_list(OP_LINESEQ, sequ, nest);
-                nest = NULL;
-                sequ = op_append_list(OP_LINESEQ, sequ, init);
-                continue;
+
+                    init = op_guard_relinquish(&cur->init);
+                    if (cur->param.padoff != NOT_IN_PAD) {
+                        OP *var = my_var(aTHX_ 0, cur->param.padoff);
+                        init = newASSIGNOP(OPf_STACKED, var, 0, init);
+                    }
+
+                    nest = op_append_list(OP_LINESEQ, nest, init);
+                    nest = newCONDOP(0, cond, nest, NULL);
+                    break;
             }
-
-            cond = newBINOP(
-                OP_LT, 0,
-                newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
-                mkconstiv(aTHX_ req + i + 1)
-            );
-
-            init = op_guard_relinquish(&cur->init);
-            if (cur->param.padoff != NOT_IN_PAD) {
-                OP *var = my_var(aTHX_ 0, cur->param.padoff);
-                init = newASSIGNOP(OPf_STACKED, var, 0, init);
-            }
-
-            nest = op_append_list(OP_LINESEQ, nest, init);
-            nest = newCONDOP(0, cond, nest, NULL);
         }
 
         sequ = op_append_list(OP_LINESEQ, sequ, nest);
@@ -1964,15 +1973,20 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
             {
                 OP *const init = cur->init.op;
                 if (!(init->op_type == OP_UNDEF && !(init->op_flags & OPf_KIDS))) {
-                    if (cur->is_defined_or) {
-                        expr = newLOGOP(OP_DOR, 0, expr, op_guard_relinquish(&cur->init));
-                    } else {
-                        OP *cond;
+                    switch (cur->cond) {
+                        case ICOND_DEFINED:
+                            expr = newLOGOP(OP_DOR, 0, expr, op_guard_relinquish(&cur->init));
+                            break;
 
-                        cond = mkhvelem(aTHX_ param_spec->rest_hash, mkconstpv(aTHX_ p + 1, n - 1));
-                        cond = newUNOP(OP_EXISTS, 0, cond);
+                        case ICOND_EXISTS: {
+                            OP *cond;
 
-                        expr = newCONDOP(0, cond, expr, op_guard_relinquish(&cur->init));
+                            cond = mkhvelem(aTHX_ param_spec->rest_hash, mkconstpv(aTHX_ p + 1, n - 1));
+                            cond = newUNOP(OP_EXISTS, 0, cond);
+
+                            expr = newCONDOP(0, cond, expr, op_guard_relinquish(&cur->init));
+                            break;
+                        }
                     }
                 }
             }
