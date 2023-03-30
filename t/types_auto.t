@@ -1,5 +1,5 @@
 #!perl
-use warnings FATAL => 'all';
+use warnings qw(all FATAL uninitialized);
 use strict;
 
 use Test::More tests => 12;
@@ -8,9 +8,11 @@ use Test::More tests => 12;
     package MyTC;
 
     use overload
-        '|'      => 'union',
-        '&{}'    => 'apply',
-        fallback => 1;
+        '~'   => 'complement',
+        '|'   => 'union',
+        '&'   => 'intersection',
+        '/'   => 'alternative',
+        '&{}' => 'apply';
 
     sub new {
         my ($class, $name) = @_;
@@ -22,10 +24,25 @@ use Test::More tests => 12;
     sub check { 1 }
 
     sub get_message { die "Internal error: get_message: ${\$_[0]->name}"; }
-    
+
+    sub complement {
+        my ($x) = @_;
+        ref($x)->new('~' . $x->name)
+    }
+
     sub union {
         my ($x, $y) = @_;
-        ref($x)->new($x->name . '|' . $y->name)
+        ref($x)->new('(' . $x->name . '|' . $y->name . ')')
+    }
+
+    sub intersection {
+        my ($x, $y) = @_;
+        ref($x)->new('(' . $x->name . '&' . $y->name . ')')
+    }
+
+    sub alternative {
+        my ($x, $y) = @_;
+        ref($x)->new('(' . $x->name . '/' . $y->name . ')')
     }
 
     sub apply {
@@ -57,13 +74,13 @@ is eval 'fun (("NoSuchType") $x) {}', undef;
 like $@, qr/\AUndefined type name main::NoSuchType /;
 
 for my $f (
-    fun (   Ta[Tb] | Td | Tf [ Tg, Ti, Tj | Tk[Tl], To [ Tq, Tr ] | Tt ] $x) {},
-    fun ((' Ta[Tb] | Td | Tf [ Tg, Ti, Tj | Tk[Tl], To [ Tq, Tr ] | Tt ] ') $x) {},
+    fun (   Ta[Tb] | ~Td | Tf [ (Tg), ~~ ~ Ti | (Ta | Tb & Tc & Td), Tj | Tk[Tl], To [ Tq, Tr ] | Tt ] & Ta / Tb | Tc / Td & Te $x) {},
+    fun ((' Ta[Tb] | ~Td | Tf [ (Tg), ~~ ~ Ti | (Ta | Tb & Tc & Td), Tj | Tk[Tl], To [ Tq, Tr ] | Tt ] & Ta / Tb | Tc / Td & Te ') $x) {},
 ) {
     my $m = Function::Parameters::info $f;
     is my ($xi) = $m->positional_required, 1;
     is $xi->name, '$x';
     my $t = $xi->type;
     is ref $t, 'MyTC';
-    is $t->name, 'Ta[Tb]|Td|Tf[Tg,Ti,Tj|Tk[Tl],To[Tq,Tr]|Tt]';
+    is $t->name, '(((Ta[Tb]|~Td)|(Tf[Tg,(~~~Ti|(Ta|((Tb&Tc)&Td))),(Tj|Tk[Tl]),(To[Tq,Tr]|Tt)]&(Ta/Tb)))|((Tc/Td)&Te))';
 }

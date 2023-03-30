@@ -76,7 +76,7 @@ sub _malformed_type {
     croak "Malformed type: $msg marked by <-- HERE in '$type'";
 }
 
-sub _reify_type_auto_term {
+sub _reify_type_auto_parameterized {
     # (str, caller)
     $_[0] =~ /\G ( \w+ (?: :: \w+)* ) \s* /xgc or _malformed_type $_[0], "missing type name";
     my $name = $1;
@@ -100,11 +100,59 @@ sub _reify_type_auto_term {
     sub { $fun->([map $_->(), @args]) }
 }
 
-sub _reify_type_auto_union {
+sub _reify_type_auto_term {
+    # (str, caller)
+    my $compl = 0;
+    while ($_[0] =~ /\G ~ \s* /xgc) {
+        $compl++;
+    }
+
+    my $inner;
+    if ($_[0] =~ /\G \( \s* /xgc) {
+        $inner = &_reify_type_auto_union;
+        $_[0] =~ /\G \) \s* /xgc or _malformed_type $_[0], "missing ')'";
+    } else {
+        $inner = &_reify_type_auto_parameterized;
+    }
+
+    !$compl
+        ? $inner
+        : sub {
+            my $t = $inner->();
+            for my $i (1 .. $compl) {
+                $t = ~$t;
+            }
+            $t
+        }
+}
+
+sub _reify_type_auto_alternative {
     # (str, caller)
     my $fun = &_reify_type_auto_term;
-    while ($_[0] =~ /\G \| \s* /xgc) {
+    while ($_[0] =~ m!\G / \s* !xgc) {
         my $right = &_reify_type_auto_term;
+        my $left  = $fun;
+        $fun = sub { $left->() / $right->() };
+    }
+    $fun
+}
+
+sub _reify_type_auto_intersection {
+    # (str, caller)
+    my $fun = &_reify_type_auto_alternative;
+    while ($_[0] =~ /\G & \s* /xgc) {
+        my $right = &_reify_type_auto_alternative;
+        my $left  = $fun;
+        $fun = sub { $left->() & $right->() };
+    }
+    $fun
+}
+
+sub _reify_type_auto_union {
+    # (str, caller)
+    my $fun = &_reify_type_auto_intersection;
+    while ($_[0] =~ /\G \| \s* /xgc) {
+        my $right = &_reify_type_auto_intersection;
         my $left  = $fun;
         $fun = sub { $left->() | $right->() };
     }

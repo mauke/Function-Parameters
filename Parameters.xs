@@ -587,11 +587,89 @@ static SV *parse_type_paramd(pTHX_ Sentinel sen, const SV *declarator, char prev
     return t;
 }
 
+static SV *parse_type_term(pTHX_ Sentinel sen, const SV *declarator, char prev) {
+    I32 c;
+    SV *t, *u;
+
+    t = sentinel_mortalize(sen, newSVpvs(""));
+
+    while ((c = lex_peek_unichar(0)) == '~') {
+        lex_read_unichar(0);
+        lex_read_space(0);
+
+        my_sv_cat_c(aTHX_ t, c);
+        prev = c;
+    }
+
+    if (c == '(') {
+        lex_read_unichar(0);
+        lex_read_space(0);
+
+        my_sv_cat_c(aTHX_ t, c);
+        u = parse_type(aTHX_ sen, declarator, c);
+        sv_catsv(t, u);
+
+        c = lex_peek_unichar(0);
+        if (c != ')') {
+            croak("In %"SVf": missing ')' after '%"SVf"'", SVfARG(declarator), SVfARG(t));
+        }
+        my_sv_cat_c(aTHX_ t, c);
+        lex_read_unichar(0);
+        lex_read_space(0);
+
+        return t;
+    }
+
+    u = parse_type_paramd(aTHX_ sen, declarator, prev);
+    sv_catsv(t, u);
+    return t;
+}
+
+static SV *parse_type_alt(pTHX_ Sentinel sen, const SV *declarator, char prev) {
+    I32 c;
+    SV *t;
+
+    t = parse_type_term(aTHX_ sen, declarator, prev);
+
+    while ((c = lex_peek_unichar(0)) == '/') {
+        SV *u;
+
+        lex_read_unichar(0);
+        lex_read_space(0);
+
+        my_sv_cat_c(aTHX_ t, c);
+        u = parse_type_term(aTHX_ sen, declarator, c);
+        sv_catsv(t, u);
+    }
+
+    return t;
+}
+
+static SV *parse_type_intersect(pTHX_ Sentinel sen, const SV *declarator, char prev) {
+    I32 c;
+    SV *t;
+
+    t = parse_type_alt(aTHX_ sen, declarator, prev);
+
+    while ((c = lex_peek_unichar(0)) == '&') {
+        SV *u;
+
+        lex_read_unichar(0);
+        lex_read_space(0);
+
+        my_sv_cat_c(aTHX_ t, c);
+        u = parse_type_alt(aTHX_ sen, declarator, c);
+        sv_catsv(t, u);
+    }
+
+    return t;
+}
+
 static SV *parse_type(pTHX_ Sentinel sen, const SV *declarator, char prev) {
     I32 c;
     SV *t;
 
-    t = parse_type_paramd(aTHX_ sen, declarator, prev);
+    t = parse_type_intersect(aTHX_ sen, declarator, prev);
 
     while ((c = lex_peek_unichar(0)) == '|') {
         SV *u;
@@ -600,7 +678,7 @@ static SV *parse_type(pTHX_ Sentinel sen, const SV *declarator, char prev) {
         lex_read_space(0);
 
         my_sv_cat_c(aTHX_ t, c);
-        u = parse_type_paramd(aTHX_ sen, declarator, '|');
+        u = parse_type_intersect(aTHX_ sen, declarator, c);
         sv_catsv(t, u);
     }
 
@@ -1009,7 +1087,7 @@ static PADOFFSET parse_param(
             }
 
             c = lex_peek_unichar(0);
-        } else if (MY_UNI_IDFIRST(c)) {
+        } else if (MY_UNI_IDFIRST(c) || c == '~') {
             *ptype = parse_type(aTHX_ sen, declarator, ',');
             *ptype = reify_type(aTHX_ sen, declarator, spec, *ptype);
 
