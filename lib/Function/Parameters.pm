@@ -528,45 +528,45 @@ Function::Parameters - define functions and methods with parameter lists ("subro
 
 =head1 SYNOPSIS
 
- use Function::Parameters;
+    use Function::Parameters;
 
- # plain function
- fun foo($x, $y, $z = 5) {
-     return $x + $y + $z;
- }
- print foo(1, 2), "\n";  # 8
+    # plain function
+    fun foo($x, $y, $z = 5) {
+        return $x + $y + $z;
+    }
+    print foo(1, 2), "\n";  # 8
 
- # method with implicit $self
- method bar($label, $n) {
-     return "$label: " . ($n * $self->scale);
- }
+    # method with implicit $self
+    method bar($label, $n) {
+        return "$label: " . ($n * $self->scale);
+    }
 
- # named arguments: order doesn't matter in the call
- fun create_point(:$x, :$y, :$color) {
-     print "creating a $color point at ($x, $y)\n";
- }
- create_point(
-     color => "red",
-     x     => 10,
-     y     => 5,
- );
+    # named arguments: order doesn't matter in the call
+    fun create_point(:$x, :$y, :$color) {
+        print "creating a $color point at ($x, $y)\n";
+    }
+    create_point(
+        color => "red",
+        x     => 10,
+        y     => 5,
+    );
 
- package Derived {
-     use Function::Parameters qw(:std :modifiers);
-     use Moo;
+    package Derived {
+        use Function::Parameters qw(:std :modifiers);
+        use Moo;
 
-     extends 'Base';
+        extends 'Base';
 
-     has 'go_big' => (
-         is => 'ro',
-     );
+        has 'go_big' => (
+            is => 'ro',
+        );
 
-     # "around" method with implicit $orig and $self
-     around size() {
-         return $self->$orig() * 2 if $self->go_big;
-         return $self->$orig();
-     }
- }
+        # "around" method with implicit $orig and $self
+        around size() {
+            return $self->$orig() * 2 if $self->go_big;
+            return $self->$orig();
+        }
+    }
 
 =head1 DESCRIPTION
 
@@ -576,11 +576,10 @@ having to unpack C<@_> manually, but this module can do much more for you.
 
 The parameter lists provided by this module are similar to the C<signatures>
 feature available in perl v5.20+. However, this module supports all perl
-versions starting from v5.14, it offers far more features than core signatures,
-and it is not experimental. The downside is that you need a C compiler if you
-want to install it from source, as it uses Perl's
-L<keyword plugin|perlapi/PL_keyword_plugin> API in order to work reliably
-without requiring a source filter.
+versions starting from v5.14 and it offers far more features than core
+signatures. The downside is that you need a C compiler if you want to install
+it from source, as it uses Perl's L<keyword plugin|perlapi/PL_keyword_plugin>
+API in order to work reliably without requiring a source filter.
 
 =head2 Default functionality
 
@@ -590,23 +589,23 @@ or file.
 
 You can also disable C<Function::Parameters> within a block:
 
- {
-     no Function::Parameters;  # disable all keywords
-     ...
- }
+    {
+        no Function::Parameters;  # disable all keywords
+        ...
+    }
 
 Or explicitly list the keywords you want to disable:
 
- {
-     no Function::Parameters qw(method);
-     # 'method' is a normal identifier here
-     ...
- }
+    {
+        no Function::Parameters qw(method);
+        # 'method' is a normal identifier here
+        ...
+    }
 
 You can also explicitly list the keywords you want to enable:
 
- use Function::Parameters qw(fun);  # provides 'fun' but not 'method'
- use Function::Parameters qw(method);  # provides 'method' but not 'fun'
+    use Function::Parameters qw(fun);  # provides 'fun' but not 'method'
+    use Function::Parameters qw(method);  # provides 'method' but not 'fun'
 
 =head3 Simple parameter lists
 
@@ -614,14 +613,14 @@ By default you get two keywords, C<fun> and C<method> (but see
 L</Customizing and extending> below). C<fun> is very similar to C<sub>. You can
 use it to define both named and anonymous functions:
 
- fun left_pad($str, $n) {
-     return sprintf '%*s', $n, $str;
- }
+    fun left_pad($str, $n) {
+        return sprintf '%*s', $n, $str;
+    }
 
- print left_pad("hello", 10), "\n";
+    print left_pad("hello", 10), "\n";
 
- my $twice = fun ($x) { $x * 2 };
- print $twice->(21), "\n";
+    my $twice = fun ($x) { $x * 2 };
+    print $twice->(21), "\n";
 
 In the simplest case the parameter list is just a comma-separated list of zero
 or more scalar variables (enclosed in parentheses, following the function name,
@@ -633,11 +632,11 @@ exception is thrown.
 
 Apart from that, the parameter variables are defined and initialized as if by:
 
- sub left_pad {
-     sub left_pad;
-     my ($str, $n) = @_;
-     ...
- }
+    sub left_pad {
+        sub left_pad;
+        my ($str, $n) = @_;
+        ...
+    }
 
 In particular, C<@_> is still available in functions defined by C<fun> and
 holds the original argument list.
@@ -646,10 +645,10 @@ The inner C<sub left_pad;> declaration is intended to illustrate that the name
 of the function being defined is in scope in its own body, meaning you can call
 it recursively without having to use parentheses:
 
- fun fac($n) {
-     return 1 if $n < 2;
-     return $n * fac $n - 1;
- }
+    fun fac($n) {
+        return 1 if $n < 2;
+        return $n * fac $n - 1;
+    }
 
 In a normal C<sub> the last line would have had to be written
 C<return $n * fac($n - 1);>.
@@ -657,16 +656,16 @@ C<return $n * fac($n - 1);>.
 C<method> is almost the same as C<fun> but automatically creates a C<$self>
 variable as the first parameter (which is removed from C<@_>):
 
- method foo($x, $y) {
-    ...
- }
+    method foo($x, $y) {
+        ...
+    }
 
- # works like:
- sub foo :method {
-    my $self = shift;
-    my ($x, $y) = @_;
-    ...
- }
+    # works like:
+    sub foo :method {
+        my $self = shift;
+        my ($x, $y) = @_;
+        ...
+    }
 
 As you can see, the C<:method> attribute is also added automatically (see
 L<attributes/method> for details).
@@ -676,79 +675,91 @@ invocant of the method. You can override it on a case-by-case basis by putting
 a variable name followed by a C<:> (colon) as the first thing in the parameter
 list:
 
- method new($class: $x, $y) {
-     return bless { x => $x, y => $y }, $class;
- }
+    method new($class: $x, $y) {
+        return bless { x => $x, y => $y }, $class;
+    }
 
 Here the invocant is named C<$class>, not C<$self>. It looks a bit weird but
 still works the same way if the remaining parameter list is empty:
 
- method from_env($class:) {
-     return $class->new($ENV{x}, $ENV{y});
- }
+    method from_env($class:) {
+        return $class->new($ENV{x}, $ENV{y});
+    }
 
 =head3 Default arguments
 
-(Most of the following examples use C<fun> only. Unless specified otherwise
+(Most of the following examples use C<fun> only. Unless specified otherwise,
 everything applies to C<method> as well.)
 
 You can make some arguments optional by giving them default values.
 
- fun passthrough($x, $y = 42, $z = []) {
-     return ($x, $y, $z);
- }
+    fun passthrough($x, $y //= 42, $z = []) {
+        return ($x, $y, $z);
+    }
 
-In this example the first parameter C<$x> is required but C<$y> and C<$z> are
+In this example the first parameter C<$x> is required, but C<$y> and C<$z> are
 optional.
 
- passthrough('a', 'b', 'c', 'd')   # error: Too many arguments
- passthrough('a', 'b', 'c')        # returns ('a', 'b', 'c')
- passthrough('a', 'b')             # returns ('a', 'b', [])
- passthrough('a', undef)           # returns ('a', undef, [])
- passthrough('a')                  # returns ('a', 42, [])
- passthrough()                     # error: Too few arguments
+    passthrough('a', 'b', 'c', 'd')   # error: Too many arguments
+    passthrough('a', 'b', 'c')        # returns ('a', 'b', 'c')
+    passthrough('a', 'b', undef)      # returns ('a', 'b', undef)
+    passthrough('a', 'b')             # returns ('a', 'b', [])
+    passthrough('a', undef)           # returns ('a', 42, [])
+    passthrough('a', undef, 'c')      # returns ('a', 42, 'c')
+    passthrough('a')                  # returns ('a', 42, [])
+    passthrough()                     # error: Too few arguments
 
-Default arguments are evaluated whenever a corresponding real argument is not
-passed in by the caller. C<undef> counts as a real argument; you can't use the
-default value for parameter I<N> and still pass a value for parameter I<N+1>.
+Default arguments specified with C<=> are evaluated whenever a corresponding
+real argument is not passed in by the caller. C<undef> counts as a real
+argument; you can't use the default value for parameter I<N> and still pass a
+value for parameter I<N+1>.
+
+Default arguments specified with C<//=> are evaluated whenever a corresponding
+real argument is not passed in or when that argument is C<undef>. That is,
+passing in C<undef> to a C<//=> parameter lets you explicitly request the
+default.
+
+Both C<=> and C<//=> default arguments can be mixed freely in the same
+parameter list.
+
 C<$z = []> means each call that doesn't pass a third argument gets a new array
 reference (they're not shared between calls).
 
 Default arguments are evaluated as part of the function body, allowing for
 silliness such as:
 
- fun weird($name = return "nope") {
-     print "Hello, $name!\n";
-     return $name;
- }
+    fun weird($name = return "nope") {
+        print "Hello, $name!\n";
+        return $name;
+    }
 
- weird("Larry");  # prints "Hello, Larry!" and returns "Larry"
- weird();         # returns "nope" immediately; function body doesn't run
+    weird("Larry");  # prints "Hello, Larry!" and returns "Larry"
+    weird();         # returns "nope" immediately; function body doesn't run
 
 Preceding parameters are in scope for default arguments:
 
- fun dynamic_default($x, $y = length $x) {
-    return "$x/$y";
- }
+    fun dynamic_default($x, $y = length $x) {
+        return "$x/$y";
+    }
 
- dynamic_default("hello", 0)  # returns "hello/0"
- dynamic_default("hello")     # returns "hello/5"
- dynamic_default("abc")       # returns "abc/3"
+    dynamic_default("hello", 0)  # returns "hello/0"
+    dynamic_default("hello")     # returns "hello/5"
+    dynamic_default("abc")       # returns "abc/3"
 
 If you just want to make a parameter optional without giving it a special
 value, write C<$param = undef>. There is a special shortcut syntax for
 this case: C<$param = undef> can also be written C<$param => (with no following
 expression).
 
- fun foo($x = undef, $y = undef, $z = undef) {
-     # three arguments, all optional
-     ...
- }
+    fun foo($x = undef, $y = undef, $z = undef) {
+        # three arguments, all optional
+        ...
+    }
 
- fun foo($x=, $y=, $z=) {
-     # shorter syntax, same meaning
-     ...
- }
+    fun foo($x=, $y=, $z=) {
+        # shorter syntax, same meaning
+        ...
+    }
 
 Optional parameters must come at the end. It is not possible to have a required
 parameter after an optional one.
@@ -758,37 +769,37 @@ parameter after an optional one.
 The last parameter of a function or method can be an array. This lets you slurp
 up any number of arguments the caller passes (0 or more).
 
- fun scale($factor, @values) {
-     return map { $_ * $factor } @values;
- }
+    fun scale($factor, @values) {
+        return map { $_ * $factor } @values;
+    }
 
- scale(10, 1 .. 4)  # returns (10, 20, 30, 40)
- scale(10)          # returns ()
+    scale(10, 1 .. 4)  # returns (10, 20, 30, 40)
+    scale(10)          # returns ()
 
 You can also use a hash, but then the number of arguments has to be even.
 
 =head3 Named parameters
 
 As soon as your functions take more than three arguments, it gets harder to
-keep track of what argument means what:
+keep track of which argument means what:
 
- foo($handle, $w, $h * 2 + 15, 1, 24, 'icon');
- # what do these arguments mean?
+    foo($handle, $w, $h * 2 + 15, 1, 24, 'icon');
+    # what do these arguments mean?
 
 C<Function::Parameters> offers an alternative for these kinds of situations in
 the form of named parameters. Unlike the parameters described previously, which
 are identified by position, these parameters are identified by name:
 
- fun create_point(:$x, :$y, :$color) {
-     ...
- }
+    fun create_point(:$x, :$y, :$color) {
+        ...
+    }
 
- # Case 1
- create_point(
-     x     => 50,
-     y     => 50,
-     color => 0xff_00_00,
- );
+    # Case 1
+    create_point(
+        x     => 50,
+        y     => 50,
+        color => 0xff_00_00,
+    );
 
 To create a named parameter, put a C<:> (colon) in front of it in the parameter
 list. When the function is called, the arguments have to be supplied in the
@@ -796,80 +807,90 @@ form of a hash initializer (a list of alternating keys/values). As with a hash,
 the order of key/value pairs doesn't matter (except in the case of duplicate
 keys, where the last occurrence wins):
 
- # Case 2
- create_point(
-     color => 0xff_00_00,
-     x     => 50,
-     y     => 50,
- );
+    # Case 2
+    create_point(
+        color => 0xff_00_00,
+        x     => 50,
+        y     => 50,
+    );
 
- # Case 3
- create_point(
-     x     => 200,
-     color => 0x12_34_56,
-     color => 0xff_00_00,
-     x     => 50,
-     y     => 50,
- );
+    # Case 3
+    create_point(
+        x     => 200,
+        color => 0x12_34_56,
+        color => 0xff_00_00,
+        x     => 50,
+        y     => 50,
+    );
 
 Case 1, Case 2, and Case 3 all mean the same thing.
 
 As with positional parameters, you can make named parameters optional by
-supplying a L<default argument|/Default arguments>:
+supplying a L<default argument|/Default arguments> with C<=> or C<//=>:
 
- fun create_point(:$x, :$y, :$color = 0x00_00_00) {
-     ...
- }
+    # use default if no 'color' key exists in the argument list
+    fun create_point(:$x, :$y, :$color = 0x00_00_00) {
+        ...
+    }
 
- create_point(x => 0, y => 64)  # color => 0x00_00_00 is implicit
+    create_point(x => 0, y => 64)  # color => 0x00_00_00 is implicit
+
+Or:
+
+    # use default if 'color' value is not defined
+    fun create_point(:$x, :$y, :$color //= 0x00_00_00) {
+        ...
+    }
+
+    create_point(x => 0, y => 64, color => undef)  # color => 0x00_00_00 is implicit
 
 If you want to accept any key/value pairs, you can add a
 L<rest parameter|/Slurpy/rest parameters> (hashes are particularly useful):
 
- fun accept_all_keys(:$name, :$age, %rest) {
-     ...
- }
+    fun accept_all_keys(:$name, :$age, %rest) {
+        ...
+    }
 
- accept_all_keys(
-     age     => 42,
-     gender  => 2,
-     name    => "Jamie",
-     marbles => [],
- );
- # $name = "Jamie";
- # $age = 42;
- # %rest = (
- #     gender  => 2,
- #     marbles => [],
- # );
+    accept_all_keys(
+        age     => 42,
+        gender  => 2,
+        name    => "Jamie",
+        marbles => [],
+    );
+    # $name = "Jamie";
+    # $age = 42;
+    # %rest = (
+    #     gender  => 2,
+    #     marbles => [],
+    # );
 
-You can combine positional and named parameters but all positional parameters
+You can combine positional and named parameters, but all positional parameters
 have to come first:
 
- method output(
-    $data,
-    :$handle       = $self->output_handle,
-    :$separator    = $self->separator,
-    :$quote_fields = 0,
- ) {
-     ...
- }
+    method output(
+        $data,
+        :$handle       = $self->output_handle,
+        :$separator    = $self->separator,
+        :$quote_fields = 0,
+    ) {
+        ...
+    }
 
- $obj->output(["greetings", "from", "space"]);
- $obj->output(
-    ["a", "random", "example"],
-    quote_fields => 1,
-    separator    => ";",
- );
+    $obj->output(["greetings", "from", "space"]);
+    $obj->output(
+        ["a", "random", "example"],
+        quote_fields => 1,
+        separator    => ";",
+    );
 
 =head3 Unnamed parameters
 
 If your function doesn't use a particular parameter at all, you can omit its
 name and just write a sigil in the parameter list:
 
- register_callback('click', fun ($target, $) {
-     ...
- });
+    register_callback('click', fun ($target, $) {
+        ...
+    });
 
 Here we're calling a hypothetical C<register_callback> function that registers
 our coderef to be called in response to a C<click> event. It will pass two
@@ -883,8 +904,8 @@ with callbacks or methods that don't need all of the arguments they get.
 
 You can use unnamed L<slurpy parameters|/Slurpy/rest parameters> to accept and
 ignore all following arguments. In particular, C<fun foo(@)> is a lot like
-C<sub foo> in that it accepts and ignores any number of arguments (apart from
-leaving them in C<@_>).
+C<sub foo> in that it accepts and ignores any number of arguments (and just
+leaves them in C<@_>).
 
 =head3 Type constraints
 
@@ -895,23 +916,49 @@ function. There are two ways to do this.
 
 =item 1.
 
- use Types::Standard qw(Str Int ArrayRef);
+    use Types::Standard qw(Str Int ArrayRef);
 
- fun foo(Str $label, ArrayRef[Int] $counts) {
-     ...
- }
+    fun foo(Str $label, ArrayRef[Int] $counts) {
+        ...
+    }
 
 In this variant you simply put the name of a type in front of a parameter. The
-way this works is that C<Function::Parameters> parses the type using very
-simple rules:
+way this works is that C<Function::Parameters> parses the type using a
+restrictive set of rules:
 
 =over
 
 =item *
 
-A I<type> is a sequence of one or more simple types, separated by C<|> (pipe).
-C<|> is meant for union types (e.g. C<Str | ArrayRef[Int]> would accept either
-a string or reference to an array of integers).
+A I<type> is a simplified expression that only uses C<(>, C<)>, C<|>, C<&>,
+C</>, C<~>, and simple types, except the first character cannot be C<(> (see
+syntax #2 below). The relative operator precedence is as in Perl; see
+L<perlop>.
+
+=item *
+
+C<(> C<)> can be used for grouping, but have no effect otherwise.
+
+=item *
+
+C<~> (highest precedence) is a unary prefix operator meant for complementary
+types (as provided by L<Type::Tiny>).
+
+=item *
+
+C</> is a binary infix operator meant for alternative types (as provided by
+L<Type::Tiny>).
+
+=item *
+
+C<&> is a binary infix operator meant for intersection types (as provided by
+L<Type::Tiny>).
+
+=item *
+
+C<|> (lowest precedence) is a binary infix operator meant for union types (as
+provided by basically everyone doing type constraints, including L<Moose> (see
+L<Moose::Manual::Types/TYPE UNIONS> and L<MooseX::Types>) and L<Type::Tiny>).
 
 =item *
 
@@ -927,9 +974,8 @@ C<Str() | ArrayRef([Int()])> (at compile time, while the function definition is
 being processed). In other words, C<Function::Parameters> doesn't support any
 types natively; it simply uses whatever is in scope.
 
-You don't have to define these functions yourself. You can also import them
-from a type library such as L<C<Types::Standard>|Types::Standard> or
-L<C<MooseX::Types::Moose>|MooseX::Types::Moose>.
+You don't have to define these type constraints yourself; you can import them
+from a type library such as L<Types::Standard> or L<MooseX::Types::Moose>.
 
 The only requirement is that the returned value (here referred to as C<$tc>,
 for "type constraint") is an object that provides C<< $tc->check($value) >>
@@ -938,17 +984,37 @@ whether a particular value is valid; it should return a true or false value.
 C<get_message> is called on values that fail the C<check> test; it should
 return a string that describes the error.
 
+Type constraints can optionally support two additional features:
+
+=over
+
+=item *
+
+Coercion. If the C<< $tc->has_coercion >> method exists and returns a true
+value, every incoming argument is automatically transformed by
+C<< $value = $tc->coerce($value) >> before being type-checked.
+
+=item *
+
+Inlining. If the C<< $tc->can_be_inlined >> method exists and returns a true
+value, the call to C<< $tc->check($value) >> is automatically replaced by the
+code returned (in string form) from C<< $tc->inline_check('$value') >>. (For
+compatibility with L<Moose>, if C<$tc> has no C<inline_check> method,
+C<< $tc->_inline_check('$value') >> is used instead.)
+
+=back
+
 =item 2.
 
- my ($my_type, $some_other_type);
- BEGIN {
-     $my_type = Some::Constraint::Class->new;
-     $some_other_type = Some::Other::Class->new;
- }
+    my ($my_type, $some_other_type);
+    BEGIN {
+        $my_type = Some::Constraint::Class->new;
+        $some_other_type = Some::Other::Class->new;
+    }
 
- fun foo(($my_type) $label, ($some_other_type) $counts) {
-     ...
- }
+    fun foo(($my_type) $label, ($some_other_type) $counts) {
+        ...
+    }
 
 In this variant you enclose an arbitrary Perl expression in C<(> C<)>
 (parentheses) and put it in front of a parameter. This expression is evaluated
@@ -959,26 +1025,25 @@ at compile time and must return a type constraint object as described above.
 
 =head3 Method modifiers
 
-C<Function::Parameters> has support for method modifiers as provided by
-L<C<Moo>|Moo> or L<C<Moose>|Moose>. They're not exported by default, so you
-have to say
+C<Function::Parameters> has support for method modifiers as provided by L<Moo>
+or L<Moose>. They're not exported by default, so you have to say
 
- use Function::Parameters qw(:modifiers);
+    use Function::Parameters qw(:modifiers);
 
 to get them. This line gives you method modifiers I<only>; C<fun> and C<method>
 are not defined. To get both the standard keywords and method modifiers, you
 can either write two C<use> lines:
 
- use Function::Parameters;
- use Function::Parameters qw(:modifiers);
+    use Function::Parameters;
+    use Function::Parameters qw(:modifiers);
 
 or explicitly list the keywords you want:
 
- use Function::Parameters qw(fun method :modifiers);
+    use Function::Parameters qw(fun method :modifiers);
 
 or add the C<:std> import tag (which gives you the default import behavior):
 
- use Function::Parameters qw(:std :modifiers);
+    use Function::Parameters qw(:std :modifiers);
 
 This defines the following additional keywords: C<before>, C<after>, C<around>,
 C<augment>, C<override>. These work mostly like C<method>, but they don't
@@ -986,33 +1051,33 @@ install the function into your package themselves. Instead they invoke whatever
 C<before>, C<after>, C<around>, C<augment>, or C<override> function
 (respectively) is in scope to do the job.
 
- before foo($x, $y, $z) {
-     ...
- }
+    before foo($x, $y, $z) {
+        ...
+    }
 
 works like
 
- &before('foo', method ($x, $y, $z) {
-     ...
- });
+    &before('foo', method ($x, $y, $z) {
+        ...
+    });
 
 C<after>, C<augment>, and C<override> work the same way.
 
 C<around> is slightly different: Instead of shifting off the first element of
 C<@_> into C<$self> (as C<method> does), it shifts off I<two> values:
 
- around foo($x, $y, $z) {
-     ...
- }
+    around foo($x, $y, $z) {
+        ...
+    }
 
 works like
 
- &around('foo', sub :method {
-     my $orig = shift;
-     my $self = shift;
-     my ($x, $y, $z) = @_;
-     ...
- });
+    &around('foo', sub :method {
+        my $orig = shift;
+        my $self = shift;
+        my ($x, $y, $z) = @_;
+        ...
+    });
 
 (except you also get the usual C<Function::Parameters> features such as
 checking the number of arguments, etc).
@@ -1020,11 +1085,11 @@ checking the number of arguments, etc).
 C<$orig> and C<$self> both count as invocants and you can override their names
 like this:
 
- around foo($original, $object: $x, $y, $z) {
-     # $original is a reference to the wrapped method;
-     # $object is the object we're being called on
-     ...
- }
+    around foo($original, $object: $x, $y, $z) {
+        # $original is a reference to the wrapped method;
+        # $object is the object we're being called on
+        ...
+    }
 
 If you use C<:> to pick your own invocant names in the parameter list of
 C<around>, you must specify exactly two variables.
@@ -1042,19 +1107,19 @@ performed at runtime.
 You can specify attributes (see L<perlsub/Subroutine Attributes>) for your
 functions using the usual syntax:
 
- fun deref($x) :lvalue {
-    ${$x}
- }
+    fun deref($x) :lvalue {
+        ${$x}
+    }
 
- my $silly;
- deref(\$silly) = 42;
+    my $silly;
+    deref(\$silly) = 42;
 
 To specify a prototype (see L<perlsub/Prototypes>), use the C<prototype>
 attribute:
 
- fun mypush($aref, @values) :prototype(\@@) {
-     push @{$aref}, @values;
- }
+    fun mypush($aref, @values) :prototype(\@@) {
+        push @{$aref}, @values;
+    }
 
 =head3 Introspection
 
@@ -1063,8 +1128,7 @@ at runtime. It is not exported, so you have to call it by its full name.
 
 It takes a reference to a function and returns either C<undef> (if it knows
 nothing about the function) or an object that describes the parameter list of
-the given function. See
-L<C<Function::Parameters::Info>|Function::Parameters::Info> for details.
+the given function. See L<Function::Parameters::Info> for details.
 
 =head2 Customizing and extending
 
@@ -1083,14 +1147,14 @@ hash references. Each key is a keyword to be defined as specified by the
 corresponding value, which must be another hash reference containing
 configuration options.
 
- use Function::Parameters
-     {
-         keyword_1 => { ... },
-         keyword_2 => { ... },
-     },
-     {
-         keyword_3 => { ... },
-     };
+    use Function::Parameters
+        {
+            keyword_1 => { ... },
+            keyword_2 => { ... },
+        },
+        {
+            keyword_3 => { ... },
+        };
 
 If you don't specify a particular option, its default value is used. The
 available configuration options are:
@@ -1180,16 +1244,36 @@ whether a particular value is valid; it should return a true or false value.
 C<get_message> is called on values that fail the C<check> test; it should
 return a string that describes the error.
 
+Type constraints can optionally support two additional features:
+
+=over
+
+=item *
+
+Coercion. If the C<< $tc->has_coercion >> method exists and returns a true
+value, every incoming argument is automatically transformed by
+C<< $value = $tc->coerce($value) >> before being type-checked.
+
+=item *
+
+Inlining. If the C<< $tc->can_be_inlined >> method exists and returns a true
+value, the call to C<< $tc->check($value) >> is automatically replaced by the
+code returned (in string form) from C<< $tc->inline_check('$value') >>. (For
+compatibility with L<Moose>, if C<$tc> has no C<inline_check> method,
+C<< $tc->_inline_check('$value') >> is used instead.)
+
+=back
+
 Instead of a code reference you can also specify one of two strings.
 
 C<'auto'> stands for a built-in type reifier that treats identifiers as
-subroutine names, C<[> C<]> as an array reference, and C<|> as bitwise or. In
-other words, it parses and executes type constraints (mostly) as if they had
-been Perl source code.
+subroutine names, C<[> C<]> as an array reference, C<~> as bitwise complement,
+C</> as division, C<&> as bitwise and, and C<|> as bitwise or. In other words,
+it parses and executes type constraints (mostly) as if they had been Perl
+source code.
 
 C<'moose'> stands for a built-in type reifier that loads
-L<C<Moose::Util::TypeConstraints>|Moose::Util::TypeConstraints> and just
-forwards to
+L<Moose::Util::TypeConstraints> and just forwards to
 L<C<find_or_create_isa_type_constraint>|Moose::Util::TypeConstraints/find_or_create_isa_type_constraint($type_name)>.
 
 Default: C<'auto'>
@@ -1246,17 +1330,17 @@ Default: C<1>
 
 You can get the same effect as C<use Function::Parameters;> by saying:
 
- use Function::Parameters {
-     fun => {
-         # 'fun' uses default settings only
-     },
-     method => {
-         attributes => ':method',
-         shift      => '$self',
-         invocant   => 1,
-         # the rest is defaults
-     },
- };
+    use Function::Parameters {
+        fun => {
+            # 'fun' uses default settings only
+        },
+        method => {
+            attributes => ':method',
+            shift      => '$self',
+            invocant   => 1,
+            # the rest is defaults
+        },
+    };
 
 =head3 Configuration bundles
 
@@ -1279,10 +1363,10 @@ Equivalent to C<{}>, i.e. all defaults.
 
 Equivalent to:
 
- {
-     defaults => 'function_strict',
-     strict   => 0,
- }
+    {
+        defaults => 'function_strict',
+        strict   => 0,
+    }
 
 i.e. just like L<C<function_strict>|/C<function_strict>> but with
 L<C<strict>|/C<strict>> checks turned off.
@@ -1297,21 +1381,21 @@ C<function_lax>.)
 
 Equivalent to:
 
- {
-     defaults   => 'function_strict',
-     attributes => ':method',
-     shift      => '$self',
-     invocant   => 1,
- }
+    {
+        defaults   => 'function_strict',
+        attributes => ':method',
+        shift      => '$self',
+        invocant   => 1,
+    }
 
 =item C<method_lax>
 
 Equivalent to:
 
- {
-     defaults => 'method_strict',
-     strict   => 0,
- }
+    {
+        defaults => 'method_strict',
+        strict   => 0,
+    }
 
 i.e. just like L<C<method_strict>|/C<method_strict>> but with
 L<C<strict>|/C<strict>> checks turned off.
@@ -1326,10 +1410,10 @@ C<method_lax>.)
 
 Equivalent to:
 
- {
-     defaults => 'method_strict',
-     shift    => '$class',
- }
+    {
+        defaults => 'method_strict',
+        shift    => '$class',
+    }
 
 i.e. just like L<C<method_strict>|/C<method_strict>> but the implicit first
 parameter is called C<$class>, not C<$self>.
@@ -1338,10 +1422,10 @@ parameter is called C<$class>, not C<$self>.
 
 Equivalent to:
 
- {
-     defaults => 'classmethod_strict',
-     strict   => 0,
- }
+    {
+        defaults => 'classmethod_strict',
+        strict   => 0,
+    }
 
 i.e. just like L<C<classmethod_strict>|/C<classmethod_strict>> but with
 L<C<strict>|/C<strict>> checks turned off.
@@ -1355,13 +1439,13 @@ C<Function::Parameters>.
 
 Equivalent to:
 
- {
-     defaults    => 'method',
-     install_sub => 'around',
-     shift       => ['$orig', '$self'],
-     runtime     => 1,
-     name        => 'required',
- }
+    {
+        defaults    => 'method',
+        install_sub => 'around',
+        shift       => ['$orig', '$self'],
+        runtime     => 1,
+        name        => 'required',
+    }
 
 i.e. just like L<C<method>|/C<method>> but with a custom installer
 (C<'around'>), two implicit first parameters, only taking effect at
@@ -1371,12 +1455,12 @@ runtime, and a method name is required.
 
 Equivalent to:
 
- {
-     defaults    => 'method',
-     install_sub => 'before',
-     runtime     => 1,
-     name        => 'required',
- }
+    {
+        defaults    => 'method',
+        install_sub => 'before',
+        runtime     => 1,
+        name        => 'required',
+    }
 
 i.e. just like L<C<method>|/C<method>> but with a custom installer
 (C<'before'>), only taking effect at runtime, and a method name is required.
@@ -1385,12 +1469,12 @@ i.e. just like L<C<method>|/C<method>> but with a custom installer
 
 Equivalent to:
 
- {
-     defaults    => 'method',
-     install_sub => 'after',
-     runtime     => 1,
-     name        => 'required',
- }
+    {
+        defaults    => 'method',
+        install_sub => 'after',
+        runtime     => 1,
+        name        => 'required',
+    }
 
 i.e. just like L<C<method>|/C<method>> but with a custom installer
 (C<'after'>), only taking effect at runtime, and a method name is required.
@@ -1399,12 +1483,12 @@ i.e. just like L<C<method>|/C<method>> but with a custom installer
 
 Equivalent to:
 
- {
-     defaults    => 'method',
-     install_sub => 'augment',
-     runtime     => 1,
-     name        => 'required',
- }
+    {
+        defaults    => 'method',
+        install_sub => 'augment',
+        runtime     => 1,
+        name        => 'required',
+    }
 
 i.e. just like L<C<method>|/C<method>> but with a custom installer
 (C<'augment'>), only taking effect at runtime, and a method name is required.
@@ -1413,12 +1497,12 @@ i.e. just like L<C<method>|/C<method>> but with a custom installer
 
 Equivalent to:
 
- {
-     defaults    => 'method',
-     install_sub => 'override',
-     runtime     => 1,
-     name        => 'required',
- }
+    {
+        defaults    => 'method',
+        install_sub => 'override',
+        runtime     => 1,
+        name        => 'required',
+    }
 
 i.e. just like L<C<method>|/C<method>> but with a custom installer
 (C<'override'>), only taking effect at runtime, and a method name is required.
@@ -1427,17 +1511,17 @@ i.e. just like L<C<method>|/C<method>> but with a custom installer
 
 You can get the same effect as C<use Function::Parameters;> by saying:
 
- use Function::Parameters {
-     fun    => { defaults => 'function' },
-     method => { defaults => 'method' },
- };
+    use Function::Parameters {
+        fun    => { defaults => 'function' },
+        method => { defaults => 'method' },
+    };
 
 or:
 
- use Function::Parameters {
-     fun    => 'function',
-     method => 'method',
- };
+    use Function::Parameters {
+        fun    => 'function',
+        method => 'method',
+    };
 
 =head3 Import tags
 
@@ -1493,11 +1577,11 @@ their arguments.
 
 Equivalent to C<< 'fun', 'method' >>. This is what's used by default:
 
- use Function::Parameters;
+    use Function::Parameters;
 
 is the same as:
 
- use Function::Parameters qw(:std);
+    use Function::Parameters qw(:std);
 
 =item C<':modifiers'>
 
@@ -1507,82 +1591,82 @@ Equivalent to C<< 'before', 'after', 'around', 'augment', 'override' >>.
 
 For example, when you say
 
- use Function::Parameters qw(:modifiers);
+    use Function::Parameters qw(:modifiers);
 
 C<:modifiers> is an import tag that L<expands to|/C<':modifiers'>>
 
- use Function::Parameters qw(before after around augment override);
+    use Function::Parameters qw(before after around augment override);
 
 Each of those is another import tag. Stepping through the first one:
 
- use Function::Parameters qw(before);
+    use Function::Parameters qw(before);
 
 is L<equivalent to|/C<'before'>>:
 
- use Function::Parameters { before => 'before' };
+    use Function::Parameters { before => 'before' };
 
 This says to define the keyword C<before> according to the
 L<configuration bundle C<before>|/C<before>>:
 
- use Function::Parameters {
-     before => {
-         defaults    => 'method',
-         install_sub => 'before',
-         runtime     => 1,
-         name        => 'required',
-     },
- };
+    use Function::Parameters {
+        before => {
+            defaults    => 'method',
+            install_sub => 'before',
+            runtime     => 1,
+            name        => 'required',
+        },
+    };
 
 The C<< defaults => 'method' >> part L<pulls in|/Configuration bundles> the
 contents of the L<C<'method'> configuration bundle|/C<method>> (which is the
 same as L<C<'method_strict'>|/C<method_strict>>):
 
- use Function::Parameters {
-     before => {
-         defaults    => 'function_strict',
-         attributes  => ':method',
-         shift       => '$self',
-         invocant    => 1,
-         install_sub => 'before',
-         runtime     => 1,
-         name        => 'required',
-     },
- };
+    use Function::Parameters {
+        before => {
+            defaults    => 'function_strict',
+            attributes  => ':method',
+            shift       => '$self',
+            invocant    => 1,
+            install_sub => 'before',
+            runtime     => 1,
+            name        => 'required',
+        },
+    };
 
 This in turn uses the
 L<C<'function_strict'> configuration bundle|/C<function_strict>> (which is
 empty because it consists of default values only):
 
- use Function::Parameters {
-     before => {
-         attributes  => ':method',
-         shift       => '$self',
-         invocant    => 1,
-         install_sub => 'before',
-         runtime     => 1,
-         name        => 'required',
-     },
- };
+    use Function::Parameters {
+        before => {
+            attributes  => ':method',
+            shift       => '$self',
+            invocant    => 1,
+            install_sub => 'before',
+            runtime     => 1,
+            name        => 'required',
+        },
+    };
 
 But if we wanted to be completely explicit, we could write this as:
 
- use Function::Parameters {
-     before => {
-         check_argument_count => 1,
-         check_argument_types => 1,
-         default_arguments    => 1,
-         named_parameters     => 1,
-         reify_type           => 'auto',
-         types                => 1,
+    use Function::Parameters {
+        before => {
+            check_argument_count => 1,
+            check_argument_types => 1,
+            default_arguments    => 1,
+            named_parameters     => 1,
+            reify_type           => 'auto',
+            types                => 1,
 
-         attributes  => ':method',
-         shift       => '$self',
-         invocant    => 1,
-         install_sub => 'before',
-         runtime     => 1,
-         name        => 'required',
-     },
- };
+            attributes  => ':method',
+            shift       => '$self',
+            invocant    => 1,
+            install_sub => 'before',
+            runtime     => 1,
+            name        => 'required',
+        },
+    };
 
 =head2 Incompatibilites with version 1 of C<Function::Parameters>
 
@@ -1612,7 +1696,7 @@ C<:prototype(...)>. This syntax has been removed.
 
 =item *
 
-The default type reifier used to be hardcoded to use L<C<Moose>|Moose> (as in
+The default type reifier used to be hardcoded to use L<Moose> (as in
 C<< reify_type => 'moose' >>). This has been changed to use whatever type
 functions are in scope (C<< reify_type => 'auto' >>).
 
@@ -1628,17 +1712,17 @@ wasn't so much fixed as worked around in C<Function::Parameters>.)
 If you want your type reifier to be compatible with both versions, you can do
 this:
 
- sub my_reifier {
-     my ($type, $package) = @_;
-     $package //= caller;
-     ...
- }
+    sub my_reifier {
+        my ($type, $package) = @_;
+        $package //= caller;
+        ...
+    }
 
 Or using C<Function::Parameters> itself:
 
- fun my_reifier($type, $package = caller) {
-     ...
- }
+    fun my_reifier($type, $package = caller) {
+        ...
+    }
 
 =back
 
@@ -1646,7 +1730,7 @@ Or using C<Function::Parameters> itself:
 
 =over
 
-=item Function::Parameters: $^H{'Function::Parameters/config'} is not a reference; skipping: HASH(...)
+=item Function::Parameters: $^H{'Function::Parameters/config'} is not a reference; skipping: HASH(%s)
 
 Function::Parameters relies on being able to put references in C<%^H> (the
 lexical compilation context) and pull them out again at compile time. You may
@@ -1654,7 +1738,8 @@ see the warning above if what used to be a reference got turned into a plain
 string. In this case, Function::Parameters gives up and automatically disables
 itself, as if by C<no Function::Parameters;>.
 
-You can disable the warning by saying C<no warnings 'Function::Parameters';>.
+You can disable the warning in a given scope by saying
+C<no warnings 'Function::Parameters'>; see L<warnings>.
 
 Currently the only case I'm aware of where this happens with core perl is
 embedded code blocks in regexes that are compiled at runtime (in a scope where
@@ -1668,8 +1753,8 @@ L<C<use re 'eval'>|re> is active):
     my $code = '(?{ print "embedded code\n"; })';
     my $regex = qr/$code/;
 
-In my opinion, this is a bug in perl: L<GH
-#20950|https://github.com/Perl/perl5/issues/20950>.
+In my opinion, this is a bug in perl:
+L<GH #20950|https://github.com/Perl/perl5/issues/20950>.
 
 This case used to be a hard error in versions 2.001005 and before of this
 module.

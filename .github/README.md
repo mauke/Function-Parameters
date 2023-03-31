@@ -54,11 +54,10 @@ having to unpack `@_` manually, but this module can do much more for you.
 
 The parameter lists provided by this module are similar to the `signatures`
 feature available in perl v5.20+. However, this module supports all perl
-versions starting from v5.14, it offers far more features than core signatures,
-and it is not experimental. The downside is that you need a C compiler if you
-want to install it from source, as it uses Perl's
-[keyword plugin](https://perldoc.perl.org/perlapi#PL_keyword_plugin) API in order to work reliably
-without requiring a source filter.
+versions starting from v5.14 and it offers far more features than core
+signatures. The downside is that you need a C compiler if you want to install
+it from source, as it uses Perl's [keyword plugin](https://perldoc.perl.org/perlapi#PL_keyword_plugin)
+API in order to work reliably without requiring a source filter.
 
 ## Default functionality
 
@@ -149,14 +148,14 @@ variable as the first parameter (which is removed from `@_`):
 
 ```perl
 method foo($x, $y) {
-   ...
+    ...
 }
 
 # works like:
 sub foo :method {
-   my $self = shift;
-   my ($x, $y) = @_;
-   ...
+    my $self = shift;
+    my ($x, $y) = @_;
+    ...
 }
 ```
 
@@ -185,32 +184,44 @@ method from_env($class:) {
 
 ### Default arguments
 
-(Most of the following examples use `fun` only. Unless specified otherwise
+(Most of the following examples use `fun` only. Unless specified otherwise,
 everything applies to `method` as well.)
 
 You can make some arguments optional by giving them default values.
 
 ```perl
-fun passthrough($x, $y = 42, $z = []) {
+fun passthrough($x, $y //= 42, $z = []) {
     return ($x, $y, $z);
 }
 ```
 
-In this example the first parameter `$x` is required but `$y` and `$z` are
+In this example the first parameter `$x` is required, but `$y` and `$z` are
 optional.
 
 ```perl
 passthrough('a', 'b', 'c', 'd')   # error: Too many arguments
 passthrough('a', 'b', 'c')        # returns ('a', 'b', 'c')
+passthrough('a', 'b', undef)      # returns ('a', 'b', undef)
 passthrough('a', 'b')             # returns ('a', 'b', [])
-passthrough('a', undef)           # returns ('a', undef, [])
+passthrough('a', undef)           # returns ('a', 42, [])
+passthrough('a', undef, 'c')      # returns ('a', 42, 'c')
 passthrough('a')                  # returns ('a', 42, [])
 passthrough()                     # error: Too few arguments
 ```
 
-Default arguments are evaluated whenever a corresponding real argument is not
-passed in by the caller. `undef` counts as a real argument; you can't use the
-default value for parameter _N_ and still pass a value for parameter _N+1_.
+Default arguments specified with `=` are evaluated whenever a corresponding
+real argument is not passed in by the caller. `undef` counts as a real
+argument; you can't use the default value for parameter _N_ and still pass a
+value for parameter _N+1_.
+
+Default arguments specified with `//=` are evaluated whenever a corresponding
+real argument is not passed in or when that argument is `undef`. That is,
+passing in `undef` to a `//=` parameter lets you explicitly request the
+default.
+
+Both `=` and `//=` default arguments can be mixed freely in the same
+parameter list.
+
 `$z = []` means each call that doesn't pass a third argument gets a new array
 reference (they're not shared between calls).
 
@@ -231,7 +242,7 @@ Preceding parameters are in scope for default arguments:
 
 ```perl
 fun dynamic_default($x, $y = length $x) {
-   return "$x/$y";
+    return "$x/$y";
 }
 
 dynamic_default("hello", 0)  # returns "hello/0"
@@ -278,7 +289,7 @@ You can also use a hash, but then the number of arguments has to be even.
 ### Named parameters
 
 As soon as your functions take more than three arguments, it gets harder to
-keep track of what argument means what:
+keep track of which argument means what:
 
 ```perl
 foo($handle, $w, $h * 2 + 15, 1, 24, 'icon');
@@ -329,14 +340,26 @@ create_point(
 Case 1, Case 2, and Case 3 all mean the same thing.
 
 As with positional parameters, you can make named parameters optional by
-supplying a [default argument](#default-arguments):
+supplying a [default argument](#default-arguments) with `=` or `//=`:
 
 ```perl
+# use default if no 'color' key exists in the argument list
 fun create_point(:$x, :$y, :$color = 0x00_00_00) {
     ...
 }
 
 create_point(x => 0, y => 64)  # color => 0x00_00_00 is implicit
+```
+
+Or:
+
+```perl
+# use default if 'color' value is not defined
+fun create_point(:$x, :$y, :$color //= 0x00_00_00) {
+    ...
+}
+
+create_point(x => 0, y => 64, color => undef)  # color => 0x00_00_00 is implicit
 ```
 
 If you want to accept any key/value pairs, you can add a
@@ -361,24 +384,24 @@ accept_all_keys(
 # );
 ```
 
-You can combine positional and named parameters but all positional parameters
+You can combine positional and named parameters, but all positional parameters
 have to come first:
 
 ```perl
 method output(
-   $data,
-   :$handle       = $self->output_handle,
-   :$separator    = $self->separator,
-   :$quote_fields = 0,
+    $data,
+    :$handle       = $self->output_handle,
+    :$separator    = $self->separator,
+    :$quote_fields = 0,
 ) {
     ...
 }
 
 $obj->output(["greetings", "from", "space"]);
 $obj->output(
-   ["a", "random", "example"],
-   quote_fields => 1,
-   separator    => ";",
+    ["a", "random", "example"],
+    quote_fields => 1,
+    separator    => ";",
 );
 ```
 
@@ -405,8 +428,8 @@ with callbacks or methods that don't need all of the arguments they get.
 
 You can use unnamed [slurpy parameters](#slurpyrest-parameters) to accept and
 ignore all following arguments. In particular, `fun foo(@)` is a lot like
-`sub foo` in that it accepts and ignores any number of arguments (apart from
-leaving them in `@_`).
+`sub foo` in that it accepts and ignores any number of arguments (and just
+leaves them in `@_`).
 
 ### Type constraints
 
@@ -424,12 +447,23 @@ function. There are two ways to do this.
     ```
 
     In this variant you simply put the name of a type in front of a parameter. The
-    way this works is that `Function::Parameters` parses the type using very
-    simple rules:
+    way this works is that `Function::Parameters` parses the type using a
+    restrictive set of rules:
 
-    - A _type_ is a sequence of one or more simple types, separated by `|` (pipe).
-    `|` is meant for union types (e.g. `Str | ArrayRef[Int]` would accept either
-    a string or reference to an array of integers).
+    - A _type_ is a simplified expression that only uses `(`, `)`, `|`, `&`,
+    `/`, `~`, and simple types, except the first character cannot be `(` (see
+    syntax #2 below). The relative operator precedence is as in Perl; see
+    [perlop](https://perldoc.perl.org/perlop).
+    - `(` `)` can be used for grouping, but have no effect otherwise.
+    - `~` (highest precedence) is a unary prefix operator meant for complementary
+    types (as provided by [Type::Tiny](https://metacpan.org/pod/Type%3A%3ATiny)).
+    - `/` is a binary infix operator meant for alternative types (as provided by
+    [Type::Tiny](https://metacpan.org/pod/Type%3A%3ATiny)).
+    - `&` is a binary infix operator meant for intersection types (as provided by
+    [Type::Tiny](https://metacpan.org/pod/Type%3A%3ATiny)).
+    - `|` (lowest precedence) is a binary infix operator meant for union types (as
+    provided by basically everyone doing type constraints, including [Moose](https://metacpan.org/pod/Moose) (see
+    ["TYPE UNIONS" in Moose::Manual::Types](https://metacpan.org/pod/Moose%3A%3AManual%3A%3ATypes#TYPE-UNIONS) and [MooseX::Types](https://metacpan.org/pod/MooseX%3A%3ATypes)) and [Type::Tiny](https://metacpan.org/pod/Type%3A%3ATiny)).
     - A _simple type_ is an identifier, optionally followed by a list of one or more
     types, separated by `,` (comma), enclosed in `[` `]` (square brackets).
 
@@ -440,9 +474,8 @@ function. There are two ways to do this.
     being processed). In other words, `Function::Parameters` doesn't support any
     types natively; it simply uses whatever is in scope.
 
-    You don't have to define these functions yourself. You can also import them
-    from a type library such as [`Types::Standard`](https://metacpan.org/pod/Types%3A%3AStandard) or
-    [`MooseX::Types::Moose`](https://metacpan.org/pod/MooseX%3A%3ATypes%3A%3AMoose).
+    You don't have to define these type constraints yourself; you can import them
+    from a type library such as [Types::Standard](https://metacpan.org/pod/Types%3A%3AStandard) or [MooseX::Types::Moose](https://metacpan.org/pod/MooseX%3A%3ATypes%3A%3AMoose).
 
     The only requirement is that the returned value (here referred to as `$tc`,
     for "type constraint") is an object that provides `$tc->check($value)`
@@ -450,6 +483,17 @@ function. There are two ways to do this.
     whether a particular value is valid; it should return a true or false value.
     `get_message` is called on values that fail the `check` test; it should
     return a string that describes the error.
+
+    Type constraints can optionally support two additional features:
+
+    - Coercion. If the `$tc->has_coercion` method exists and returns a true
+    value, every incoming argument is automatically transformed by
+    `$value = $tc->coerce($value)` before being type-checked.
+    - Inlining. If the `$tc->can_be_inlined` method exists and returns a true
+    value, the call to `$tc->check($value)` is automatically replaced by the
+    code returned (in string form) from `$tc->inline_check('$value')`. (For
+    compatibility with [Moose](https://metacpan.org/pod/Moose), if `$tc` has no `inline_check` method,
+    `$tc->_inline_check('$value')` is used instead.)
 
 2. <!-- -->
 
@@ -472,9 +516,8 @@ function. There are two ways to do this.
 
 ### Method modifiers
 
-`Function::Parameters` has support for method modifiers as provided by
-[`Moo`](https://metacpan.org/pod/Moo) or [`Moose`](https://metacpan.org/pod/Moose). They're not exported by default, so you
-have to say
+`Function::Parameters` has support for method modifiers as provided by [Moo](https://metacpan.org/pod/Moo)
+or [Moose](https://metacpan.org/pod/Moose). They're not exported by default, so you have to say
 
 ```perl
 use Function::Parameters qw(:modifiers);
@@ -575,7 +618,7 @@ functions using the usual syntax:
 
 ```perl
 fun deref($x) :lvalue {
-   ${$x}
+    ${$x}
 }
 
 my $silly;
@@ -598,8 +641,7 @@ at runtime. It is not exported, so you have to call it by its full name.
 
 It takes a reference to a function and returns either `undef` (if it knows
 nothing about the function) or an object that describes the parameter list of
-the given function. See
-[`Function::Parameters::Info`](https://metacpan.org/pod/Function%3A%3AParameters%3A%3AInfo) for details.
+the given function. See [Function::Parameters::Info](https://metacpan.org/pod/Function%3A%3AParameters%3A%3AInfo) for details.
 
 ## Customizing and extending
 
@@ -715,16 +757,27 @@ available configuration options are:
     `get_message` is called on values that fail the `check` test; it should
     return a string that describes the error.
 
+    Type constraints can optionally support two additional features:
+
+    - Coercion. If the `$tc->has_coercion` method exists and returns a true
+    value, every incoming argument is automatically transformed by
+    `$value = $tc->coerce($value)` before being type-checked.
+    - Inlining. If the `$tc->can_be_inlined` method exists and returns a true
+    value, the call to `$tc->check($value)` is automatically replaced by the
+    code returned (in string form) from `$tc->inline_check('$value')`. (For
+    compatibility with [Moose](https://metacpan.org/pod/Moose), if `$tc` has no `inline_check` method,
+    `$tc->_inline_check('$value')` is used instead.)
+
     Instead of a code reference you can also specify one of two strings.
 
     `'auto'` stands for a built-in type reifier that treats identifiers as
-    subroutine names, `[` `]` as an array reference, and `|` as bitwise or. In
-    other words, it parses and executes type constraints (mostly) as if they had
-    been Perl source code.
+    subroutine names, `[` `]` as an array reference, `~` as bitwise complement,
+    `/` as division, `&` as bitwise and, and `|` as bitwise or. In other words,
+    it parses and executes type constraints (mostly) as if they had been Perl
+    source code.
 
     `'moose'` stands for a built-in type reifier that loads
-    [`Moose::Util::TypeConstraints`](https://metacpan.org/pod/Moose%3A%3AUtil%3A%3ATypeConstraints) and just
-    forwards to
+    [Moose::Util::TypeConstraints](https://metacpan.org/pod/Moose%3A%3AUtil%3A%3ATypeConstraints) and just forwards to
     [`find_or_create_isa_type_constraint`](https://metacpan.org/pod/Moose%3A%3AUtil%3A%3ATypeConstraints#find_or_create_isa_type_constraint-type_name).
 
     Default: `'auto'`
@@ -1170,7 +1223,7 @@ if you meant for the function to take no arguments, write `fun foo() { ... }`.
 - There used to be a shorthand syntax for prototypes: Using `:(...)` (i.e. an
 attribute with an empty name) as the first attribute was equivalent to
 `:prototype(...)`. This syntax has been removed.
-- The default type reifier used to be hardcoded to use [`Moose`](https://metacpan.org/pod/Moose) (as in
+- The default type reifier used to be hardcoded to use [Moose](https://metacpan.org/pod/Moose) (as in
 `reify_type => 'moose'`). This has been changed to use whatever type
 functions are in scope (`reify_type => 'auto'`).
 - Type reifiers used to see the wrong package in
@@ -1201,7 +1254,7 @@ wasn't so much fixed as worked around in `Function::Parameters`.)
 
 # DIAGNOSTICS
 
-- Function::Parameters: $^H{'Function::Parameters/config'} is not a reference; skipping: HASH(...)
+- Function::Parameters: $^H{'Function::Parameters/config'} is not a reference; skipping: HASH(%s)
 
     Function::Parameters relies on being able to put references in `%^H` (the
     lexical compilation context) and pull them out again at compile time. You may
@@ -1209,7 +1262,8 @@ wasn't so much fixed as worked around in `Function::Parameters`.)
     string. In this case, Function::Parameters gives up and automatically disables
     itself, as if by `no Function::Parameters;`.
 
-    You can disable the warning by saying `no warnings 'Function::Parameters';`.
+    You can disable the warning in a given scope by saying
+    `no warnings 'Function::Parameters'`; see [warnings](https://metacpan.org/pod/warnings).
 
     Currently the only case I'm aware of where this happens with core perl is
     embedded code blocks in regexes that are compiled at runtime (in a scope where
@@ -1225,8 +1279,8 @@ wasn't so much fixed as worked around in `Function::Parameters`.)
     my $regex = qr/$code/;
     ```
 
-    In my opinion, this is a bug in perl: [GH
-    \#20950](https://github.com/Perl/perl5/issues/20950).
+    In my opinion, this is a bug in perl:
+    [GH #20950](https://github.com/Perl/perl5/issues/20950).
 
     This case used to be a hard error in versions 2.001005 and before of this
     module.

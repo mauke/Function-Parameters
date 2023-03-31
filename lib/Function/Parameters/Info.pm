@@ -91,24 +91,24 @@ Function::Parameters::Info - Information about parameter lists
 
 =head1 SYNOPSIS
 
-  use Function::Parameters;
-  
-  fun foo($x, $y, :$hello, :$world = undef) {}
-  
-  my $info = Function::Parameters::info \&foo;
-  my @p0 = $info->invocants;            # ()
-  my @p1 = $info->positional_required;  # ('$x', '$y')
-  my @p2 = $info->positional_optional;  # ()
-  my @p3 = $info->named_required;       # ('$hello')
-  my @p4 = $info->named_optional;       # ('$world')
-  my $p5 = $info->slurpy;               # undef
-  my $min = $info->args_min;  # 4
-  my $max = $info->args_max;  # inf
-  
-  my @invocants = Function::Parameters::info(method () { 42 })->invocants;
-  # ('$self')
-  
-  my $slurpy = Function::Parameters::info(fun (@) {})->slurpy;  # '@'
+    use Function::Parameters;
+
+    fun foo($x, $y, :$hello, :$world = undef) {}
+
+    my $info = Function::Parameters::info \&foo;
+    my @p0 = $info->invocants;            # ()
+    my @p1 = $info->positional_required;  # ('$x', '$y')
+    my @p2 = $info->positional_optional;  # ()
+    my @p3 = $info->named_required;       # ('$hello')
+    my @p4 = $info->named_optional;       # ('$world')
+    my $p5 = $info->slurpy;               # undef
+    my $min = $info->args_min;  # 4
+    my $max = $info->args_max;  # inf
+
+    my @invocants = Function::Parameters::info(method () { 42 })->invocants;
+    # ('$self')
+
+    my $slurpy = Function::Parameters::info(fun (@) {})->slurpy;  # '@'
 
 =head1 DESCRIPTION
 
