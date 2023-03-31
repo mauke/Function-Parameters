@@ -1,5 +1,25 @@
 Revision history for Function-Parameters
 
+2.002     2023-04-01
+          - Provide //= for default arguments that are also used when the
+            caller passes in undef.
+          - Provide more type combinators in parameter declarations: In
+            addition to | (union types), now ~ & / are also supported (for
+            complement types, intersection types, and alternative types,
+            respectively).
+          - Enable type coercions. If a parameter has a declared type and that
+            type supports coercions ($type->has_coercion returns true), call
+            its ->coerce($value) method to transform arguments before type
+            checking.
+          - Enable inline type checks. If a parameter has a declared type and
+            that type supports inlining ($type->can_be_inlined returns true),
+            its inline code (as provided by ->inline_check('$value')) is baked
+            into the function definition instead of a call to ->check($value).
+            This may speed up type checks.
+          - Move a big chunk of tests to xt/ (author testing only).
+          - Remove xt/ from the distribution.
+          - Enable parallel testing by default (with -j4).
+
 2.001006  2023-03-27
           - Work around perl core issue GH#20950 (use re "eval" doesn't capture
             lexical %^H environment like eval() does and stringifies it
@@ -259,5 +279,5 @@ Revision history for Function-Parameters
           - provide import_into so you can mess with other packages
 
 0.03      2009-12-14
-        First version, released on an unsuspecting world.
+          First version, released on an unsuspecting world.
 
