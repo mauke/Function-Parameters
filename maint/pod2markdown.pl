@@ -24,6 +24,19 @@ BEGIN {
         $self
     }
 
+    sub format_perldoc_url {
+        my $self = shift;
+        my ($name, $section) = @_;
+        my $prev_url_prefix;
+        if (defined $name && $name =~ /\Aperl[a-z0-9]*\z/) {
+            $prev_url_prefix = $self->perldoc_url_prefix;
+            $self->perldoc_url_prefix('https://perldoc.perl.org/');
+        }
+        my $url = $self->SUPER::format_perldoc_url($name, $section);
+        $self->perldoc_url_prefix($prev_url_prefix) if defined $prev_url_prefix;
+        $url
+    }
+
     sub start_for {
         my $self = shift;
         my ($attr) = @_;

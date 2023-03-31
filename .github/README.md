@@ -57,7 +57,7 @@ feature available in perl v5.20+. However, this module supports all perl
 versions starting from v5.14, it offers far more features than core signatures,
 and it is not experimental. The downside is that you need a C compiler if you
 want to install it from source, as it uses Perl's
-[keyword plugin](https://metacpan.org/pod/perlapi#PL_keyword_plugin) API in order to work reliably
+[keyword plugin](https://perldoc.perl.org/perlapi#PL_keyword_plugin) API in order to work reliably
 without requiring a source filter.
 
 ## Default functionality
@@ -570,7 +570,7 @@ performed at runtime.
 
 ### Prototypes and attributes
 
-You can specify attributes (see ["Subroutine Attributes" in perlsub](https://metacpan.org/pod/perlsub#Subroutine-Attributes)) for your
+You can specify attributes (see ["Subroutine Attributes" in perlsub](https://perldoc.perl.org/perlsub#Subroutine-Attributes)) for your
 functions using the usual syntax:
 
 ```perl
@@ -582,7 +582,7 @@ my $silly;
 deref(\$silly) = 42;
 ```
 
-To specify a prototype (see ["Prototypes" in perlsub](https://metacpan.org/pod/perlsub#Prototypes)), use the `prototype`
+To specify a prototype (see ["Prototypes" in perlsub](https://perldoc.perl.org/perlsub#Prototypes)), use the `prototype`
 attribute:
 
 ```perl
@@ -706,7 +706,7 @@ available configuration options are:
     It is called once for each type constraint that doesn't use the `( EXPR )`
     syntax, with one argument, the text of the type in the parameter list (e.g.
     `'ArrayRef[Int]'`). The package the function declaration is in is available
-    through [`caller`](https://metacpan.org/pod/perlfunc#caller-EXPR).
+    through [`caller`](https://perldoc.perl.org/perlfunc#caller-EXPR).
 
     The only requirement is that the returned value (here referred to as `$tc`,
     for "type constraint") is an object that provides `$tc->check($value)`
@@ -734,7 +734,7 @@ available configuration options are:
     (boolean) Whether functions declared with this keyword should be installed into
     the symbol table at runtime. If false, named functions are defined (or their
     [`install_sub`](#install_sub) is invoked if specified) immediately after
-    their declaration is parsed (as with [`sub`](https://metacpan.org/pod/perlfunc#sub-NAME-BLOCK)). If
+    their declaration is parsed (as with [`sub`](https://perldoc.perl.org/perlfunc#sub-NAME-BLOCK)). If
     true, function declarations become normal statements that only take effect at
     runtime (similar to `*foo = sub { ... };` or
     `$install_sub->('foo', sub { ... });`, respectively).
@@ -1174,7 +1174,7 @@ attribute with an empty name) as the first attribute was equivalent to
 `reify_type => 'moose'`). This has been changed to use whatever type
 functions are in scope (`reify_type => 'auto'`).
 - Type reifiers used to see the wrong package in
-[`caller`](https://metacpan.org/pod/perlfunc#caller-EXPR). As a workaround the correct calling package
+[`caller`](https://perldoc.perl.org/perlfunc#caller-EXPR). As a workaround the correct calling package
 used to be passed as a second argument. This problem has been fixed and the
 second argument has been removed. (Technically this is a core perl bug
 ([GH #15597](https://github.com/Perl/perl5/issues/15597)) that
@@ -1234,7 +1234,7 @@ wasn't so much fixed as worked around in `Function::Parameters`.)
 # SUPPORT AND DOCUMENTATION
 
 After installing, you can find documentation for this module with the
-[`perldoc`](https://metacpan.org/pod/perldoc) command.
+[`perldoc`](https://perldoc.perl.org/perldoc) command.
 
 ```sh
 perldoc Function::Parameters
