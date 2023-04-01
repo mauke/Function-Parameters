@@ -6,6 +6,14 @@ use File::Find ();
 
 sub MY::postamble {
     my ($self, %args) = @_;
+    if (my $harness_options = delete $args{HARNESS_OPTIONS}) {
+        my $value = join ':', @$harness_options;
+        if ($self->is_make_type('nmake')) {
+            $args{text} .= "!if [set HARNESS_OPTIONS=$value]\n!endif\n";
+        } else {
+            $args{text} .= "export HARNESS_OPTIONS = $value\n";
+        }
+    }
     $args{text} || ''
 }
 
@@ -119,7 +127,7 @@ my %settings = %{do "./$settings_file" or die "Internal error: can't do $setting
     }
 
     if (my $harness_options = delete $settings{HARNESS_OPTIONS}) {
-        $settings{postamble}{text} .= 'export HARNESS_OPTIONS := ' . join(':', @$harness_options) . "\n";
+        $settings{postamble}{HARNESS_OPTIONS} = $harness_options;
     }
 }
 
