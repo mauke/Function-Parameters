@@ -1,5 +1,13 @@
 Revision history for Function-Parameters
 
+2.002002  2023-04-01
+          - Work around old versions of ExtUtils::MakeMaker not providing
+            is_make_type(), whose version dependency is undocumented (sigh).
+          - Restrict GNU syntax for exporting variables to type 'gmake'; should
+            fix building on BSD, Solaris, etc.
+          - Declare dependency on ExtUtils::MakeMaker 7+ and remove
+            compatibility code for older versions.
+
 2.002001  2023-04-01
           - Fix (hopefully) Windows builds using nmake.exe.
 
