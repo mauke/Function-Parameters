@@ -51,10 +51,8 @@ my %settings = %{do "./$settings_file" or die "Internal error: can't do $setting
     $settings{CONFIGURE_REQUIRES}{warnings}              ||= 0;
     $settings{CONFIGURE_REQUIRES}{'File::Find'}          ||= 0;
     $settings{CONFIGURE_REQUIRES}{'File::Spec'}          ||= 0;
-    for my $stage (qw(CONFIGURE BUILD)) {
-        for ($settings{$stage . '_REQUIRES'}{'ExtUtils::MakeMaker'}) {
-            $_ = '7.0' if !$_ || $_ < 7;
-        }
+    for ($settings{CONFIGURE_REQUIRES}{'ExtUtils::MakeMaker'}) {
+        $_ = '7.0' if !$_ || $_ < 7;
     }
 
     my $module_file = $settings{NAME};
