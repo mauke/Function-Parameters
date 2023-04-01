@@ -45,7 +45,7 @@ jobs:
         uses: shogo82148/actions-setup-perl@v1
         with:
           perl-version: ${{ matrix.perl-version }}
-      - run: cpanm --installdeps --with-develop --notest .
+      - run: cpanm --notest ExtUtils::MakeMaker
       - run: cpanm --installdeps --with-develop --notest .
       - run: perl Makefile.PL
       - run: make test
