@@ -1,5 +1,8 @@
 Revision history for Function-Parameters
 
+2.002001  2023-04-01
+          - Fix (hopefully) Windows builds using nmake.exe.
+
 2.002     2023-04-01
           - Provide //= for default arguments that are also used when the
             caller passes in undef.
