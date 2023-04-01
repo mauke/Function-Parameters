@@ -6,12 +6,12 @@ use File::Find ();
 
 sub MY::postamble {
     my ($self, %args) = @_;
-    if (my $harness_options = delete $args{HARNESS_OPTIONS}) {
+    if ((my $harness_options = delete $args{HARNESS_OPTIONS}) && $self->can('is_make_type')) {
         my $value = join ':', @$harness_options;
-        if ($self->is_make_type('nmake')) {
+        if ($self->is_make_type('gmake')) {
+            $args{text} .= "export HARNESS_OPTIONS := $value\n";
+        } elsif ($self->is_make_type('nmake')) {
             $args{text} .= "!if [set HARNESS_OPTIONS=$value]\n!endif\n";
-        } else {
-            $args{text} .= "export HARNESS_OPTIONS = $value\n";
         }
     }
     $args{text} || ''
