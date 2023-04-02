@@ -25,7 +25,7 @@ jobs:
 
     env:
       cachepan: cachepan
-      locallib: local
+      locallib: cachelocal
 
     steps:
       - uses: actions/checkout@v3
@@ -47,7 +47,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.locallib }}
-          key: local-lib-${{ matrix.os }}-${{ hashFiles('perl-fingerprint', 'Makefile_PL_settings*.plx') }}
+          key: xlocal-lib-${{ matrix.os }}-${{ hashFiles('perl-fingerprint', 'Makefile_PL_settings*.plx') }}
       - run: cpanm --mirror "file://${{ github.workspace }}/${{ env.cachepan }}" --mirror https://www.cpan.org/ --save-dist "${{ github.workspace }}/${{ env.cachepan }}" -l "${{ env.locallib }}" --notest ExtUtils::MakeMaker
       - run: cpanm --mirror "file://${{ github.workspace }}/${{ env.cachepan }}" --mirror https://www.cpan.org/ --save-dist "${{ github.workspace }}/${{ env.cachepan }}" -l "${{ env.locallib }}" --notest --installdeps --with-develop .
       - run: perl Makefile.PL
