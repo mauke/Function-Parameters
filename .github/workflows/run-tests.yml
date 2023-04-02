@@ -1,3 +1,4 @@
+# vi: set ft=yaml:
 name: "run tests"
 on:
   [push, pull_request]
@@ -22,13 +23,32 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: "perl v${{ matrix.perl-version }} on ${{ matrix.os }}"
 
+    env:
+      cachepan: cachepan
+      locallib: local
+
     steps:
       - uses: actions/checkout@v3
       - name: "Set up perl"
         uses: shogo82148/actions-setup-perl@v1
         with:
           perl-version: ${{ matrix.perl-version }}
-      - run: cpanm --notest ExtUtils::MakeMaker
-      - run: cpanm --installdeps --with-develop --notest .
+      - name: "Create perl fingerprint file"
+        run: perl -MConfig -wE 'say for sprintf("%vd", $^V), Config::bincompat_options' > perl-fingerprint
+      - name: "Cache CPAN fragments"
+        uses: actions/cache@v3
+        with:
+          enableCrossOsArchive: true
+          path: ${{ env.cachepan }}
+          key: cpan-dists-${{ github.run_id }}
+          restore-keys: |
+            cpan-dists-
+      - name: "Cache local dependencies"
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.locallib }}
+          key: local-lib-${{ matrix.os }}-${{ hashFiles('perl-fingerprint', 'Makefile_PL_settings*.plx') }}
+      - run: cpanm --mirror "file://$GITHUB_WORKSPACE/$cachepan" --mirror https://www.cpan.org/ --save-dist "$GITHUB_WORKSPACE/$cachepan" --notest ExtUtils::MakeMaker
+      - run: cpanm --mirror "file://$GITHUB_WORKSPACE/$cachepan" --mirror https://www.cpan.org/ --save-dist "$GITHUB_WORKSPACE/$cachepan" --installdeps --with-develop --notest .
       - run: perl Makefile.PL
       - run: make test
