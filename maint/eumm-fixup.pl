@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 
-use ExtUtils::MakeMaker 6.48 ();
+use ExtUtils::MakeMaker 7 ();
 use Config ();
 
 sub {
@@ -70,10 +70,19 @@ __EOT__
         }
     }
 
+    my $perl_ver_max = do {
+        my $v = sprintf '%vd', $^V;
+        $v =~ /\A5\.(\d{1,3})\./ or die "Can't parse \$^V '$v'";
+        $1
+    };
+    my $perl_ver_min = 6;
+
     my $perl_pattern = '*';
     if ($opt->{MIN_PERL_VERSION}) {
         my ($ver, $subver) = $opt->{MIN_PERL_VERSION} =~ /\A5\.(\d{1,3})\.(\d{1,3})\z/
             or die "Can't parse MIN_PERL_VERSION '$opt->{MIN_PERL_VERSION}'";
+
+        $perl_ver_min = $ver;
 
         my $genverpat = sub {
             my ($num, $width) = @_;
@@ -154,7 +163,16 @@ $(DISTVNAME)/README : lib/$(subst ::,/,$(NAME)).pm create_distdir
 	$(TEST_F) '$@' || ( $(PERLRUN) maint/pod2readme.pl < '$<' > '$@.~tmp~' && $(MV) -- '$@.~tmp~' '$@' && cd '$(DISTVNAME)' && $(PERLRUN) -MExtUtils::Manifest=maniadd -e 'maniadd { "README" => "generated from $(NAME) POD (added by maint/eumm-fixup.pl)" }' )
 
 __EOT__
-    $opt->{postamble}{text} .= $readme
+
+    my $github_tests = <<"__EOT__";
+pure_all :: .github/workflows/run-tests.yml
+
+.github/workflows/%.yml : .github/workflows/%.yml.tmpl  maint/tm.pl
+	\$(PERLRUN) maint/tm.pl '\$<' '$perl_ver_min' '$perl_ver_max'
+
+__EOT__
+
+    $opt->{postamble}{text} .= $readme . $github_tests
         unless $^O eq 'MSWin32';
     for ($opt->{DEVELOP_REQUIRES}{'Pod::Markdown'}) {
         $_ = '3.005' if !$_ || $_ < '3.005';
