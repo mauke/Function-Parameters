@@ -35,6 +35,7 @@ jobs:
           perl-version: ${{ matrix.perl-version }}
       - name: "Create perl fingerprint file"
         run: perl -MConfig -wE 'say for sprintf("%vd", $^V), Config::bincompat_options' > perl-fingerprint
+        shell: bash
       - name: "Cache CPAN fragments"
         uses: actions/cache@v3
         with:
@@ -50,6 +51,7 @@ jobs:
           key: xlocal-lib-${{ matrix.os }}-${{ hashFiles('perl-fingerprint', 'Makefile_PL_settings*.plx') }}
       - name: "Activate local lib directory"
         run: echo 'PERL5LIB=${{ github.workspace }}/${{ env.locallib }}/lib/perl5' >> $GITHUB_ENV
+        shell: bash
       - run: cpanm --mirror "file://${{ github.workspace }}/${{ env.cachepan }}" --mirror https://www.cpan.org/ --save-dist "${{ github.workspace }}/${{ env.cachepan }}" -l "${{ env.locallib }}" --notest ExtUtils::MakeMaker
       - run: cpanm --mirror "file://${{ github.workspace }}/${{ env.cachepan }}" --mirror https://www.cpan.org/ --save-dist "${{ github.workspace }}/${{ env.cachepan }}" -l "${{ env.locallib }}" --notest --installdeps --with-develop .
       - run: perl Makefile.PL
