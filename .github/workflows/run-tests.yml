@@ -51,4 +51,8 @@ jobs:
       - run: cpanm --mirror "file://${{ github.workspace }}/${{ env.cachepan }}" --mirror https://www.cpan.org/ --save-dist "${{ github.workspace }}/${{ env.cachepan }}" -l "${{ env.locallib }}" --notest ExtUtils::MakeMaker
       - run: cpanm --mirror "file://${{ github.workspace }}/${{ env.cachepan }}" --mirror https://www.cpan.org/ --save-dist "${{ github.workspace }}/${{ env.cachepan }}" -l "${{ env.locallib }}" --notest --installdeps --with-develop .
       - run: perl Makefile.PL
+        env:
+          PERL5LIB: ${{ github.workspace }}/${{ env.locallib }}/lib/perl5
       - run: make test
+        env:
+          PERL5LIB: ${{ github.workspace }}/${{ env.locallib }}/lib/perl5
