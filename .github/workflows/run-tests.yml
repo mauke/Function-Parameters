@@ -33,6 +33,7 @@ jobs:
         uses: shogo82148/actions-setup-perl@v1
         with:
           perl-version: ${{ matrix.perl-version }}
+          enable-modules-cache: false
       - name: "Create perl fingerprint file"
         run: perl -MConfig -wE 'say for sprintf("%vd", $^V), Config::bincompat_options' > perl-fingerprint
       - name: "Cache CPAN fragments"
