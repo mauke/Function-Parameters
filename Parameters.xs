@@ -107,6 +107,19 @@ See http://dev.perl.org/licenses/ for more information.
 
 WARNINGS_ENABLE
 
+#ifdef newSVpvf
+ #undef newSVpvf
+#endif
+#define newSVpvf @"perlapi says Perl_newSVpvf must be called explicitly (with aTHX_)"
+#ifdef warner
+ #undef warner
+#endif
+#define warner @"perlapi says Perl_warner must be called explicitly (with aTHX_)"
+#ifdef croak
+ #undef croak
+#endif
+#define croak @"perlapi says Perl_croak must be called explicitly (with aTHX_)"
+
 #define HAVE_BUG_GH_15557 (HAVE_PERL_VERSION(5, 21, 7) && !HAVE_PERL_VERSION(5, 25, 5))
 
 #define HINTK_CONFIG MY_PKG "/config"
@@ -466,7 +479,8 @@ static void my_check_prototype(pTHX_ Sentinel sen, const SV *declarator, SV *pro
     /* check for bad characters */
     if (strspn(start, "$@%*;[]&\\_+") != len) {
         SV *dsv = sentinel_mortalize(sen, newSVpvs(""));
-        warner(
+        Perl_warner(
+            aTHX_
             packWARN(WARN_ILLEGALPROTO),
             "Illegal character in prototype for %"SVf" : %s",
             SVfARG(declarator),
@@ -487,7 +501,8 @@ static void my_check_prototype(pTHX_ Sentinel sen, const SV *declarator, SV *pro
     for (r = start; r < end; r++) {
         switch (*r) {
             default:
-                warner(
+                Perl_warner(
+                    aTHX_
                     packWARN(WARN_ILLEGALPROTO),
                     "Illegal character in prototype for %"SVf" : %s",
                     SVfARG(declarator), r
@@ -496,7 +511,8 @@ static void my_check_prototype(pTHX_ Sentinel sen, const SV *declarator, SV *pro
 
             case '_':
                 if (r[1] && !strchr(";@%", r[1])) {
-                    warner(
+                    Perl_warner(
+                        aTHX_
                         packWARN(WARN_ILLEGALPROTO),
                         "Illegal character after '_' in prototype for %"SVf" : %s",
                         SVfARG(declarator), r + 1
@@ -508,7 +524,8 @@ static void my_check_prototype(pTHX_ Sentinel sen, const SV *declarator, SV *pro
             case '@':
             case '%':
                 if (r[1]) {
-                    warner(
+                    Perl_warner(
+                        aTHX_
                         packWARN(WARN_ILLEGALPROTO),
                         "prototype after '%c' for %"SVf": %s",
                         *r, SVfARG(declarator), r + 1
@@ -533,7 +550,8 @@ static void my_check_prototype(pTHX_ Sentinel sen, const SV *declarator, SV *pro
                         break;
                     }
                 }
-                warner(
+                Perl_warner(
+                    aTHX_
                     packWARN(WARN_ILLEGALPROTO),
                     "Illegal character after '\\' in prototype for %"SVf" : %s",
                     SVfARG(declarator), r
@@ -998,21 +1016,53 @@ static OP *mktypecheckv(pTHX_ Sentinel sen, const SV *declarator, size_t nr, SV 
 
         ENTER;
         SAVETMPS;
+        {
+            SV *virt_file = sentinel_mortalize(sen, Perl_newSVpvf(aTHX_ "(inline_check:%s:%lu)", CopFILE(PL_curcop), (unsigned long)CopLINE(PL_curcop)));
+            SAVECOPLINE(PL_curcop);
+            SAVECOPFILE_FREE(PL_curcop);
 
-        SAVECOPLINE(PL_curcop);
+            {
+                /* local variable because otherwise 5.30.0-DEBUGGING fails under -Werror=shadow */
+                char *ptr = SvPV_nolen(virt_file);
+                CopFILE_set(PL_curcop, ptr);
+            }
+            CopLINE_set(PL_curcop, 1);
 
-        lex_start(src, NULL, 0);
-        chk = parse_fullexpr(0);
-        if (PL_parser->error_count) {
-            op_free(chk);
-            chk = NULL;
+            lex_start(src, NULL, 0);
+            chk = parse_fullexpr(0);
+            if (PL_parser->error_count) {
+                op_free(chk);
+                chk = NULL;
+            }
         }
-
         FREETMPS;
         LEAVE;
 
         if (!chk) {
-            Perl_croak(aTHX_ "In %"SVf": inlining type constraint %"SVf" for %s %lu (%"SVf") failed", SVfARG(declarator), SVfARG(type), is_invocant ? "invocant" : "parameter", (unsigned long)nr, SVfARG(name));
+            SV *e = sentinel_mortalize(sen, Perl_newSVpvf(
+                aTHX_ "In %"SVf": inlining type constraint %"SVf" for %s %lu (%"SVf") failed",
+                SVfARG(declarator),
+                SVfARG(type),
+                is_invocant ? "invocant" : "parameter",
+                (unsigned long)nr,
+                SVfARG(name)
+            ));
+            SV *const errsv =
+                PL_errors && SvCUR(PL_errors)
+                    ? PL_errors
+                    : ERRSV;
+            if (SvTRUE(errsv)) {
+                char *ptr;
+                STRLEN len;
+                e = mess_sv(e, TRUE);
+                ptr = SvPV_force(e, len);
+                if (len >= 2 && ptr[len - 1] == '\n' && ptr[len - 2] == '.') {
+                    ptr[len - 2] = ':';
+                    ptr[len - 1] = ' ';
+                }
+                sv_catsv(e, errsv);
+            }
+            croak_sv(e);
         }
 
         if (has_coercion) {
@@ -1073,8 +1123,8 @@ static OP *mktypecheckv(pTHX_ Sentinel sen, const SV *declarator, size_t nr, SV 
     err = mkconstsv(
         aTHX_
         is_invocant == -1
-            ? newSVpvf("In %"SVf": invocant (%"SVf"): ", SVfARG(declarator), SVfARG(name))
-            : newSVpvf("In %"SVf": %s %lu (%"SVf"): ", SVfARG(declarator), is_invocant ? "invocant" : "parameter", (unsigned long)nr, SVfARG(name))
+            ? Perl_newSVpvf(aTHX_ "In %"SVf": invocant (%"SVf"): ", SVfARG(declarator), SVfARG(name))
+            : Perl_newSVpvf(aTHX_ "In %"SVf": %s %lu (%"SVf"): ", SVfARG(declarator), is_invocant ? "invocant" : "parameter", (unsigned long)nr, SVfARG(name))
     );
 
     {
@@ -1770,7 +1820,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
         if (amin > 0) {
             OP *chk, *cond, *err;
 
-            err = mkconstsv(aTHX_ newSVpvf("Too few arguments for %"SVf" (expected %d, got ", SVfARG(declarator), amin));
+            err = mkconstsv(aTHX_ Perl_newSVpvf(aTHX_ "Too few arguments for %"SVf" (expected %d, got ", SVfARG(declarator), amin));
             err = newBINOP(
                 OP_CONCAT, 0,
                 err,
@@ -1796,7 +1846,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
         if (amax >= 0) {
             OP *chk, *cond, *err;
 
-            err = mkconstsv(aTHX_ newSVpvf("Too many arguments for %"SVf" (expected %d, got ", SVfARG(declarator), amax));
+            err = mkconstsv(aTHX_ Perl_newSVpvf(aTHX_ "Too many arguments for %"SVf" (expected %d, got ", SVfARG(declarator), amax));
             err = newBINOP(
                 OP_CONCAT, 0,
                 err,
@@ -1824,7 +1874,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
             OP *chk, *cond, *err;
             const UV fixed = count_positional_params(param_spec);
 
-            err = mkconstsv(aTHX_ newSVpvf("Odd number of paired arguments for %"SVf"", SVfARG(declarator)));
+            err = mkconstsv(aTHX_ Perl_newSVpvf(aTHX_ "Odd number of paired arguments for %"SVf"", SVfARG(declarator)));
 
             err = mkcroak(aTHX_ err);
 
@@ -2123,7 +2173,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                 var = mkhvelem(aTHX_ param_spec->rest_hash, mkconstpv(aTHX_ p + 1, n - 1));
                 var = newUNOP(OP_DELETE, 0, var);
 
-                msg = mkconstsv(aTHX_ newSVpvf("In %"SVf": missing named parameter: %.*s", SVfARG(declarator), (int)(n - 1), p + 1));
+                msg = mkconstsv(aTHX_ Perl_newSVpvf(aTHX_ "In %"SVf": missing named parameter: %.*s", SVfARG(declarator), (int)(n - 1), p + 1));
                 xcroak = mkcroak(aTHX_ msg);
 
                 cond = newUNOP(OP_EXISTS, 0, cond);
@@ -2192,7 +2242,7 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
                 keys = op_convert_list(OP_JOIN, 0, op_prepend_elem(OP_LIST, mkconstpvs(", "), keys));
                 keys->op_targ = pad_alloc(OP_JOIN, SVs_PADTMP);
 
-                msg = mkconstsv(aTHX_ newSVpvf("In %"SVf": no such named parameter: ", SVfARG(declarator)));
+                msg = mkconstsv(aTHX_ Perl_newSVpvf(aTHX_ "In %"SVf": no such named parameter: ", SVfARG(declarator)));
                 msg = newBINOP(OP_CONCAT, 0, msg, keys);
 
                 xcroak = mkcroak(aTHX_ msg);
@@ -2676,7 +2726,7 @@ fp__defun(name, body)
         xcv = GvCV(gv);
         if (xcv) {
             if (!GvCVGEN(gv) && (CvROOT(xcv) || CvXSUB(xcv)) && ckWARN(WARN_REDEFINE)) {
-                warner(packWARN(WARN_REDEFINE), "Subroutine %"SVf" redefined", SVfARG(name));
+                Perl_warner(aTHX_ packWARN(WARN_REDEFINE), "Subroutine %"SVf" redefined", SVfARG(name));
             }
             SvREFCNT_dec_NN(xcv);
         }
