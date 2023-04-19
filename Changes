@@ -1,5 +1,14 @@
 Revision history for Function-Parameters
 
+2.002003  2023-04-19
+          - Fix line numbers after inlined type checks (gh #42).
+            Previously, the code for type checks was inlined literally, so if a
+            particular check took 5 lines of code, all the following line
+            numbers in the source file would be off by 5 (they would be "pushed
+            down" by the interpolated code). These bad line numbers would show
+            up in error messages from Perl (including warn and die) as well as
+            __LINE__ and caller (and thus stack traces).
+
 2.002002  2023-04-01
           - Work around old versions of ExtUtils::MakeMaker not providing
             is_make_type(), whose version dependency is undocumented (sigh).
