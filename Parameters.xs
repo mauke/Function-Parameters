@@ -999,18 +999,21 @@ static OP *mktypecheckv(pTHX_ Sentinel sen, const SV *declarator, size_t nr, SV 
         ENTER;
         SAVETMPS;
 
+        SAVECOPLINE(PL_curcop);
+
         lex_start(src, NULL, 0);
         chk = parse_fullexpr(0);
         if (PL_parser->error_count) {
             op_free(chk);
             chk = NULL;
         }
-        if (!chk) {
-            Perl_croak(aTHX_ "In %"SVf": inlining type constraint %"SVf" for %s %lu (%"SVf") failed", SVfARG(declarator), SVfARG(type), is_invocant ? "invocant" : "parameter", (unsigned long)nr, SVfARG(name));
-        }
 
         FREETMPS;
         LEAVE;
+
+        if (!chk) {
+            Perl_croak(aTHX_ "In %"SVf": inlining type constraint %"SVf" for %s %lu (%"SVf") failed", SVfARG(declarator), SVfARG(type), is_invocant ? "invocant" : "parameter", (unsigned long)nr, SVfARG(name));
+        }
 
         if (has_coercion) {
             OP *args2 = NULL, *coerce;

@@ -78,6 +78,7 @@ t/types_custom.t
 t/types_custom_2.t
 t/types_custom_3.t
 t/types_custom_4.t
+t/types_inline.t
 t/types_moose.t
 t/types_moose_2.t
 t/types_moose_3.t
