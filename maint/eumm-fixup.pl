@@ -167,7 +167,7 @@ __EOT__
     my $github_tests = <<"__EOT__";
 pure_all :: .github/workflows/run-tests.yml
 
-.github/workflows/%.yml : .github/workflows/%.yml.tmpl  maint/tm.pl
+.github/workflows/%.yml : .github/workflows/%.yml.tmpl maint/tm.pl Makefile
 	\$(PERLRUN) maint/tm.pl '\$<' '$perl_ver_min' '$perl_ver_max'
 
 __EOT__
