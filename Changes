@@ -1,5 +1,10 @@
 Revision history for Function-Parameters
 
+2.002004  2023-07-15
+          - Remove 'perl -T' from tests. This way we can run on perls compiled
+            without support for taint mode. The test didn't actually care about
+            taint anyway.
+
 2.002003  2023-04-19
           - Fix line numbers after inlined type checks (gh #42).
             Previously, the code for type checks was inlined literally, so if a
