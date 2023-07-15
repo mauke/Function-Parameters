@@ -1,5 +1,4 @@
-#!perl -T
-use warnings FATAL => 'all';
+use warnings qw(all FATAL uninitialized);
 use strict;
 
 use Test::More tests => 140;
