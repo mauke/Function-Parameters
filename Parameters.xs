@@ -707,7 +707,9 @@ static SV *call_from_curstash(pTHX_ Sentinel sen, SV *sv, SV **args, size_t narg
     SV *r;
     COP curcop_with_stash;
     I32 want;
-    dSP;
+    #ifndef PERL_RC_STACK
+        dSP;
+    #endif
 
     assert(sv != NULL);
 
@@ -719,17 +721,31 @@ static SV *call_from_curstash(pTHX_ Sentinel sen, SV *sv, SV **args, size_t narg
     ENTER;
     SAVETMPS;
 
-    PUSHMARK(SP);
+    #ifdef PERL_RC_STACK
+        PUSHMARK(PL_stack_sp);
+    #else
+        PUSHMARK(SP);
+    #endif
     if (!args) {
         flags |= G_NOARGS;
     } else {
         size_t i;
-        EXTEND(SP, (SSize_t)nargs);
+        #ifdef PERL_RC_STACK
+            rpp_extend(nargs);
+        #else
+            EXTEND(SP, (SSize_t)nargs);
+        #endif
         for (i = 0; i < nargs; i++) {
-            PUSHs(args[i]);
+            #ifdef PERL_RC_STACK
+                rpp_push_1(args[i]);
+            #else
+                PUSHs(args[i]);
+            #endif
         }
     }
-    PUTBACK;
+    #ifndef PERL_RC_STACK
+        PUTBACK;
+    #endif
 
     assert(PL_curcop == &PL_compiling);
     curcop_with_stash = PL_compiling;
@@ -742,9 +758,13 @@ static SV *call_from_curstash(pTHX_ Sentinel sen, SV *sv, SV **args, size_t narg
         r = NULL;
     } else {
         assert(want == G_SCALAR);
-        SPAGAIN;
-        r = sentinel_mortalize(sen, SvREFCNT_inc(POPs));
-        PUTBACK;
+        #ifdef PERL_RC_STACK
+            r = sentinel_mortalize(sen, rpp_pop_1_norc());
+        #else
+            SPAGAIN;
+            r = sentinel_mortalize(sen, SvREFCNT_inc(POPs));
+            PUTBACK;
+        #endif
     }
 
     FREETMPS;
@@ -1355,34 +1375,58 @@ static PADOFFSET parse_param(
 }
 
 static void register_info(pTHX_ UV key, SV *declarator, const ParamSpec *ps) {
-    dSP;
+    #ifndef PERL_RC_STACK
+        dSP;
+    #endif
 
     ENTER;
     SAVETMPS;
 
-    PUSHMARK(SP);
-    EXTEND(SP, 9);
+    #ifdef PERL_RC_STACK
+        PUSHMARK(PL_stack_sp);
+        rpp_extend(9);
+    #else
+        PUSHMARK(SP);
+        EXTEND(SP, 9);
+    #endif
 
     /* 0 */ {
-        mPUSHu(key);
+        #ifdef PERL_RC_STACK
+            rpp_push_1_norc(newSVuv(key));
+        #else
+            mPUSHu(key);
+        #endif
     }
     /* 1 */ {
         STRLEN n;
         char *p = SvPV(declarator, n);
         char *q = memchr(p, ' ', n);
         SV *tmp = newSVpvn_utf8(p, q ? (size_t)(q - p) : n, SvUTF8(declarator));
-        mPUSHs(tmp);
+        #ifdef PERL_RC_STACK
+            rpp_push_1_norc(tmp);
+        #else
+            mPUSHs(tmp);
+        #endif
     }
     /* 2 */ {
-        mPUSHu(ps->shift);
+        #ifdef PERL_RC_STACK
+            rpp_push_1_norc(newSVuv(ps->shift));
+        #else
+            mPUSHu(ps->shift);
+        #endif
     }
     /* 3 */ {
         size_t i, lim;
         AV *av;
 
-        lim = ps->positional_required.used;
-
         av = newAV();
+        #ifdef PERL_RC_STACK
+            rpp_push_1_norc(newRV_noinc((SV *)av));
+        #else
+            mPUSHs(newRV_noinc((SV *)av));
+        #endif
+
+        lim = ps->positional_required.used;
         if (lim) {
             av_extend(av, (lim - 1) * 2);
             for (i = 0; i < lim; i++) {
@@ -1391,16 +1435,19 @@ static void register_info(pTHX_ UV key, SV *declarator, const ParamSpec *ps) {
                 av_push(av, cur->type ? SvREFCNT_inc_simple_NN(cur->type) : &PL_sv_undef);
             }
         }
-
-        mPUSHs(newRV_noinc((SV *)av));
     }
     /* 4 */ {
         size_t i, lim;
         AV *av;
 
-        lim = ps->positional_optional.used;
-
         av = newAV();
+        #ifdef PERL_RC_STACK
+            rpp_push_1_norc(newRV_noinc((SV *)av));
+        #else
+            mPUSHs(newRV_noinc((SV *)av));
+        #endif
+
+        lim = ps->positional_optional.used;
         if (lim) {
             av_extend(av, (lim - 1) * 2);
             for (i = 0; i < lim; i++) {
@@ -1409,16 +1456,19 @@ static void register_info(pTHX_ UV key, SV *declarator, const ParamSpec *ps) {
                 av_push(av, cur->type ? SvREFCNT_inc_simple_NN(cur->type) : &PL_sv_undef);
             }
         }
-
-        mPUSHs(newRV_noinc((SV *)av));
     }
     /* 5 */ {
         size_t i, lim;
         AV *av;
 
-        lim = ps->named_required.used;
-
         av = newAV();
+        #ifdef PERL_RC_STACK
+            rpp_push_1_norc(newRV_noinc((SV *)av));
+        #else
+            mPUSHs(newRV_noinc((SV *)av));
+        #endif
+
+        lim = ps->named_required.used;
         if (lim) {
             av_extend(av, (lim - 1) * 2);
             for (i = 0; i < lim; i++) {
@@ -1427,16 +1477,19 @@ static void register_info(pTHX_ UV key, SV *declarator, const ParamSpec *ps) {
                 av_push(av, cur->type ? SvREFCNT_inc_simple_NN(cur->type) : &PL_sv_undef);
             }
         }
-
-        mPUSHs(newRV_noinc((SV *)av));
     }
     /* 6 */ {
         size_t i, lim;
         AV *av;
 
-        lim = ps->named_optional.used;
-
         av = newAV();
+        #ifdef PERL_RC_STACK
+            rpp_push_1_norc(newRV_noinc((SV *)av));
+        #else
+            mPUSHs(newRV_noinc((SV *)av));
+        #endif
+
+        lim = ps->named_optional.used;
         if (lim) {
             av_extend(av, (lim - 1) * 2);
             for (i = 0; i < lim; i++) {
@@ -1445,23 +1498,41 @@ static void register_info(pTHX_ UV key, SV *declarator, const ParamSpec *ps) {
                 av_push(av, cur->type ? SvREFCNT_inc_simple_NN(cur->type) : &PL_sv_undef);
             }
         }
-
-        mPUSHs(newRV_noinc((SV *)av));
     }
     /* 7, 8 */ {
         if (ps->slurpy.name) {
-            PUSHs(ps->slurpy.name);
+            #ifdef PERL_RC_STACK
+                rpp_push_1(ps->slurpy.name);
+            #else
+                PUSHs(ps->slurpy.name);
+            #endif
             if (ps->slurpy.type) {
-                PUSHs(ps->slurpy.type);
+                #ifdef PERL_RC_STACK
+                    rpp_push_1(ps->slurpy.type);
+                #else
+                    PUSHs(ps->slurpy.type);
+                #endif
             } else {
-                PUSHmortal;
+                #ifdef PERL_RC_STACK
+                    rpp_push_1_norc(newSV(0));
+                #else
+                    PUSHmortal;
+                #endif
             }
         } else {
-            PUSHmortal;
-            PUSHmortal;
+            #ifdef PERL_RC_STACK
+                rpp_push_1_norc(newSV(0));
+                rpp_push_1_norc(newSV(0));
+            #else
+                PUSHmortal;
+                PUSHmortal;
+            #endif
         }
     }
-    PUTBACK;
+
+    #ifndef PERL_RC_STACK
+        PUTBACK;
+    #endif
 
     call_pv(MY_PKG "::_register_info", G_VOID);
 
@@ -2468,9 +2539,8 @@ static int kw_flags_enter(pTHX_ Sentinel **ppsen, const char *kw_ptr, STRLEN kw_
         sv = *psv;
         if (!SvROK(sv)) {
             /* something is wrong: $^H{'Function::Parameters/config'} has turned into a string */
-            dSP;
 
-            PUSHMARK(SP);
+            PUSHMARK(PL_stack_sp);
             call_pv(MY_PKG "::_warn_config_not_a_reference", G_VOID);
 
             /* don't warn twice within the same scope */
