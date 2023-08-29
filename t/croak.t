@@ -3,7 +3,7 @@
 use strict;
 use warnings FATAL => 'all';
 
-use Test::More tests => 12;
+use Test::More tests => 13;
 use Test::Fatal;
 
 use Function::Parameters {
@@ -56,3 +56,29 @@ is exception { Crabs::worngkw4 },                 "In fun takekw: no such named 
 
 is exception { Crabs::taket "X" }, "In fun taket: parameter 1 (\$x): A failure (Cool[Story]) of X at ${\__FILE__} line ${\__LINE__}.\n";
 is exception { Crabs::worngt1 },   "In fun taket: parameter 1 (\$x): A failure (Cool[Story]) of X at ${\__FILE__} line ${\($marker + 14)}.\n";
+
+use Function::Parameters {
+    fun    => { defaults => 'function_strict', reify_type => \&MyT2::reify_type },
+    method => 'method_strict',
+};
+
+{
+    package MyT2;
+
+    fun reify_type($type) {
+        bless [$type], __PACKAGE__
+    }
+
+    method check($value) { 0 }
+
+    method get_message($value) {
+        "A failure ($self->[0]) of $value.\n"
+    }
+}
+
+{
+    package Crabs2;
+    fun taket(Cool[Story] $x) {}
+}
+
+is exception { Crabs2::taket "X" }, "In fun taket: parameter 1 (\$x): A failure (Cool[Story]) of X.\n";
