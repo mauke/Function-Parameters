@@ -29,7 +29,7 @@ jobs:
       locallib: xlocal
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: "Set up perl"
         uses: shogo82148/actions-setup-perl@v1
         with:
@@ -37,7 +37,7 @@ jobs:
       - name: "Create perl fingerprint file"
         run: perl -MConfig -wE 'say for sprintf(q{%vd}, $^V), Config::bincompat_options' > perl-fingerprint
       - name: "Cache CPAN fragments"
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           enableCrossOsArchive: true
           path: ${{ env.cachepan }}
@@ -45,7 +45,7 @@ jobs:
           restore-keys: |
             cpan-dists-
       - name: "Cache local dependencies"
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ env.locallib }}
           key: xlocal-lib-${{ matrix.os }}-${{ hashFiles('perl-fingerprint', 'Makefile_PL_settings*.plx') }}
