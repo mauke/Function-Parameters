@@ -271,6 +271,25 @@ static SV *sentinel_mortalize(Sentinel sen, SV *sv) {
     return sv;
 }
 
+DEFSTRUCT(RStore_U32) {
+    U32 *where;
+    U32 what;
+};
+
+static void resource_store_u32(pTHX_ void *p) {
+    PERL_UNUSED_CONTEXT;
+    RStore_U32 *rs = p;
+    *rs->where = rs->what;
+    Safefree(rs);
+}
+
+static void sentinel_save_u32(Sentinel sen, U32 *pu) {
+    RStore_U32 *rs;
+    Newx(rs, 1, RStore_U32);
+    rs->where = pu;
+    rs->what = *pu;
+    sentinel_register(sen, rs, resource_store_u32);
+}
 
 #if HAVE_PERL_VERSION(5, 17, 2)
  #define MY_OP_SLABBED(O) ((O)->op_slabbed)
@@ -1773,6 +1792,11 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
         Perl_croak(aTHX_ "In %"SVf": I was expecting a function body, not \"%c\"", SVfARG(declarator), (int)c);
     }
 
+    /* turn off line debugging for generated code */
+    sentinel_save_u32(sen, &PL_perldb);
+    const U32 prev_db_line = PL_perldb & PERLDBf_LINE;
+    PL_perldb &= ~PERLDBf_LINE;
+
     /* surprise predeclaration! */
     if (saw_name && !spec->install_sub && !(spec->flags & FLAG_RUNTIME)) {
         /* 'sub NAME (PROTO);' to make name/proto known to perl before it
@@ -2364,6 +2388,8 @@ static int parse_fun(pTHX_ Sentinel sen, OP **pop, const char *keyword_ptr, STRL
             op_guard_update(prelude_sentinel, op_append_list(OP_LINESEQ, prelude_sentinel->op, newSTATEOP(0, NULL, loop)));
         }
     }
+
+    PL_perldb |= prev_db_line;
 
     /* finally let perl parse the actual subroutine body */
     body = parse_block(0);
